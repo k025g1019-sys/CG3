@@ -89,8 +89,9 @@ ComPtr<ID3D12RootSignature> PipelineManager::CreateRootSignature(ID3D12Device* d
     descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
     descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // Offsetを自動計算
 
-    // RootParameter（0:Material[PS] / 1:World[VS] / 2:Light[PS] / 3:Texture[PS] / 4:ViewProjection[VS]）
-    D3D12_ROOT_PARAMETER rootParameters[5] = {};
+    // RootParameter（0:Material[PS] / 1:World[VS] / 2:DirectionalLight[PS] / 3:Texture[PS] /
+    //                4:ViewProjection[VS] / 5:PointLights[PS]）
+    D3D12_ROOT_PARAMETER rootParameters[6] = {};
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[0].Descriptor.ShaderRegister = 0;
@@ -112,6 +113,11 @@ ComPtr<ID3D12RootSignature> PipelineManager::CreateRootSignature(ID3D12Device* d
     rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
     rootParameters[4].Descriptor.ShaderRegister = 1;
+
+    // 点光源の配列（b2, PS）。シーン共通で1回だけバインドする。
+    rootParameters[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[5].Descriptor.ShaderRegister = 2;
 
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);

@@ -33,5 +33,6 @@ VertexShaderOutput main(VertexShaderInput input) {
         mul(input.normal,
             (float3x3) gTransformationMatrix.World)
     );
+    output.worldPosition = worldPosition.xyz;
     return output;
 }

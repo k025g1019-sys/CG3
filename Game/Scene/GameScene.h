@@ -109,7 +109,7 @@ private:
     float soundVolume_ = 1.0f;   // ImGuiで調整する音量
 
     // --- スプライト描画のオン/オフ（ImGuiで切り替え） ---
-    bool drawSprite_ = true;
+    bool drawSprite_ = false;
 
 #ifndef NDEBUG
     // --- デバッグカメラ（Debugビルドのみ。Releaseでは無効）---

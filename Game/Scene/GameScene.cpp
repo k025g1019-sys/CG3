@@ -81,7 +81,7 @@ void GameScene::Update() {
 	}
 
 	// ゲームの処理
-	triangle_.GetTransform().rotate.y += 0.04f;
+	//triangle_.GetTransform().rotate.y += 0.04f;
 	sphere_.GetTransform().rotate.y += 0.02f;
 
 	// 現在のウィンドウサイズを使う（リサイズに追従させ、アスペクト比の歪みを防ぐ）。

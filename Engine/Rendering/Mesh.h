@@ -31,6 +31,9 @@ public:
     // 緯度経度分割の球（半径1・原点中心）を生成する
     void CreateSphere(ID3D12Device* device, uint32_t subdivision);
 
+    // 1辺1・原点中心の立方体を生成する（面ごとに法線・UV 0..1を持つ24頂点＋36インデックス）
+    void CreateCube(ID3D12Device* device);
+
     // 頂点（インデックスがあればインデックス）バッファを設定して描画コマンドを積む
     void Draw(ID3D12GraphicsCommandList* commandList) const;
 

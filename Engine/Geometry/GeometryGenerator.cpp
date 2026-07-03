@@ -62,3 +62,71 @@ std::vector<VertexData> GenerateSphereVertices(uint32_t subdivision) {
 
 	return vertices;
 }
+
+std::vector<VertexData> GenerateCubeVertices() {
+	// 各面を「外から見たときの右方向・上方向」で定義する。
+	// 表面（時計回り）の巻き順になるよう、法線 = 上方向×右方向 を満たす組み合わせにしている。
+	struct Face {
+		Vector3 normal;  // 外向き法線
+		Vector3 right;   // 外から見て右方向
+		Vector3 up;      // 外から見て上方向
+	};
+	const Face faces[6] = {
+		{ { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },   // 前(-Z)
+		{ { 0.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },   // 後(+Z)
+		{ { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f, 0.0f } },  // 左(-X)
+		{ { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f } },    // 右(+X)
+		{ { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } },    // 上(+Y)
+		{ { 0.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },  // 下(-Y)
+	};
+
+	std::vector<VertexData> vertices;
+	vertices.resize(6 * 4);
+
+	for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex) {
+		const Face& face = faces[faceIndex];
+		const Vector3 center = face.normal * 0.5f;
+
+		// 4頂点：0=左下 / 1=左上 / 2=右下 / 3=右上（テクスチャ座標は左上原点）
+		const Vector3 corners[4] = {
+			center - face.right * 0.5f - face.up * 0.5f,
+			center - face.right * 0.5f + face.up * 0.5f,
+			center + face.right * 0.5f - face.up * 0.5f,
+			center + face.right * 0.5f + face.up * 0.5f,
+		};
+		const Vector2 texcoords[4] = {
+			{ 0.0f, 1.0f },
+			{ 0.0f, 0.0f },
+			{ 1.0f, 1.0f },
+			{ 1.0f, 0.0f },
+		};
+
+		for (uint32_t i = 0; i < 4; ++i) {
+			VertexData& vertex = vertices[size_t(faceIndex) * 4 + i];
+			vertex.position = { corners[i].x, corners[i].y, corners[i].z, 1.0f };
+			vertex.texcoord = texcoords[i];
+			vertex.normal = face.normal;
+		}
+	}
+
+	return vertices;
+}
+
+std::vector<uint32_t> GenerateCubeIndices() {
+	std::vector<uint32_t> indices;
+	indices.resize(6 * 6);
+
+	for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex) {
+		const uint32_t base = faceIndex * 4;
+		uint32_t* face = &indices[size_t(faceIndex) * 6];
+		// 左下→左上→右下 / 右下→左上→右上（時計回り＝表）
+		face[0] = base + 0;
+		face[1] = base + 1;
+		face[2] = base + 2;
+		face[3] = base + 2;
+		face[4] = base + 1;
+		face[5] = base + 3;
+	}
+
+	return indices;
+}

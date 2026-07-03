@@ -56,6 +56,14 @@ void Mesh::CreateSphere(ID3D12Device* device, uint32_t subdivision) {
 	Create(device, vertices.data(), uint32_t(vertices.size()));
 }
 
+void Mesh::CreateCube(ID3D12Device* device) {
+	std::vector<VertexData> vertices = GenerateCubeVertices();
+	std::vector<uint32_t> indices = GenerateCubeIndices();
+	Create(device,
+		vertices.data(), uint32_t(vertices.size()),
+		indices.data(), uint32_t(indices.size()));
+}
+
 void Mesh::Draw(ID3D12GraphicsCommandList* commandList) const {
 	commandList->IASetVertexBuffers(0, 1, &vbv_);
 	if (indexCount_ > 0) {

@@ -102,6 +102,9 @@
     <ClCompile Include="Engine\Camera\DebugCamera.cpp">
       <Filter>Engine\Camera</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Camera\StereoCamera.cpp">
+      <Filter>Engine\Camera</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Culling\FrustumCulling.cpp">
       <Filter>Engine\Culling</Filter>
     </ClCompile>
@@ -183,6 +186,12 @@
     <ClCompile Include="Game\Scene\GameScene.cpp">
       <Filter>Game\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Game\Scene\SceneFactory.cpp">
+      <Filter>Game\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Scene\StereoDemoScene.cpp">
+      <Filter>Game\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h">
@@ -216,6 +225,9 @@
       <Filter>Engine\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Camera\DebugCamera.h">
+      <Filter>Engine\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Camera\StereoCamera.h">
       <Filter>Engine\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Culling\FrustumCulling.h">
@@ -329,7 +341,16 @@
     <ClInclude Include="Game\MyGame.h">
       <Filter>Game</Filter>
     </ClInclude>
+    <ClInclude Include="Game\Scene\BaseScene.h">
+      <Filter>Game\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Game\Scene\GameScene.h">
+      <Filter>Game\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Scene\SceneFactory.h">
+      <Filter>Game\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Scene\StereoDemoScene.h">
       <Filter>Game\Scene</Filter>
     </ClInclude>
   </ItemGroup>

@@ -3,6 +3,7 @@
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Core/WinApp.h"
 #include "Engine/Graphics/StereoRenderer.h"
+#include "Engine/Input/Input.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -12,8 +13,9 @@ void MyGame::Initialize() {
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();
 
-	// シーン初期化（テクスチャ・モデル等の読み込みもここで行われる）
-	scene_ = std::make_unique<GameScene>();
+	// シーン初期化（テクスチャ・モデル等の読み込みもここで行われる）。
+	// 起動時のシーンはSceneFactory.hのkInitialSceneIdで指定する。
+	scene_ = CreateScene(sceneId_);
 	scene_->Initialize();
 
 	// --- 視線追跡（別プロセスのOpenGaze等から共有メモリ経由で受信）---
@@ -42,6 +44,19 @@ void MyGame::Finalize() {
 }
 
 void MyGame::Update() {
+	// Tキーで立体視デモシーンと従来デモシーンを切り替える。
+	// アクティブなシーンだけを保持する方針のため、旧シーンを破棄して新シーンを作り直す。
+	if (Input::GetInstance()->IsTrigger(DIK_T)) {
+		// 実行中のフレームが旧シーンの定数バッファ等を参照し終えるのを待ってから破棄する
+		DirectXCore::GetInstance()->WaitForGPU();
+		scene_.reset();
+
+		sceneId_ = (sceneId_ == SceneId::kStereoDemo) ? SceneId::kGame : SceneId::kStereoDemo;
+		scene_ = CreateScene(sceneId_);
+		// テクスチャの転送コマンドは記録中のコマンドリストに積まれ、このフレームの描画より先に実行される
+		scene_->Initialize();
+	}
+
 	// 視線追跡を更新し、ゲーム内カメラ（頭連動オフアクシス）へ反映する。
 	// 視線追跡ONかつ受信できているときだけ効かせる（未起動/停止時は中央＝従来描画）。
 	eyeTracker_.Update();

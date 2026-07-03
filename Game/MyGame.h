@@ -6,12 +6,13 @@
 #include "Engine/Graphics/CameraCapture.h"
 #include "Engine/Input/EyeTracker.h"
 #include "Engine/Input/FaceTracker.h"
-#include "Game/Scene/GameScene.h"
+#include "Game/Scene/SceneFactory.h"
 
 /// <summary>
 /// このゲームのアプリケーションクラス。
-/// Frameworkのメインループから呼ばれる更新・描画をGameSceneへ委譲し、
+/// Frameworkのメインループから呼ばれる更新・描画を現在のシーンへ委譲し、
 /// 視線追跡（アプリ内顔検出／共有メモリ）とWebカメラの分割表示をシーンへ配線する。
+/// Tキーで立体視デモシーンと従来デモシーンを切り替える。
 /// </summary>
 class MyGame : public Framework {
 protected:
@@ -39,8 +40,11 @@ protected:
 
 private:
 
-    // シーン（Finalizeでエンジン終了処理より先に解放する）
-    std::unique_ptr<GameScene> scene_;
+    // 現在のシーン（Tキーで切り替え。Finalizeでエンジン終了処理より先に解放する）
+    std::unique_ptr<BaseScene> scene_;
+
+    // 現在のシーンID（起動時のシーンはSceneFactory.hのkInitialSceneIdで指定する）
+    SceneId sceneId_ = kInitialSceneId;
 
     // --- 視線追跡とWebカメラ ---
     CameraCapture camera_;    // Webカメラ取得・表示（使わない間はワーカー停止）

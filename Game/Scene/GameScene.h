@@ -6,6 +6,7 @@
 
 #include "Engine/Camera/Camera.h"
 #include "Engine/Light/DirectionalLight.h"
+#include "Engine/Light/PointLight.h"
 #include "Game/Object/Skydome.h"
 #include "Engine/Rendering/ConstantBuffer.h"
 #include "Engine/Rendering/Mesh.h"
@@ -90,8 +91,12 @@ private:
     float renderAspectScale_ = 1.0f;
 
     // --- 平行光源（CPU側の値をImGuiで編集し、Updateで定数バッファへ書き込む）---
-    DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, 1.0f };
+    DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, 1.0f, 1, {} };
     ConstantBuffer<DirectionalLight> lightCB_;
+
+    // --- 点光源（最大kMaxPointLightCount個。ImGuiで個別編集し、Updateで定数バッファへ書き込む）---
+    PointLightGroup pointLights_;
+    ConstantBuffer<PointLightGroup> pointLightCB_;
 
     // --- 球の分割数（ImGuiで変更すると頂点を再生成する）---
     uint32_t subdivision_ = 16;

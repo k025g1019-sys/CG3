@@ -275,6 +275,9 @@
     <ClInclude Include="Engine\Light\DirectionalLight.h">
       <Filter>Engine\Light</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Light\PointLight.h">
+      <Filter>Engine\Light</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Math\Matrix4x4.h">
       <Filter>Engine\Math</Filter>
     </ClInclude>

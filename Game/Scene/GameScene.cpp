@@ -62,6 +62,10 @@ void GameScene::Initialize() {
 	// --- 平行光源 ---
 	lightCB_.Create(device, DirectXCore::kFramesInFlight);
 
+	// --- 点光源（初期状態は1灯だけ有効。残りはImGuiから有効化できる）---
+	pointLights_.lights[0].enabled = 1;
+	pointLightCB_.Create(device, DirectXCore::kFramesInFlight);
+
 	// --- 立体視：視点ごとのビュー射影CBuffer（フレームスロット×最大視点数）---
 	viewProjectionCB_.Create(device, DirectXCore::kFramesInFlight * StereoRenderer::kMaxViewCount);
 
@@ -128,9 +132,10 @@ void GameScene::Update() {
 	// スプライト（正射影・2Dカリング）
 	sprite_.Update(width, height);
 
-	// 平行光源
+	// 平行光源・点光源
 	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
 	lightCB_.Write(frameIndex, light_);
+	pointLightCB_.Write(frameIndex, pointLights_);
 
 	// --- 立体視：中心カメラから各視点（眼）を作り、視点ごとのビュー射影を更新する ---
 	// カメラは平行配置（toe-in不使用）。収束面で視差ゼロになるよう射影にシアーを加える（オフアクシス射影）。
@@ -321,7 +326,8 @@ void GameScene::DrawImGui() {
 	}
 	ImGui::End();
 
-	ImGui::Begin("Camera, DirectionalLight");
+	// --- カメラ（変換・立体視・視線追跡）---
+	ImGui::Begin("Camera");
 
 	Transform3D& cameraTransform = camera_.GetTransform();
 	ImGui::DragFloat3("Camera scale", &cameraTransform.scale.x, 0.01f);
@@ -344,11 +350,59 @@ void GameScene::DrawImGui() {
 	ImGui::DragFloat("Gaze Move Y", &gazeMoveScaleY_, 0.01f, 0.0f, 10.0f);
 	ImGui::Text("Gaze: (%.2f, %.2f)", gazeX_, gazeY_);
 
+	ImGui::End();
+
+	// --- 平行光源 ---
+	ImGui::Begin("Directional Light");
+
+	bool directionalEnabled = light_.enabled != 0;
+	if (ImGui::Checkbox("Enable", &directionalEnabled)) {
+		light_.enabled = directionalEnabled ? 1 : 0;
+	}
+	ImGui::ColorEdit4("Color", &light_.color.x);
+	ImGui::DragFloat3("Direction", &light_.direction.x, 0.01f);
+	ImGui::DragFloat("Intensity", &light_.intensity, 0.01f, 0.0f, 10.0f);
+
+	ImGui::End();
+
+	// --- 点光源 ---
+	ImGui::Begin("Point Lights");
+
+	// 全灯まとめて切り替え
+	if (ImGui::Button("All ON")) {
+		for (PointLight& pointLight : pointLights_.lights) {
+			pointLight.enabled = 1;
+		}
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("All OFF")) {
+		for (PointLight& pointLight : pointLights_.lights) {
+			pointLight.enabled = 0;
+		}
+	}
+
 	ImGui::Separator();
 
-	ImGui::ColorEdit4("Light Color", &light_.color.x);
-	ImGui::DragFloat3("Light Direction", &light_.direction.x, 0.01f);
-	ImGui::DragFloat("Intensity", &light_.intensity, 0.01f, 0.0f, 10.0f);
+	for (uint32_t i = 0; i < kMaxPointLightCount; ++i) {
+		PointLight& pointLight = pointLights_.lights[i];
+
+		// ラベルに現在の状態を表示する（IDはインデックス由来なのでラベルが変わっても開閉状態は保たれる）
+		if (ImGui::TreeNode(reinterpret_cast<void*>(static_cast<intptr_t>(i)),
+			"Light %u (%s)", i, pointLight.enabled != 0 ? "ON" : "OFF")) {
+
+			bool enabled = pointLight.enabled != 0;
+			if (ImGui::Checkbox("Enable", &enabled)) {
+				pointLight.enabled = enabled ? 1 : 0;
+			}
+			ImGui::ColorEdit4("Color", &pointLight.color.x);
+			ImGui::DragFloat3("Position", &pointLight.position.x, 0.01f);
+			ImGui::DragFloat("Intensity", &pointLight.intensity, 0.01f, 0.0f, 10.0f);
+			ImGui::DragFloat("Radius", &pointLight.radius, 0.05f, 0.01f, 100.0f);
+			ImGui::DragFloat("Decay", &pointLight.decay, 0.01f, 0.05f, 8.0f);
+
+			ImGui::TreePop();
+		}
+	}
 
 	ImGui::End();
 
@@ -399,6 +453,9 @@ void GameScene::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex)
 	// この視点のビュー射影をVS(b1)へバインド（以降の3D描画で共有。スプライトのみ自前の正射影へ差し替える）
 	commandList->SetGraphicsRootConstantBufferView(
 		4, viewProjectionCB_.GetGPUAddress(frameIndex * StereoRenderer::kMaxViewCount + viewIndex));
+
+	// 点光源のCBufferはシーン共通（PS b2。天球を含む以降の全描画で共有される）
+	commandList->SetGraphicsRootConstantBufferView(5, pointLightCB_.GetGPUAddress(frameIndex));
 
 	// --- 天球を最初に描画（背景。カリング無効PSOに切り替わる）---
 	skydome_.Draw(commandList, lightCB_.GetGPUAddress(frameIndex));

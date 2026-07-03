@@ -66,22 +66,27 @@ void Framework::Run() {
 		// シーン描画前のフック（Webカメラテクスチャの転送コマンド発行など）
 		PreDraw(commandList);
 
-		// ゲームの表示先（画面分割時は左半分。立体視合成／通常描画の両方で使う）
+		// ゲームの表示先（立体視合成／通常描画の両方で使う）。
+		// ImGuiビルドではドッキングで空いた中央領域に合わせ、ゲームがUIに隠れないようにする
 		const D3D12_VIEWPORT fullViewport = dxCore->GetViewport();
 		const D3D12_RECT fullScissor = dxCore->GetScissorRect();
 		D3D12_VIEWPORT gameViewport = fullViewport;
 		D3D12_RECT gameScissor = fullScissor;
-		D3D12_VIEWPORT subViewport = fullViewport;
-		D3D12_RECT subScissor = fullScissor;
-		if (splitScreen_) {
-			const float halfWidth = fullViewport.Width * 0.5f;
-			const LONG midX = (fullScissor.left + fullScissor.right) / 2;
-			gameViewport.Width = halfWidth;
-			gameScissor.right = midX;
-			subViewport.TopLeftX = fullViewport.TopLeftX + halfWidth;
-			subViewport.Width = fullViewport.Width - halfWidth;
-			subScissor.left = midX;
+#ifdef USE_IMGUI
+		{
+			const ImGuiManager::GameArea area = ImGuiManager::GetInstance()->GetGameArea();
+			if (area.width > 0.0f && area.height > 0.0f) {
+				gameViewport.TopLeftX = area.x;
+				gameViewport.TopLeftY = area.y;
+				gameViewport.Width = area.width;
+				gameViewport.Height = area.height;
+				gameScissor.left = static_cast<LONG>(area.x);
+				gameScissor.top = static_cast<LONG>(area.y);
+				gameScissor.right = static_cast<LONG>(area.x + area.width);
+				gameScissor.bottom = static_cast<LONG>(area.y + area.height);
+			}
 		}
+#endif
 
 		if (stereo->IsEnabled()) {
 			// --- 立体視：各視点をオフスクリーンへ描画し、バックバッファへ合成する ---
@@ -94,17 +99,10 @@ void Framework::Run() {
 				commandList, dxCore->GetCurrentRTVHandle(), gameViewport, gameScissor);
 		} else {
 			// --- 通常描画：バックバッファへ直接1回描画（オフスクリーン・合成のコストなし）---
-			if (splitScreen_) {
-				// 分割時はゲームの描画先を左半分へ絞る（RT/クリアはBeginFrame済み）
-				commandList->RSSetViewports(1, &gameViewport);
-				commandList->RSSetScissorRects(1, &gameScissor);
-			}
+			// ゲームの描画先を表示領域へ絞る（RT/クリアはBeginFrame済み）
+			commandList->RSSetViewports(1, &gameViewport);
+			commandList->RSSetScissorRects(1, &gameScissor);
 			Draw(commandList, 0);
-		}
-
-		// 画面分割時の右半分（Webカメラ表示など）
-		if (splitScreen_) {
-			DrawSubView(commandList, subViewport, subScissor);
 		}
 
 #ifdef USE_IMGUI

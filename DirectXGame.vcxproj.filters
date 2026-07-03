@@ -377,8 +377,5 @@
     <None Include="Shaders\Composite.PS.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\CameraBlit.PS.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
   </ItemGroup>
 </Project>

@@ -8,6 +8,7 @@
 /// エンジン各サブシステムの初期化〜メインループ〜終了処理を担当する。
 /// 立体視（StereoRenderer）が有効なときは視点数ぶんDrawを呼んでオフスクリーンへ描画し、
 /// 合成パスでバックバッファへ出力する。無効なときは従来どおり1回だけ直接描画する。
+/// ImGuiビルドではゲームの描画先をドッキングで空いた中央領域に合わせる（ゲームがUIに隠れない）。
 /// ゲーム側はこのクラスを継承し、Update / Draw（/ DrawImGui）を実装する。
 /// </summary>
 class Framework {
@@ -37,24 +38,8 @@ protected:
     // シーン描画の前に毎フレーム呼ばれるフック（テクスチャ転送コマンドの発行など。既定では何もしない）
     virtual void PreDraw(ID3D12GraphicsCommandList* commandList) { (void)commandList; }
 
-    // 画面分割時、右半分の描画のために呼ばれるフック（Webカメラ表示など。既定では何もしない）
-    virtual void DrawSubView(
-        ID3D12GraphicsCommandList* commandList,
-        const D3D12_VIEWPORT& viewport,
-        const D3D12_RECT& scissorRect) {
-        (void)commandList; (void)viewport; (void)scissorRect;
-    }
-
-    // 画面を左右に分割し、ゲームを左半分・DrawSubViewを右半分に表示する（毎フレームUpdateで指定する）
-    void SetSplitScreen(bool enable) { splitScreen_ = enable; }
-
 #ifdef USE_IMGUI
     // 開発用ImGuiウィンドウの構築（Debugビルドのみ呼ばれる）
     virtual void DrawImGui() = 0;
 #endif
-
-private:
-
-    // 画面分割（ゲーム=左半分 / DrawSubView=右半分）。Updateで毎フレーム指定される。
-    bool splitScreen_ = false;
 };

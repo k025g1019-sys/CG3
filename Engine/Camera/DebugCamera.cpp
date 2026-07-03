@@ -38,8 +38,10 @@ namespace {
 
 void DebugCamera::Update(
     const std::vector<PickTarget>& targets,
-    float screenWidth,
-    float screenHeight,
+    float viewX,
+    float viewY,
+    float viewWidth,
+    float viewHeight,
     const Matrix4x4& projection,
     bool blockMouse) {
 
@@ -61,9 +63,11 @@ void DebugCamera::Update(
         Matrix4x4 viewProjection = Multiply(GetViewMatrix(), projection);
         Matrix4x4 invViewProjection = Inverse(viewProjection);
 
+        // ゲーム描画先矩形内の相対位置からNDCを求める
+        // （ドッキングでゲーム表示が縮んでいてもカーソル位置を正しく対応付ける）
         Vector2 mouse = input->GetMousePosition();
-        float ndcX = (2.0f * mouse.x / screenWidth) - 1.0f;
-        float ndcY = 1.0f - (2.0f * mouse.y / screenHeight);
+        float ndcX = (2.0f * (mouse.x - viewX) / viewWidth) - 1.0f;
+        float ndcY = 1.0f - (2.0f * (mouse.y - viewY) / viewHeight);
 
         Vector3 nearPoint = Transform({ ndcX, ndcY, 0.0f }, invViewProjection);  // 近クリップ面上
         Vector3 farPoint = Transform({ ndcX, ndcY, 1.0f }, invViewProjection);   // 遠クリップ面上

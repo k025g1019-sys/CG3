@@ -7,7 +7,7 @@
 
 /// <summary>
 /// シーンの基底クラス。MyGameがこのインターフェース越しに現在のシーンを駆動する。
-/// 全シーン共通の立体視カメラ（視点別ビュー射影＋頭連動）とアスペクト補正を持つ。
+/// 全シーン共通の立体視カメラ（視点別ビュー射影＋頭連動）とゲーム描画先の矩形を持つ。
 /// </summary>
 class BaseScene {
 public:
@@ -37,16 +37,24 @@ public:
         stereoCamera_.SetEyeTracking(enabled, gazeX, gazeY, headZ);
     }
 
-    // 描画先のアスペクト補正（Updateの前に毎フレーム呼ぶ）。
-    // ゲーム描画が表示される横方向の割合を渡す（通常=1.0 / 左右分割でゲームが左半分のとき=0.5）。
-    // 投影のアスペクト比をこの割合ぶん横に詰め、分割しても物体が伸び縮みしないようにする。
-    void SetRenderAspectScale(float horizontalScale) { renderAspectScale_ = horizontalScale; }
+    // ゲームの描画先矩形を設定する（クライアント座標・ピクセル。Updateの前に毎フレーム呼ぶ）。
+    // ImGuiビルドではドッキングで空いた中央領域、Releaseではウィンドウ全体が渡される。
+    // 各シーンは投影アスペクトやマウスピッキングの基準としてUpdateで使う。
+    void SetRenderArea(float x, float y, float width, float height) {
+        renderAreaX_ = x;
+        renderAreaY_ = y;
+        renderAreaWidth_ = width;
+        renderAreaHeight_ = height;
+    }
 
 protected:
 
     // 立体視＋頭連動の視点別ビュー射影（各シーンのInitializeで生成し、Updateの最後に更新する）
     StereoCamera stereoCamera_;
 
-    // 描画先の横方向の割合（1.0=画面全体 / 0.5=左右分割でゲームが左半分）。投影アスペクト補正に使う。
-    float renderAspectScale_ = 1.0f;
+    // ゲームの描画先矩形（クライアント座標・ピクセル）。未設定（サイズ0）の間はウィンドウ全体を使う
+    float renderAreaX_ = 0.0f;
+    float renderAreaY_ = 0.0f;
+    float renderAreaWidth_ = 0.0f;
+    float renderAreaHeight_ = 0.0f;
 };

@@ -13,9 +13,6 @@
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Graphics/GpuResource.h"
 #include "Engine/Graphics/DescriptorHeapManager.h"
-#include "Engine/Graphics/PipelineManager.h"
-#include "Engine/Graphics/ShaderCompiler.h"
-#include "Engine/Diagnostics/Log.h"
 #include "Engine/Input/FaceTracker.h"
 
 #pragma comment(lib, "mfplat.lib")
@@ -56,9 +53,6 @@ void CameraCapture::Finalize() {
     StopCapture();
     // 早期に解放しておく（リソースリークチェックより前に確実に消す）。
     uploadPtr_ = nullptr;
-    blitParamsCB_.Reset();
-    blitPSO_.Reset();
-    blitRootSignature_.Reset();
     upload_.Reset();
     texture_.Reset();
 }
@@ -131,95 +125,10 @@ void CameraCapture::CreateTextureIfNeeded() {
     srvDesc.Texture2D.MipLevels = 1;
     device_->CreateShaderResourceView(texture_.Get(), &srvDesc, heapManager->GetSrvCPUHandle(srvIndex_));
 
-    CreateBlitPipeline();
-
+    textureWidth_ = w;
+    textureHeight_ = h;
     textureCreated_ = true;
     available_.store(true);
-}
-
-void CameraCapture::CreateBlitPipeline() {
-    // --- ルートシグネチャ（0:SRVテーブル[t0] / 1:パラメータCBV[b0] / s0:リニアClampサンプラ）---
-    D3D12_DESCRIPTOR_RANGE srvRange{};
-    srvRange.BaseShaderRegister = 0;
-    srvRange.NumDescriptors = 1;
-    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-    D3D12_ROOT_PARAMETER params[2]{};
-    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    params[0].DescriptorTable.pDescriptorRanges = &srvRange;
-    params[0].DescriptorTable.NumDescriptorRanges = 1;
-
-    params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    params[1].Descriptor.ShaderRegister = 0;  // b0
-
-    D3D12_STATIC_SAMPLER_DESC sampler{};
-    sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-    sampler.MaxLOD = D3D12_FLOAT32_MAX;
-    sampler.ShaderRegister = 0;
-    sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-    D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-    rsDesc.pParameters = params;
-    rsDesc.NumParameters = _countof(params);
-    rsDesc.pStaticSamplers = &sampler;
-    rsDesc.NumStaticSamplers = 1;
-
-    ComPtr<ID3DBlob> signatureBlob;
-    ComPtr<ID3DBlob> errorBlob;
-    HRESULT hr = D3D12SerializeRootSignature(
-        &rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
-    if (FAILED(hr)) {
-        if (errorBlob) {
-            Log(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
-        }
-        assert(false);
-        return;
-    }
-    hr = device_->CreateRootSignature(
-        0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
-        IID_PPV_ARGS(&blitRootSignature_));
-    assert(SUCCEEDED(hr));
-
-    // --- シェーダー（フルスクリーン三角形VSを共用＋カメラブリットPS）---
-    ComPtr<IDxcBlob> vertexShaderBlob =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/Fullscreen.VS.hlsl", L"vs_6_0");
-    assert(vertexShaderBlob != nullptr);
-    ComPtr<IDxcBlob> pixelShaderBlob =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/CameraBlit.PS.hlsl", L"ps_6_0");
-    assert(pixelShaderBlob != nullptr);
-
-    D3D12_BLEND_DESC blendDesc{};
-    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-    D3D12_RASTERIZER_DESC rasterizerDesc{};
-    rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
-    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
-
-    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
-    depthStencilDesc.DepthEnable = false;
-
-    PipelineManager::PipelineConfig config{};
-    config.device = device_;
-    config.rootSignature = blitRootSignature_.Get();
-    config.inputLayout = {};
-    config.blendDesc = blendDesc;
-    config.rasterizerDesc = rasterizerDesc;
-    config.depthStencilDesc = depthStencilDesc;
-    config.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    config.dsvFormat = DXGI_FORMAT_UNKNOWN;
-    config.vertexShader = vertexShaderBlob;
-    config.pixelShader = pixelShaderBlob;
-    blitPSO_ = PipelineManager::CreateGraphicsPipeline(config);
-
-    blitParamsCB_.Create(device_, DirectXCore::kFramesInFlight);
 }
 
 void CameraCapture::Transition(ID3D12GraphicsCommandList* commandList, D3D12_RESOURCE_STATES after) {
@@ -288,51 +197,6 @@ void CameraCapture::UpdateTexture(ID3D12GraphicsCommandList* commandList) {
     commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
     Transition(commandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-}
-
-void CameraCapture::Draw(
-    ID3D12GraphicsCommandList* commandList,
-    D3D12_CPU_DESCRIPTOR_HANDLE rtv,
-    const D3D12_VIEWPORT& viewport,
-    const D3D12_RECT& scissorRect) {
-    if (!textureCreated_) {
-        return;
-    }
-
-    // レターボックス：カメラ縦横比を矩形内へ「contain」で収める（歪み防止。余白は黒）。
-    const float vpAspect = (viewport.Height > 0.0f) ? (viewport.Width / viewport.Height) : 1.0f;
-    const float camAspect = (frameHeight_ > 0)
-        ? static_cast<float>(frameWidth_) / static_cast<float>(frameHeight_)
-        : vpAspect;
-    float fitX = 1.0f;
-    float fitY = 1.0f;
-    if (camAspect > vpAspect) {
-        fitY = vpAspect / camAspect;  // カメラが横長 → 上下に黒帯
-    } else {
-        fitX = camAspect / vpAspect;  // カメラが縦長 → 左右に黒帯
-    }
-    BlitParams params{};
-    params.fitX = fitX;
-    params.fitY = fitY;
-    params.offsetX = (1.0f - fitX) * 0.5f;
-    params.offsetY = (1.0f - fitY) * 0.5f;
-    params.mirror = 1;  // 内蔵カメラは鏡像のほうが自然
-
-    const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-    blitParamsCB_.Write(frameIndex, params);
-
-    commandList->OMSetRenderTargets(1, &rtv, false, nullptr);
-    commandList->RSSetViewports(1, &viewport);
-    commandList->RSSetScissorRects(1, &scissorRect);
-
-    // DescriptorHeapはDirectXCore::BeginFrameで設定済みの前提
-    commandList->SetGraphicsRootSignature(blitRootSignature_.Get());
-    commandList->SetPipelineState(blitPSO_.Get());
-    commandList->SetGraphicsRootDescriptorTable(0, srvGpu_);
-    commandList->SetGraphicsRootConstantBufferView(1, blitParamsCB_.GetGPUAddress(frameIndex));
-
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    commandList->DrawInstanced(3, 1, 0, 0);
 }
 
 void CameraCapture::WorkerThread() {

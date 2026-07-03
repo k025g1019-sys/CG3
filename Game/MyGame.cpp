@@ -6,12 +6,23 @@
 #include "Engine/Input/Input.h"
 
 #ifdef USE_IMGUI
+#include "Engine/Core/ImGuiManager.h"
 #include "externals/imgui/imgui.h"
 #endif
 
 void MyGame::Initialize() {
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();
+
+#ifdef USE_IMGUI
+	// 初回起動時（imgui.iniにレイアウト保存が無いとき）のデフォルトドッキング配置。
+	// 左＝ゲーム画面、右上＝デバッグUI（タブ結合）、右下＝Webカメラ。
+	ImGuiManager::GetInstance()->SetDefaultDockLayout(
+		{ "Display", "Eye Tracking & Camera", "Stereoscopic", "Debug Camera",
+		  "3D Objects", "2D Objects", "Camera", "Directional Light",
+		  "Point Lights", "Sound", "Frustum Culling" },
+		{ "Webcam" });
+#endif
 
 	// シーン初期化（テクスチャ・モデル等の読み込みもここで行われる）。
 	// 起動時のシーンはSceneFactory.hのkInitialSceneIdで指定する。
@@ -82,11 +93,17 @@ void MyGame::Update() {
 		faceSource ? faceTracker_.GetGazeY() : eyeTracker_.GetGazeY(),
 		faceSource ? faceTracker_.GetHeadZ() : eyeTracker_.GetHeadZ());
 
-	// 実カメラ表示が有効でカメラが使えるなら左右分割（ゲームは左半分）。
-	// 分割時はゲームの投影アスペクトも合わせる（縦伸び防止）。
-	const bool splitActive = showCamera_ && camera_.IsAvailable();
-	SetSplitScreen(splitActive);
-	scene_->SetRenderAspectScale(splitActive ? 0.5f : 1.0f);
+	// ゲームの描画先矩形をシーンへ伝える（投影アスペクト・ピッキングの基準になる）。
+	// ImGuiビルドではドッキングで空いた中央領域、Releaseではウィンドウ全体。
+#ifdef USE_IMGUI
+	const ImGuiManager::GameArea area = ImGuiManager::GetInstance()->GetGameArea();
+	scene_->SetRenderArea(area.x, area.y, area.width, area.height);
+#else
+	scene_->SetRenderArea(
+		0.0f, 0.0f,
+		float(WinApp::GetInstance()->GetClientWidth()),
+		float(WinApp::GetInstance()->GetClientHeight()));
+#endif
 
 	scene_->Update();
 }
@@ -100,14 +117,6 @@ void MyGame::PreDraw(ID3D12GraphicsCommandList* commandList) {
 	if (showCamera_) {
 		camera_.UpdateTexture(commandList);
 	}
-}
-
-void MyGame::DrawSubView(
-	ID3D12GraphicsCommandList* commandList,
-	const D3D12_VIEWPORT& viewport,
-	const D3D12_RECT& scissorRect) {
-	// 画面分割時の右半分へWebカメラ映像をレターボックスで描く
-	camera_.Draw(commandList, DirectXCore::GetInstance()->GetCurrentRTVHandle(), viewport, scissorRect);
 }
 
 #ifdef USE_IMGUI
@@ -163,11 +172,12 @@ void MyGame::DrawImGui() {
 
 		ImGui::Separator();
 
-		ImGui::Checkbox("Show Real Camera (split screen)", &showCamera_);
+		ImGui::Checkbox("Show Real Camera", &showCamera_);
 		ImGui::SameLine();
 		ImGui::TextDisabled(camera_.IsAvailable() ? "[camera ready]" : "[no camera]");
 		ImGui::TextWrapped(
-			"When ON, the game renders to the left half and the webcam to the right half.");
+			"When ON, the webcam appears in the dockable 'Webcam' window "
+			"(bottom-right by default).");
 
 		if (useEyeTracking_) {
 			float smoothing = (gazeSource_ == 0) ? faceTracker_.GetSmoothing() : eyeTracker_.GetSmoothing();
@@ -181,5 +191,34 @@ void MyGame::DrawImGui() {
 		}
 	}
 	ImGui::End();
+
+	// Webカメラ映像（ドッキング可能なウィンドウ。初回配置は右下）
+	if (showCamera_) {
+		if (ImGui::Begin("Webcam")) {
+			if (camera_.IsAvailable()) {
+				const float camWidth = float(camera_.GetTextureWidth());
+				const float camHeight = float(camera_.GetTextureHeight());
+				const ImVec2 avail = ImGui::GetContentRegionAvail();
+				if (camWidth > 0.0f && camHeight > 0.0f && avail.x >= 1.0f && avail.y >= 1.0f) {
+					// アスペクト比を保ってウィンドウ内に収め、中央寄せする（レターボックス）
+					const float scaleX = avail.x / camWidth;
+					const float scaleY = avail.y / camHeight;
+					const float scale = (scaleX < scaleY) ? scaleX : scaleY;
+					const ImVec2 imageSize = { camWidth * scale, camHeight * scale };
+					ImVec2 cursor = ImGui::GetCursorPos();
+					cursor.x += (avail.x - imageSize.x) * 0.5f;
+					cursor.y += (avail.y - imageSize.y) * 0.5f;
+					ImGui::SetCursorPos(cursor);
+					// UVのXを反転して鏡像で表示する（自分視点で自然に見えるように）
+					ImGui::Image(
+						reinterpret_cast<ImTextureID>(camera_.GetSrvGpuHandle().ptr),
+						imageSize, ImVec2(1.0f, 0.0f), ImVec2(0.0f, 1.0f));
+				}
+			} else {
+				ImGui::TextDisabled("waiting for camera...");
+			}
+		}
+		ImGui::End();
+	}
 }
 #endif

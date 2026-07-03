@@ -229,7 +229,6 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <None Include="Shaders\Object3d.hlsli" />
     <None Include="Shaders\Fullscreen.VS.hlsl" />
     <None Include="Shaders\Composite.PS.hlsl" />
-    <None Include="Shaders\CameraBlit.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Object3d.PS.hlsl">

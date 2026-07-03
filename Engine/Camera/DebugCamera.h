@@ -27,14 +27,18 @@ public:
     /// 入力を反映してカメラを更新する。毎フレーム1回呼ぶ。
     /// </summary>
     /// <param name="targets">ピッキング対象のバウンディング球リスト</param>
-    /// <param name="screenWidth">クライアント領域の幅（ピクセル）</param>
-    /// <param name="screenHeight">クライアント領域の高さ（ピクセル）</param>
+    /// <param name="viewX">ゲーム描画先矩形の左上X（クライアント座標・ピクセル）</param>
+    /// <param name="viewY">ゲーム描画先矩形の左上Y（クライアント座標・ピクセル）</param>
+    /// <param name="viewWidth">ゲーム描画先矩形の幅（ピクセル）</param>
+    /// <param name="viewHeight">ゲーム描画先矩形の高さ（ピクセル）</param>
     /// <param name="projection">ピッキングのレイ生成に使う透視投影行列</param>
     /// <param name="blockMouse">ImGui等がマウスを使用中はtrue。マウス操作を無視する</param>
     void Update(
         const std::vector<PickTarget>& targets,
-        float screenWidth,
-        float screenHeight,
+        float viewX,
+        float viewY,
+        float viewWidth,
+        float viewHeight,
         const Matrix4x4& projection,
         bool blockMouse);
 

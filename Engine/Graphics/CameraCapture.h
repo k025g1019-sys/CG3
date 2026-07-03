@@ -9,12 +9,11 @@
 #include <d3d12.h>
 #include <wrl.h>
 
-#include "Engine/Rendering/ConstantBuffer.h"
-
 class FaceTracker;  // フレームを渡して顔検出させる任意の連携先（前方宣言でwinrt依存を持ち込まない）
 
 // ノートPC内蔵カメラ（Webカメラ）の映像をMedia Foundationで取得し、DX12テクスチャへ転送して
-// 画面の指定矩形へ描画する。フレーム取得はワーカースレッドで行い、描画スレッドは最新フレームのみを
+// SRV（GetSrvGpuHandle）として公開する（ImGui::Image等でそのまま表示できる）。
+// フレーム取得はワーカースレッドで行い、描画スレッドは最新フレームのみを
 // アップロードするため、カメラFPSと描画FPSが分離される。
 //
 // カメラが無い／開けない場合はIsAvailable()==falseのまま安全に無効化される（クラッシュしない）。
@@ -45,21 +44,19 @@ public:
     // 最新カメラフレームがあればGPUテクスチャへ反映する（描画コマンドを積む前に毎フレーム呼ぶ）。
     void UpdateTexture(ID3D12GraphicsCommandList* commandList);
 
-    // カメラ映像を指定矩形（viewport/scissor）へレターボックスで描画する。
-    void Draw(
-        ID3D12GraphicsCommandList* commandList,
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv,
-        const D3D12_VIEWPORT& viewport,
-        const D3D12_RECT& scissorRect);
-
     // テクスチャが利用可能か（カメラが開けて解像度が確定済みか）。
     bool IsAvailable() const { return available_.load(); }
+
+    // ImGui::Image等でそのまま表示に使えるSRVのGPUハンドル（テクスチャ未生成の間は0）。
+    D3D12_GPU_DESCRIPTOR_HANDLE GetSrvGpuHandle() const { return srvGpu_; }
+
+    // 生成済みテクスチャの解像度（未生成の間は0）。表示時のアスペクト計算に使う。
+    int GetTextureWidth() const { return textureWidth_; }
+    int GetTextureHeight() const { return textureHeight_; }
 
 private:
     // 解像度確定後にDX12テクスチャ／SRV／アップロードバッファを生成する（描画スレッドで一度だけ）。
     void CreateTextureIfNeeded();
-    // ブリット用のルートシグネチャ／PSO／パラメータCBufferを生成する。
-    void CreateBlitPipeline();
     // Media Foundationでカメラを開き、フレームを取得し続ける（ワーカースレッド本体）。
     void WorkerThread();
     // テクスチャを指定状態へ遷移する（不要なら何もしない）。
@@ -98,21 +95,6 @@ private:
     D3D12_GPU_DESCRIPTOR_HANDLE srvGpu_{};
     bool textureCreated_ = false;
     bool needsCopy_ = false;  // uploadの内容をテクスチャへ転送する必要がある
-
-    // --- ブリット用パイプライン ---
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> blitRootSignature_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> blitPSO_;
-
-    // ブリットPSへ渡すレターボックス／反転パラメータ（HLSLのcbufferと一致させる）。
-    struct BlitParams {
-        float fitX = 1.0f;    // カメラ像を矩形内に収める水平スケール（quad UV単位）
-        float fitY = 1.0f;    // 同・垂直
-        float offsetX = 0.0f; // 収め先の左下オフセット（quad UV単位）
-        float offsetY = 0.0f;
-        int32_t mirror = 1;   // 1で左右反転（内蔵カメラの自分視点を自然にする）
-        float pad0 = 0.0f;
-        float pad1 = 0.0f;
-        float pad2 = 0.0f;
-    };
-    ConstantBuffer<BlitParams> blitParamsCB_;
+    int textureWidth_ = 0;    // 生成済みテクスチャの解像度（未生成の間は0）
+    int textureHeight_ = 0;
 };

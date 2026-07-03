@@ -87,13 +87,16 @@ void GameScene::Update() {
 	//triangle_.GetTransform().rotate.y += 0.04f;
 	sphere_.GetTransform().rotate.y += 0.02f;
 
-	// 現在のウィンドウサイズを使う（リサイズに追従させ、アスペクト比の歪みを防ぐ）。
-	// renderAspectScale_でゲームの表示先の横割合に合わせる
-	// （左右分割でゲームが左半分のとき=0.5。これを掛けないと縦に引き伸ばされて見える）。
+	// ゲームの描画先矩形に合わせて投影アスペクトを決める（リサイズやドッキングの
+	// レイアウト変更に追従し、物体が伸び縮みして見えるのを防ぐ）。
+	// 未設定（サイズ0）の間はウィンドウ全体を使う。
 	const float width = float(WinApp::GetInstance()->GetClientWidth());
 	const float height = float(WinApp::GetInstance()->GetClientHeight());
+	const bool hasRenderArea = (renderAreaWidth_ > 0.0f && renderAreaHeight_ > 0.0f);
+	const float viewWidth = hasRenderArea ? renderAreaWidth_ : width;
+	const float viewHeight = hasRenderArea ? renderAreaHeight_ : height;
 
-	Matrix4x4 projection = camera_.GetProjectionMatrix((width * renderAspectScale_) / height);
+	Matrix4x4 projection = camera_.GetProjectionMatrix(viewWidth / viewHeight);
 	Matrix4x4 view = camera_.GetViewMatrix();
 
 #ifndef NDEBUG
@@ -110,7 +113,9 @@ void GameScene::Update() {
 #ifdef USE_IMGUI
 	blockMouse = ImGui::GetIO().WantCaptureMouse;
 #endif
-	debugCamera_.Update(pickTargets, width, height, projection, blockMouse);
+	const float viewX = hasRenderArea ? renderAreaX_ : 0.0f;
+	const float viewY = hasRenderArea ? renderAreaY_ : 0.0f;
+	debugCamera_.Update(pickTargets, viewX, viewY, viewWidth, viewHeight, projection, blockMouse);
 
 	// デバッグカメラ有効時は通常カメラのビューを上書きする
 	if (debugCamera_.IsEnabled()) {
@@ -129,7 +134,8 @@ void GameScene::Update() {
 	skydome_.Update(view);
 
 	// スプライト（正射影・2Dカリング）
-	sprite_.Update(width, height);
+	// スプライトの正射影はゲーム描画先矩形の大きさ基準（縮小表示でも縦横比が崩れない）
+	sprite_.Update(viewWidth, viewHeight);
 
 	// 平行光源・点光源
 	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();

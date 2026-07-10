@@ -363,3 +363,10 @@ MigrationBackup/
 FodyWeavers.xsd
 
 imgui.ini
+
+# Crash dumps generated at runtime (Engine/Diagnostics/CrashHandler)
+Dumps/
+
+# DXC runtime DLLs copied from the Windows SDK by the post-build event
+dxcompiler.dll
+dxil.dll

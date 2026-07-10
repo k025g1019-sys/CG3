@@ -23,6 +23,16 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace {
+
+    // カメラフレームの画素形式はBGRA32（1画素4バイト）
+    constexpr size_t kBytesPerPixel = 4;
+
+    // 最初のカメラフレームが届くまで表示するダークグレーの輝度値
+    constexpr uint8_t kInitialFillByte = 0x20;
+
+} // namespace
+
 void CameraCapture::Initialize(ID3D12Device* device) {
     device_ = device;
     srvIndex_ = DescriptorHeapManager::GetInstance()->AllocateSrv();
@@ -112,7 +122,7 @@ void CameraCapture::CreateTextureIfNeeded() {
         device_, static_cast<size_t>(uploadSlotSize_) * DirectXCore::kFramesInFlight);
     upload_->Map(0, nullptr, reinterpret_cast<void**>(&uploadPtr_));
     // 最初のカメラフレーム到着までの表示用にダークグレーで初期化する（全スロット）。
-    std::memset(uploadPtr_, 0x20, static_cast<size_t>(uploadSlotSize_) * DirectXCore::kFramesInFlight);
+    std::memset(uploadPtr_, kInitialFillByte, static_cast<size_t>(uploadSlotSize_) * DirectXCore::kFramesInFlight);
     needsCopy_ = true;
 
     // --- SRV（予約済みスロット）---
@@ -163,7 +173,7 @@ void CameraCapture::UpdateTexture(ID3D12GraphicsCommandList* commandList) {
         std::lock_guard<std::mutex> lock(frameMutex_);
         const int w = frameWidth_;
         const int h = frameHeight_;
-        const size_t srcPitch = static_cast<size_t>(w) * 4;
+        const size_t srcPitch = static_cast<size_t>(w) * kBytesPerPixel;
         if (cpuFrame_.size() >= srcPitch * static_cast<size_t>(h)) {
             const uint8_t* src = cpuFrame_.data();
             for (int y = 0; y < h; ++y) {
@@ -266,7 +276,7 @@ void CameraCapture::WorkerThread() {
         if (FAILED(MFGetAttributeSize(curType.Get(), MF_MT_FRAME_SIZE, &w, &h)) || w == 0 || h == 0) {
             break;
         }
-        LONG defaultStride = static_cast<LONG>(w) * 4;
+        LONG defaultStride = static_cast<LONG>(w * kBytesPerPixel);
         {
             UINT32 strideAttr = 0;
             if (SUCCEEDED(curType->GetUINT32(MF_MT_DEFAULT_STRIDE, &strideAttr))) {
@@ -278,13 +288,13 @@ void CameraCapture::WorkerThread() {
             std::lock_guard<std::mutex> lock(frameMutex_);
             frameWidth_ = static_cast<int>(w);
             frameHeight_ = static_cast<int>(h);
-            cpuFrame_.assign(static_cast<size_t>(w) * h * 4, 0x20);
+            cpuFrame_.assign(static_cast<size_t>(w) * h * kBytesPerPixel, kInitialFillByte);
         }
         dimsReady_.store(true);
 
         // --- フレーム取得ループ ---
-        std::vector<uint8_t> work(static_cast<size_t>(w) * h * 4);
-        const size_t dstPitch = static_cast<size_t>(w) * 4;
+        std::vector<uint8_t> work(static_cast<size_t>(w) * h * kBytesPerPixel);
+        const size_t dstPitch = static_cast<size_t>(w) * kBytesPerPixel;
 
         while (!stop_.load()) {
             DWORD actualStream = 0;

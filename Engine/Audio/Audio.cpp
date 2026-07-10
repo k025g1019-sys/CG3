@@ -8,17 +8,23 @@
 
 namespace {
 
+    // チャンク識別子のバイト数（"RIFF"や"fmt "など4文字固定）
+    constexpr size_t kChunkIdSize = 4;
+
+    // チャンクデータの整列境界（RIFF仕様で2バイト境界）
+    constexpr uint32_t kChunkAlignment = 2;
+
     // RIFFファイルの先頭ヘッダ
     struct RiffHeader {
-        char id[4];      // "RIFF"
-        uint32_t size;   // ファイルサイズ-8
-        char type[4];    // "WAVE"
+        char id[kChunkIdSize];    // "RIFF"
+        uint32_t size;            // ファイルサイズ-8
+        char type[kChunkIdSize];  // "WAVE"
     };
 
     // チャンク共通のヘッダ
     struct ChunkHeader {
-        char id[4];      // チャンク識別子（"fmt "や"data"など）
-        uint32_t size;   // チャンクのデータサイズ
+        char id[kChunkIdSize];    // チャンク識別子（"fmt "や"data"など）
+        uint32_t size;            // チャンクのデータサイズ
     };
 
 } // namespace
@@ -83,9 +89,9 @@ size_t Audio::LoadWave(const std::string& filename) {
 
     file.read(reinterpret_cast<char*>(&riff), sizeof(riff));
 
-    assert(std::strncmp(riff.id, "RIFF", 4) == 0);
+    assert(std::strncmp(riff.id, "RIFF", kChunkIdSize) == 0);
 
-    assert(std::strncmp(riff.type, "WAVE", 4) == 0);
+    assert(std::strncmp(riff.type, "WAVE", kChunkIdSize) == 0);
 
     SoundData sound{};
 
@@ -106,7 +112,7 @@ size_t Audio::LoadWave(const std::string& filename) {
             break;
         }
 
-        if (std::strncmp(chunk.id, "fmt ", 4) == 0) {
+        if (std::strncmp(chunk.id, "fmt ", kChunkIdSize) == 0) {
 
             // フォーマット情報を読み込む（WAVEFORMATEXに収まる分だけ）
             uint32_t readSize =
@@ -123,7 +129,7 @@ size_t Audio::LoadWave(const std::string& filename) {
 
             foundFmt = true;
 
-        } else if (std::strncmp(chunk.id, "data", 4) == 0) {
+        } else if (std::strncmp(chunk.id, "data", kChunkIdSize) == 0) {
 
             // 波形データ本体を読み込む
             sound.buffer.resize(chunk.size);
@@ -138,8 +144,8 @@ size_t Audio::LoadWave(const std::string& filename) {
             file.seekg(chunk.size, std::ios_base::cur);
         }
 
-        // チャンクは2バイト境界に整列するため、奇数サイズなら詰め物を1バイト飛ばす
-        if (chunk.size % 2 != 0) {
+        // チャンクは整列境界に揃うため、奇数サイズなら詰め物を1バイト飛ばす
+        if (chunk.size % kChunkAlignment != 0) {
 
             file.seekg(1, std::ios_base::cur);
         }

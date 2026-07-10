@@ -10,6 +10,8 @@
 #include "Engine/Rendering/TransformData3D.h"
 #include "Engine/Rendering/TransformationMatrix.h"
 
+namespace Engine {
+
 class Mesh;
 
 /// <summary>
@@ -66,3 +68,5 @@ private:
     // Updateで判定したカリング結果（Drawで参照する）
     FrustumVisibility visibility_ = FrustumVisibility::Inside;
 };
+
+} // namespace Engine

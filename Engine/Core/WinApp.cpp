@@ -6,6 +6,8 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM LParam);
 #endif
 
+namespace Engine {
+
 LRESULT CALLBACK WinApp::WindowProc(
     HWND hwnd,
     UINT msg,
@@ -143,3 +145,5 @@ bool WinApp::ProcessMessage() {
 
     return true;
 }
+
+} // namespace Engine

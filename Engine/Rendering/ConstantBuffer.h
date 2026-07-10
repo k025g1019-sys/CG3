@@ -8,6 +8,8 @@
 
 #include "Engine/Graphics/GpuResource.h"
 
+namespace Engine {
+
 /// <summary>
 /// 型付きの定数バッファ（CBV用アップロードバッファ）。
 /// フレームインフライト数ぶんのスロットを持ち、CPUが書くスロットと
@@ -59,3 +61,5 @@ private:
 
     uint32_t slotCount_ = 0;
 };
+
+} // namespace Engine

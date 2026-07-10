@@ -7,6 +7,8 @@
 
 #include "Engine/Rendering/ConstantBuffer.h"
 
+namespace Engine {
+
 /// <summary>
 /// 立体視レンダラ（シングルトン）。シーンをオフスクリーンの「ビュー用ターゲット」へ視点数ぶん描画し、
 /// 最後にフルスクリーンの合成パスでバックバッファへ出力する。
@@ -158,3 +160,5 @@ private:
     float ghostReduction_ = 0.15f;  // アナグリフのクロストーク相殺量（メガネに合わせて調整）
     bool anaglyphGray_ = false;     // グレーアナグリフ（色競合・ゴーストがさらに気になる場合に）
 };
+
+} // namespace Engine

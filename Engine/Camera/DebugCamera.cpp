@@ -9,6 +9,8 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+namespace Engine {
+
 namespace {
     // レイと球の交差判定。交差すればtrueを返し、tに交差点までの距離を入れる。
     bool IntersectRaySphere(
@@ -169,3 +171,5 @@ void DebugCamera::DrawImGui() {
     ImGui::End();
 }
 #endif
+
+} // namespace Engine

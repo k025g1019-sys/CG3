@@ -4,6 +4,8 @@
 #include <atomic>
 #include <memory>
 
+namespace Engine {
+
 // 内蔵カメラのフレーム（CameraCaptureのワーカースレッドから供給されるBGRA32）に対して
 // Windows標準の顔検出（Windows.Media.FaceAnalysis.FaceDetector）をかけ、顔（頭）の画面内位置を
 // 正規化視線値として提供する。共有メモリ経由のEyeTrackerと同じ出力形（GetGazeX/Y/Z等）を持ち、
@@ -70,3 +72,5 @@ private:
     // 顔の移動 → 正規化視線値の感度（送信側gaze_sender.pyの既定1.6に合わせる）。
     float gain_ = 1.6f;
 };
+
+} // namespace Engine

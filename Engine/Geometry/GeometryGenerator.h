@@ -5,6 +5,8 @@
 
 #include "Engine/Rendering/VertexData.h"
 
+namespace Engine {
+
 // 緯度経度分割の球（半径1・原点中心）の頂点列を生成する
 std::vector<VertexData> GenerateSphereVertices(uint32_t subdivision);
 
@@ -14,3 +16,5 @@ std::vector<VertexData> GenerateCubeVertices();
 
 // GenerateCubeVerticesの頂点列に対応するインデックス列を生成する（6面×2三角形×3頂点＝36個）
 std::vector<uint32_t> GenerateCubeIndices();
+
+} // namespace Engine

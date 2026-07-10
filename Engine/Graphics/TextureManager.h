@@ -7,6 +7,8 @@
 #include <wrl.h>
 #include "externals/DirectXTex/DirectXTex.h"
 
+namespace Engine {
+
 /// <summary>
 /// テクスチャの読み込み・GPU転送・SRV作成・キャッシュを行うシングルトン。
 /// Loadが返すハンドルをGetSrvHandleGPUに渡して描画に使う。
@@ -80,3 +82,5 @@ private:
 
     std::vector<Texture> textures_;  // ハンドル＝このvectorのindex
 };
+
+} // namespace Engine

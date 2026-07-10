@@ -5,6 +5,8 @@
 #include "Engine/Math/Vector4.h"
 #include "Engine/Math/Vector3.h"
 
+namespace Engine {
+
 // 点光源。ワールド座標から全方向へ光を放ち、半径と減衰率で距離減衰する。
 // HLSL側（Object3d.hlsli）と同じメモリレイアウトにすること。
 struct PointLight {
@@ -24,3 +26,5 @@ inline constexpr uint32_t kMaxPointLightCount = 4;
 struct PointLightGroup {
     PointLight lights[kMaxPointLightCount];
 };
+
+} // namespace Engine

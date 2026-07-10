@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 
+namespace Engine {
+
 // 視線追跡（別プロセスのOpenGaze等）から共有メモリ経由で視線位置を受け取り、
 // 平滑化して提供する。受信が無い場合は中央(0,0)へ戻り、IsConnected()がfalseになる。
 //
@@ -58,3 +60,5 @@ private:
     bool dbgValidFlag_ = false;
     uint64_t dbgRawFrameId_ = 0;
 };
+
+} // namespace Engine

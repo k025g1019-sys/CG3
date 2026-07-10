@@ -5,6 +5,8 @@
 
 #include "Engine/Input/GazePacket.h"
 
+namespace Engine {
+
 namespace {
 // frameIdの更新が止まってからこの回数を超えたら「切断」とみなす（約0.5秒@60fps）。
 constexpr int kStaleLimit = 30;
@@ -141,3 +143,5 @@ void EyeTracker::Update() {
     smoothY_ += (targetY - smoothY_) * smoothing_;
     smoothZ_ += (targetZ - smoothZ_) * smoothing_;
 }
+
+} // namespace Engine

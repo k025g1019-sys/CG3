@@ -15,6 +15,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 StereoRenderer* StereoRenderer::GetInstance() {
     static StereoRenderer instance;
     return &instance;
@@ -431,3 +433,5 @@ void StereoRenderer::DrawImGui() {
     ImGui::End();
 }
 #endif
+
+} // namespace Engine

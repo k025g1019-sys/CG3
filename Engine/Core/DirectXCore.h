@@ -8,6 +8,8 @@
 #include <dxgi1_6.h>
 #include <wrl.h>
 
+namespace Engine {
+
 class DirectXCore {
 public:
 
@@ -169,3 +171,5 @@ private:
 
     D3D12_RECT scissorRect_{};
 };
+
+} // namespace Engine

@@ -4,6 +4,8 @@
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Math/Matrix4x4.h"
 
+namespace Engine {
+
 void Sprite::Initialize(ID3D12Device* device, uint32_t textureHandle, const Vector2& size) {
 	textureHandle_ = textureHandle;
 
@@ -88,3 +90,5 @@ void Sprite::Draw(ID3D12GraphicsCommandList* commandList) const {
 
 	mesh_.Draw(commandList);
 }
+
+} // namespace Engine

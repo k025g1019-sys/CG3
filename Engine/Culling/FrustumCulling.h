@@ -23,6 +23,8 @@
 //     視錐台のコーナー付近でまれに内側と誤るが、見えるものを消すことはない（安全側）。
 // =============================================================
 
+namespace Engine {
+
 // ---- 判定結果（3状態）----
 enum class FrustumVisibility {
     Outside,    // 完全に視錐台の外（描画不要）
@@ -151,3 +153,5 @@ FrustumVisibility ClassifyFrustum(const Frustum2D& frustum, const Triangle2D& tr
 inline bool IsVisible(FrustumVisibility visibility) {
     return visibility != FrustumVisibility::Outside;
 }
+
+} // namespace Engine

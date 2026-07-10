@@ -3,6 +3,8 @@
 #include <d3d12.h>
 #include <cstdint>
 
+namespace Engine {
+
 /// <summary>
 /// ディスクリプタヒープの生成ヘルパと、SRVヒープのスロット割り当てを行う。
 /// SRVヒープのスロット（index）はAllocateSrvで払い出し、使用者（ImGui・各テクスチャ）が
@@ -67,3 +69,5 @@ private:
 
     uint32_t nextIndex_ = 0;  // 次に払い出すスロット
 };
+
+} // namespace Engine

@@ -9,6 +9,8 @@
 #include <d3d12.h>
 #include <wrl.h>
 
+namespace Engine {
+
 class FaceTracker;  // フレームを渡して顔検出させる任意の連携先（前方宣言でwinrt依存を持ち込まない）
 
 // ノートPC内蔵カメラ（Webカメラ）の映像をMedia Foundationで取得し、DX12テクスチャへ転送して
@@ -98,3 +100,5 @@ private:
     int textureWidth_ = 0;    // 生成済みテクスチャの解像度（未生成の間は0）
     int textureHeight_ = 0;
 };
+
+} // namespace Engine

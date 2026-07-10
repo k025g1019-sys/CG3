@@ -8,6 +8,8 @@
 #include "Engine/Geometry/LoadObjFile.h"
 #include "Engine/Graphics/GpuResource.h"
 
+namespace Engine {
+
 void Mesh::Create(ID3D12Device* device, const VertexData* vertices, uint32_t vertexCount) {
 	Create(device, vertices, vertexCount, nullptr, 0);
 }
@@ -111,3 +113,5 @@ void Mesh::RecomputeBoundingSphere() {
 	}
 	localRadius_ = std::sqrt(radiusSq);
 }
+
+} // namespace Engine

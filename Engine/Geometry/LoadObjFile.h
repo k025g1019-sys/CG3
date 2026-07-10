@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include "Engine/Rendering/VertexData.h"
+namespace Engine {
+
 struct MaterialData {
 	std::string textureFilePath;
 };
@@ -11,3 +13,5 @@ struct ModelData {
 };
 ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
+
+} // namespace Engine

@@ -8,6 +8,8 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+namespace Engine {
+
 void StereoCamera::Initialize(ID3D12Device* device) {
 	viewProjectionCB_.Create(device, DirectXCore::kFramesInFlight * StereoRenderer::kMaxViewCount);
 }
@@ -82,3 +84,5 @@ void StereoCamera::DrawImGuiSection() {
 	ImGui::Text("Gaze: (%.2f, %.2f)", gazeX_, gazeY_);
 }
 #endif
+
+} // namespace Engine

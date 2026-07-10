@@ -10,6 +10,8 @@
 // ゲームパッド入力・振動（XInput）
 #pragma comment(lib, "xinput.lib")
 
+namespace Engine {
+
 Input* Input::GetInstance() {
     static Input instance;
     return &instance;
@@ -294,3 +296,5 @@ void Input::ApplyVibration(int playerIndex, float leftMotor, float rightMotor) {
     vibration.wRightMotorSpeed = static_cast<WORD>(rightMotor * 65535.0f);
     XInputSetState(static_cast<DWORD>(playerIndex), &vibration);
 }
+
+} // namespace Engine

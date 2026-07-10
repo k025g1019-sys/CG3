@@ -24,6 +24,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 void Framework::Run() {
 
 	Initialize();
@@ -193,3 +195,5 @@ void Framework::Finalize() {
 
 	CoUninitialize();
 }
+
+} // namespace Engine

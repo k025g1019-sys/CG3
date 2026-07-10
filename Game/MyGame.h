@@ -14,7 +14,7 @@
 /// 視線追跡（アプリ内顔検出／共有メモリ）とWebカメラ表示をシーンへ配線する。
 /// Tキーで立体視デモシーンと従来デモシーンを切り替える。
 /// </summary>
-class MyGame : public Framework {
+class MyGame : public Engine::Framework {
 protected:
 
     void Initialize() override;
@@ -41,9 +41,9 @@ private:
     SceneId sceneId_ = kInitialSceneId;
 
     // --- 視線追跡とWebカメラ ---
-    CameraCapture camera_;    // Webカメラ取得・表示（使わない間はワーカー停止）
-    FaceTracker faceTracker_; // アプリ内顔検出（Webカメラのフレームから頭位置を推定）
-    EyeTracker eyeTracker_;   // 外部プロセスから共有メモリ経由で視線を受信（差し替え用に残置）
+    Engine::CameraCapture camera_;    // Webカメラ取得・表示（使わない間はワーカー停止）
+    Engine::FaceTracker faceTracker_; // アプリ内顔検出（Webカメラのフレームから頭位置を推定）
+    Engine::EyeTracker eyeTracker_;   // 外部プロセスから共有メモリ経由で視線を受信（差し替え用に残置）
 
     bool useEyeTracking_ = false;  // 視線追跡でゲーム内カメラを連動させる（ImGuiでON/OFF）
     bool showCamera_ = false;      // 実カメラの映像をWebcamウィンドウに映す（ImGuiでON/OFF）

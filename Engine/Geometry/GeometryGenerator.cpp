@@ -4,6 +4,8 @@
 
 #include "Engine/Math/Vector3.h"
 
+namespace Engine {
+
 std::vector<VertexData> GenerateSphereVertices(uint32_t subdivision) {
 	const float pi = 3.1415926535f;
 
@@ -130,3 +132,5 @@ std::vector<uint32_t> GenerateCubeIndices() {
 
 	return indices;
 }
+
+} // namespace Engine

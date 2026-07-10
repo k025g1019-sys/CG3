@@ -6,6 +6,8 @@
 #include "Engine/Math/Vector3.h"
 #include "Engine/Math/Vector4.h"
 
+namespace Engine {
+
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
 	MaterialData materialData; // 構築するMaterialData
 	std::string line; // ファイルから読んだ1行を格納するもの
@@ -98,3 +100,5 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 	}
 	return modelData;
 }
+
+} // namespace Engine

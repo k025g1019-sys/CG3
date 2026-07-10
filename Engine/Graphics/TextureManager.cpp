@@ -9,6 +9,8 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 TextureManager* TextureManager::GetInstance() {
     static TextureManager instance;
     return &instance;
@@ -161,3 +163,5 @@ ComPtr<ID3D12Resource> TextureManager::UploadTextureData(
 
     return intermediateResource;
 }
+
+} // namespace Engine

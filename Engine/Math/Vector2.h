@@ -1,4 +1,10 @@
 #pragma once
+
+namespace Engine {
+
+/// <summary>
+/// 2次元ベクトル。成分ごとの四則演算子を備える
+/// </summary>
 struct Vector2 {
 	float x, y;
 
@@ -14,3 +20,5 @@ struct Vector2 {
 };
 
 inline Vector2 operator*(float s, const Vector2& v) { return { v.x * s, v.y * s }; }
+
+} // namespace Engine

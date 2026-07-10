@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+namespace Engine {
+
 /// <summary>
 /// XAudio2による.wavサウンドの読み込みと再生を行うシングルトン
 /// </summary>
@@ -67,3 +69,5 @@ private:
 
     std::vector<SoundData> sounds_;
 };
+
+} // namespace Engine

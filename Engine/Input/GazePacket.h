@@ -15,7 +15,7 @@
 //   gazeX: -1=左いっぱい  / +1=右いっぱい
 //   gazeY: -1=下いっぱい  / +1=上いっぱい
 //   headZ: -1=後ろ        / +1=前（任意。未使用なら0）
-namespace gaze {
+namespace Engine::gaze {
 
 // 共有ファイル名（%TEMP%配下に置く既定名）と、パス上書き用の環境変数名。
 inline constexpr char kSharedFileName[] = "DirectXGameGaze.bin";
@@ -40,4 +40,4 @@ struct GazePacket {
 
 static_assert(sizeof(GazePacket) <= kSharedMemorySize, "GazePacket exceeds shared memory size");
 
-}  // namespace gaze
+}  // namespace Engine::gaze

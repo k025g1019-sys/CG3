@@ -8,6 +8,8 @@
 #include "Engine/Math/Vector3.h"
 #include "Engine/Rendering/VertexData.h"
 
+namespace Engine {
+
 /// <summary>
 /// 頂点（＋任意でインデックス）バッファと、カリング／ピッキング用の
 /// ローカル空間バウンディング球を持つメッシュ。
@@ -63,3 +65,5 @@ private:
     Vector3 localCenter_{ 0.0f, 0.0f, 0.0f };
     float localRadius_ = 0.0f;
 };
+
+} // namespace Engine

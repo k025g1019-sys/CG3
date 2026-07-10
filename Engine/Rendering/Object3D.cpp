@@ -7,6 +7,8 @@
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Rendering/Mesh.h"
 
+namespace Engine {
+
 void Object3D::Initialize(ID3D12Device* device, Mesh* mesh, uint32_t textureHandle, bool enableLighting) {
 	assert(mesh != nullptr);
 
@@ -59,3 +61,5 @@ Sphere Object3D::CalcWorldBoundingSphere() const {
 
 	return Sphere{ center, mesh_->GetLocalRadius() * maxScale };
 }
+
+} // namespace Engine

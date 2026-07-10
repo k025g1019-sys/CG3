@@ -8,6 +8,8 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+using namespace Engine;
+
 void Skydome::Initialize(ID3D12Device* device) {
 
 	// --- モデル読み込み（半径1のユニット球）---

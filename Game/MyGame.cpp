@@ -10,6 +10,8 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+using namespace Engine;
+
 void MyGame::Initialize() {
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();

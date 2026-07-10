@@ -3,6 +3,8 @@
 #include <Windows.h>
 #include <cstdint>
 
+namespace Engine {
+
 class WinApp {
 public:
     static constexpr int32_t kClientWidth = 1280;
@@ -65,3 +67,5 @@ private:
         LPARAM lparam
     );
 };
+
+} // namespace Engine

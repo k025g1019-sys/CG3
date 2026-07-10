@@ -23,6 +23,8 @@ using winrt::Windows::Graphics::Imaging::SoftwareBitmap;
 using winrt::Windows::Media::FaceAnalysis::DetectedFace;
 using winrt::Windows::Storage::Streams::Buffer;
 
+namespace Engine {
+
 namespace {
 // 顔検出を回す間隔（カメラFPSより落として負荷を抑える。約15Hz）。
 constexpr long long kProcessIntervalMs = 66;
@@ -196,3 +198,5 @@ void FaceTracker::Update() {
     smoothY_ += (ty - smoothY_) * smoothing_;
     smoothZ_ += (tz - smoothZ_) * smoothing_;
 }
+
+} // namespace Engine

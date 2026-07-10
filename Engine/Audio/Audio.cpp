@@ -6,6 +6,8 @@
 
 #pragma comment(lib, "xaudio2.lib")
 
+namespace Engine {
+
 namespace {
 
     // チャンク識別子のバイト数（"RIFF"や"fmt "など4文字固定）
@@ -205,3 +207,5 @@ void Audio::SetVolume(size_t soundHandle, float volume) {
         sounds_[soundHandle].sourceVoice->SetVolume(volume);
     }
 }
+
+} // namespace Engine

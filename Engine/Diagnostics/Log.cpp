@@ -8,6 +8,8 @@
 #include <fstream>
 #include <mutex>
 
+namespace Engine {
+
 namespace {
 // InitializeLogFileで開くログファイル（開くまでは出力ウィンドウのみに出す）
 std::ofstream logStream;
@@ -34,3 +36,5 @@ void Log(const std::string& message) {
 		logStream << message << std::endl;
 	}
 }
+
+} // namespace Engine

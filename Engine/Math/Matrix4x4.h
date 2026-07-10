@@ -1,6 +1,8 @@
 #pragma once
 #include "Engine/Math/Vector3.h"
 
+namespace Engine {
+
 /// <summary>
 /// 4x4行列（行優先・行ベクトル規約）。
 /// 変換は v * M の順で適用し、行列の合成は左から右へ掛ける（例：world = S * R * T、WVP = world * view * proj）。
@@ -235,3 +237,5 @@ float Length(const Vector3& v);
 Vector3 Normalize(const Vector3& v);
 
 #pragma endregion
+
+} // namespace Engine

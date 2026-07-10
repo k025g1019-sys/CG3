@@ -1,8 +1,12 @@
 #pragma once
 #include "Engine/Math/Vector3.h"
+namespace Engine {
+
 // s, r, t
 struct Transform3D {
 	Vector3 scale;
 	Vector3 rotate;
 	Vector3 translate;
 };
+
+} // namespace Engine

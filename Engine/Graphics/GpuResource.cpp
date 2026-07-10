@@ -4,6 +4,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 // UploadHeap上にバッファリソースを作成する
 ComPtr<ID3D12Resource> CreateBufferResource(ID3D12Device* device, size_t sizeInBytes) {
 	// バッファ用のヒープの設定（UploadHeap）
@@ -66,3 +68,5 @@ ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(ID3D12Device* device, i
 	assert(SUCCEEDED(hr));
 	return resource;
 }
+
+} // namespace Engine

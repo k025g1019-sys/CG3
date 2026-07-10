@@ -4,6 +4,8 @@
 #include <wrl.h>
 #include <dxcapi.h>
 
+namespace Engine {
+
 /// <summary>
 /// RootSignatureと用途別PSOを一括生成・所有するレジストリ。
 /// 描画側はGet(Pipeline::～)でPSOを取得するだけでよく、
@@ -80,3 +82,5 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelines_[size_t(Pipeline::kCount)];
 };
+
+} // namespace Engine

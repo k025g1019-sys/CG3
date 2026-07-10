@@ -4,6 +4,8 @@
 
 #pragma comment(lib, "Dbghelp.lib")
 
+namespace Engine {
+
 LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception) {
     // 時刻を取得して時刻を名前に入れたファイルを作成。Dumpsディレクトリに出力
     SYSTEMTIME time;
@@ -35,3 +37,5 @@ LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception) {
 	// 他に関連づけられているSEH例外ハンドラがあれば実行。通常はプロセスを終了する
 	return EXCEPTION_EXECUTE_HANDLER;
 }
+
+} // namespace Engine

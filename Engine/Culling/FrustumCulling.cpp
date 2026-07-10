@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+namespace Engine {
+
 namespace {
 
 // 法線(a,b,c)と距離dの平面を、法線を単位長に正規化して返す。
@@ -214,3 +216,5 @@ FrustumVisibility ClassifyFrustum(const Frustum2D& frustum, const Triangle2D& tr
 	const Vector2 points[3] = { triangle.v0, triangle.v1, triangle.v2 };
 	return ClassifyPoints(frustum.planes, 4, points, 3);
 }
+
+} // namespace Engine

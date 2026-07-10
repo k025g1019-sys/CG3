@@ -50,7 +50,7 @@ public:
 protected:
 
     // 立体視＋頭連動の視点別ビュー射影（各シーンのInitializeで生成し、Updateの最後に更新する）
-    StereoCamera stereoCamera_;
+    Engine::StereoCamera stereoCamera_;
 
     // ゲームの描画先矩形（クライアント座標・ピクセル）。未設定（サイズ0）の間はウィンドウ全体を使う
     float renderAreaX_ = 0.0f;

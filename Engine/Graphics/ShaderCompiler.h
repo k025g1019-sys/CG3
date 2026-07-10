@@ -6,6 +6,8 @@
 
 #include <string>
 
+namespace Engine {
+
 class ShaderCompiler {
 public:
 
@@ -38,3 +40,5 @@ private:
 
     Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler_;
 };
+
+} // namespace Engine

@@ -13,6 +13,8 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+using namespace Engine;
+
 void StereoDemoScene::Initialize() {
 	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
 

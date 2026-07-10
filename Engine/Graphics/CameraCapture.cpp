@@ -23,6 +23,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 namespace {
 
     // カメラフレームの画素形式はBGRA32（1画素4バイト）
@@ -380,3 +382,5 @@ void CameraCapture::WorkerThread() {
         CoUninitialize();
     }
 }
+
+} // namespace Engine

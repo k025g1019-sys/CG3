@@ -5,6 +5,8 @@
 #include "Engine/Math/Vector3.h"
 #include "Engine/Math/Matrix4x4.h"
 
+namespace Engine {
+
 /// <summary>
 /// マウス操作で対象を見回す開発用カメラ（ターンテーブル方式のオービット）。
 /// ・左クリック : カーソル下のオブジェクトを選択し、その中心を注視点にする
@@ -72,3 +74,5 @@ private:
     float minDistance_ = 1.0f;     // 寄りの限界
     float maxDistance_ = 100.0f;   // 引きの限界
 };
+
+} // namespace Engine

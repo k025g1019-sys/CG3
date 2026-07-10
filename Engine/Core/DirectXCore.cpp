@@ -13,6 +13,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 DirectXCore* DirectXCore::GetInstance() {
 
     static DirectXCore instance;
@@ -639,3 +641,5 @@ DirectXCore::GetCurrentRTVHandle() const {
 uint32_t DirectXCore::GetFrameIndex() const {
     return frameIndex_;
 }
+
+} // namespace Engine

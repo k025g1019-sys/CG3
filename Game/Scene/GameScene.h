@@ -41,28 +41,28 @@ public:
 
 private:
     // --- メッシュ（形状データ）---
-    Mesh triangleMesh_;
-    Mesh sphereMesh_;
-    Mesh objMesh_;
+    Engine::Mesh triangleMesh_;
+    Engine::Mesh sphereMesh_;
+    Engine::Mesh objMesh_;
 
     // --- 描画オブジェクト ---
-    Object3D triangle_;
-    Object3D sphere_;
-    Object3D obj_;
-    Sprite sprite_;
+    Engine::Object3D triangle_;
+    Engine::Object3D sphere_;
+    Engine::Object3D obj_;
+    Engine::Sprite sprite_;
     Skydome skydome_;  // 背景（最初に描画）
 
     // --- カメラ ---
     // （立体視の視点別ビュー射影・視線追跡はBaseSceneのstereoCamera_が担当する）
-    Camera camera_;
+    Engine::Camera camera_;
 
     // --- 平行光源（CPU側の値をImGuiで編集し、Updateで定数バッファへ書き込む）---
-    DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, 1.0f, 1, {} };
-    ConstantBuffer<DirectionalLight> lightCB_;
+    Engine::DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, 1.0f, 1, {} };
+    Engine::ConstantBuffer<Engine::DirectionalLight> lightCB_;
 
     // --- 点光源（最大kMaxPointLightCount個。ImGuiで個別編集し、Updateで定数バッファへ書き込む）---
-    PointLightGroup pointLights_;
-    ConstantBuffer<PointLightGroup> pointLightCB_;
+    Engine::PointLightGroup pointLights_;
+    Engine::ConstantBuffer<Engine::PointLightGroup> pointLightCB_;
 
     // --- 球の分割数（ImGuiで変更すると頂点を再生成する）---
     uint32_t subdivision_ = 16;
@@ -84,6 +84,6 @@ private:
 
 #ifndef NDEBUG
     // --- デバッグカメラ（Debugビルドのみ。Releaseでは無効）---
-    DebugCamera debugCamera_;
+    Engine::DebugCamera debugCamera_;
 #endif
 };

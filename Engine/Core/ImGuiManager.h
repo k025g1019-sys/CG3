@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+namespace Engine {
+
 /// <summary>
 /// ImGuiの初期化・フレーム処理・描画・終了処理をまとめたシングルトン。
 /// Debugビルド限定（USE_IMGUI）。Releaseではこのクラスごとビルドから除外される。
@@ -70,5 +72,7 @@ private:
     // ドッキングで空いた中央領域（BeginFrameで毎フレーム更新）
     GameArea gameArea_{};
 };
+
+} // namespace Engine
 
 #endif  // USE_IMGUI

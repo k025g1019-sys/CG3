@@ -11,6 +11,8 @@
 #include "Engine/Rendering/TransformData3D.h"
 #include "Engine/Rendering/TransformationMatrix.h"
 
+namespace Engine {
+
 /// <summary>
 /// 2Dスプライト。スクリーン座標系（左上原点・ピクセル単位）のクアッドを
 /// 正射影で描画する。ライティングは無効。
@@ -69,3 +71,5 @@ private:
     // Updateで判定した2Dカリング結果（Drawで参照する）
     FrustumVisibility visibility_ = FrustumVisibility::Inside;
 };
+
+} // namespace Engine

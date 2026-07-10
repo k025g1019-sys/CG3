@@ -1,6 +1,8 @@
 #include "Engine/Graphics/DescriptorHeapManager.h"
 #include <cassert>
 
+namespace Engine {
+
 DescriptorHeapManager* DescriptorHeapManager::GetInstance() {
     static DescriptorHeapManager instance;
     return &instance;
@@ -77,3 +79,5 @@ D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetGPUDescriptorHandle(
     handle.ptr += static_cast<UINT64>(descriptorSize) * index;
     return handle;
 }
+
+} // namespace Engine

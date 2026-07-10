@@ -11,6 +11,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 ShaderCompiler* ShaderCompiler::GetInstance() {
 
     static ShaderCompiler instance;
@@ -145,3 +147,5 @@ void ShaderCompiler::Finalize() {
 
     dxcUtils_.Reset();
 }
+
+} // namespace Engine

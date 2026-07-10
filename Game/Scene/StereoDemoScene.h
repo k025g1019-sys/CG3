@@ -44,13 +44,13 @@ public:
 
 private:
     // 立方体を1個追加する（position:中心位置 / rotateY:Y軸回転）
-    void AddCube(const Vector3& position, float rotateY);
+    void AddCube(const Engine::Vector3& position, float rotateY);
 
     // --- メッシュ（全立方体で共有する立方体形状）---
-    Mesh cubeMesh_;
+    Engine::Mesh cubeMesh_;
 
     // --- 立方体（可変長。追加・削除でvectorが再確保されても各Object3Dが動かないようunique_ptrで保持）---
-    std::vector<std::unique_ptr<Object3D>> cubes_;
+    std::vector<std::unique_ptr<Engine::Object3D>> cubes_;
 
     // --- テクスチャ（resources/tilemap_ground_01_1tileonly.png）---
     uint32_t cubeTextureHandle_ = 0;
@@ -59,19 +59,19 @@ private:
     Skydome skydome_;
 
     // --- カメラ ---
-    Camera camera_;
+    Engine::Camera camera_;
 
     // --- 平行光源（CPU側の値をImGuiで編集し、Updateで定数バッファへ書き込む）---
     // 立方体の面の向きが分かるよう、初期方向は斜め下向きにする。
-    DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.4f, -1.0f, 0.6f }, 1.0f, 1, {} };
-    ConstantBuffer<DirectionalLight> lightCB_;
+    Engine::DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.4f, -1.0f, 0.6f }, 1.0f, 1, {} };
+    Engine::ConstantBuffer<Engine::DirectionalLight> lightCB_;
 
     // --- 点光源（このシーンでは未使用。共通ルートシグネチャ（PS b2）が要求するため全灯無効で置く）---
-    PointLightGroup pointLights_;
-    ConstantBuffer<PointLightGroup> pointLightCB_;
+    Engine::PointLightGroup pointLights_;
+    Engine::ConstantBuffer<Engine::PointLightGroup> pointLightCB_;
 
 #ifndef NDEBUG
     // --- デバッグカメラ（Debugビルドのみ。Releaseでは無効）---
-    DebugCamera debugCamera_;
+    Engine::DebugCamera debugCamera_;
 #endif
 };

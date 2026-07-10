@@ -3,6 +3,8 @@
 #include "Engine/Math/Matrix4x4.h"
 #include "Engine/Rendering/TransformData3D.h"
 
+namespace Engine {
+
 /// <summary>
 /// シーンを映すカメラ。Transformと投影パラメータから
 /// ビュー行列・プロジェクション行列を作る。
@@ -39,3 +41,5 @@ private:
 
     float farClip_ = 100.0f;  // ファークリップ距離
 };
+
+} // namespace Engine

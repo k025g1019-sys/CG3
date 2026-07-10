@@ -10,6 +10,8 @@
 
 #include "Engine/Math/Vector2.h"
 
+namespace Engine {
+
 // マウスボタンのインデックス（IsMousePress等に渡す）
 enum MouseButton {
     kMouseLeft = 0,
@@ -174,3 +176,5 @@ private:
     LARGE_INTEGER perfFrequency_ = {};  // 高分解能タイマーの周波数（振動の時間管理用）
     LARGE_INTEGER lastCounter_ = {};    // 前回Update時のカウンタ（デルタ時間算出用）
 };
+
+} // namespace Engine

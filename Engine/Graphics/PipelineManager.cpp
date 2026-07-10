@@ -5,6 +5,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace Engine {
+
 PipelineManager* PipelineManager::GetInstance() {
     static PipelineManager instance;
     return &instance;
@@ -209,3 +211,5 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
 
     return CreateGraphicsPipeline(config);
 }
+
+} // namespace Engine

@@ -1,5 +1,7 @@
 #pragma once
 
+namespace Engine {
+
 /// <summary>
 /// 3次元ベクトル。成分ごとの四則演算子を備える
 /// </summary>
@@ -18,3 +20,5 @@ struct Vector3 {
 };
 
 inline Vector3 operator*(float s, const Vector3& v) { return { v.x * s, v.y * s, v.z * s }; }
+
+} // namespace Engine

@@ -30,7 +30,7 @@ public:
     /// ビュー射影は視点ごとの共有CBuffer（VSのb1）で供給するため、ここでは扱わない
     /// （立体視では左右の眼で位置がわずかに違うが、天球は十分大きく視差が無視できるため中心カメラで決める）。
     /// </summary>
-    void Update(const Matrix4x4& centerView);
+    void Update(const Engine::Matrix4x4& centerView);
 
     /// <summary>
     /// カリング無効PSOに切り替えて天球を描画する（背景なので他オブジェクトより先に呼ぶ）。
@@ -48,18 +48,18 @@ public:
 
 private:
     // --- モデル（resources/skydome.obj、半径1のユニット球）---
-    Mesh mesh_;
+    Engine::Mesh mesh_;
 
     // --- テクスチャ（resources/sky_sphere.png）---
     uint32_t textureHandle_ = 0;
 
     // --- マテリアル（ライティング無効）とTransform ---
-    Material material_{};
-    ConstantBuffer<Material> materialCB_;
-    ConstantBuffer<TransformationMatrix> transformCB_;
+    Engine::Material material_{};
+    Engine::ConstantBuffer<Engine::Material> materialCB_;
+    Engine::ConstantBuffer<Engine::TransformationMatrix> transformCB_;
 
     // --- 調整用パラメータ ---
-    Vector3 position_{ 0.0f, 0.0f, 0.0f };  // 原点固定時の中心位置
+    Engine::Vector3 position_{ 0.0f, 0.0f, 0.0f };  // 原点固定時の中心位置
     float scale_ = 50.0f;                   // 半径（far=100に収まるよう既定50）
     bool followCamera_ = false;             // ON:中心をカメラ位置へ追従
 };

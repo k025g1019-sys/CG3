@@ -6,6 +6,8 @@
 #include "Engine/Math/Matrix4x4.h"
 #include "Engine/Rendering/ConstantBuffer.h"
 
+namespace Engine {
+
 /// <summary>
 /// 立体視＋頭連動オフアクシスの「視点別ビュー射影」を管理するカメラ補助。
 /// 中心カメラのビュー・射影から各視点（眼）のビュー射影を作り、視点ごとのCBuffer（VSのb1）へ書き込む。
@@ -59,3 +61,5 @@ private:
     float gazeMoveScaleX_ = 1.2f;  // 視線が端のときの水平移動量（ワールド単位）
     float gazeMoveScaleY_ = 0.7f;  // 視線が端のときの垂直移動量（ワールド単位）
 };
+
+} // namespace Engine

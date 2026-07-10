@@ -5,6 +5,8 @@
 
 #pragma region
 
+namespace Engine {
+
 // 行列の加法
 Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
 	Matrix4x4 result{};
@@ -333,3 +335,5 @@ Vector3 Normalize(const Vector3& v) {
 }
 
 #pragma endregion
+
+} // namespace Engine

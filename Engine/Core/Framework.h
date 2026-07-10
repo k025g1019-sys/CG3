@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <d3d12.h>
 
+namespace Engine {
+
 /// <summary>
 /// アプリケーション全体の骨組み。
 /// エンジン各サブシステムの初期化〜メインループ〜終了処理を担当する。
@@ -43,3 +45,5 @@ protected:
     virtual void DrawImGui() = 0;
 #endif
 };
+
+} // namespace Engine

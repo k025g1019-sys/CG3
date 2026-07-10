@@ -1,4 +1,8 @@
 #pragma once
+
+/// <summary>
+/// 3次元ベクトル。成分ごとの四則演算子を備える
+/// </summary>
 struct Vector3 {
 	float x, y, z;
 

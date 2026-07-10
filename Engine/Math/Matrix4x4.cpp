@@ -309,6 +309,7 @@ Vector3 Project(const Vector3& v1, const Vector3& v2) {
 
 #pragma region
 
+// ベクトルスカラー倍（スカラーが左辺の形）
 Vector3 Multiply(float s, const Vector3& v) {
 	return { v.x * s, v.y * s, v.z * s };
 }

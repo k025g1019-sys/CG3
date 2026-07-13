@@ -1,17 +1,17 @@
 #pragma once
 
+#include <cstdint>
 #include <d3d12.h>
 
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
-#include "Engine/Rendering/Sprite.h"
 #include "Game/Scene/DemoSceneBase.h"
 
-// 最初のデモシーン。plane.obj・2Dスプライト・三角形2枚（1メッシュ）を描画する。
+// 2つ目のデモシーン。axis.objと球を描画する（Tabキーで最初のシーンと切り替え）。
 // カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBaseが提供する。
-class GameScene : public DemoSceneBase {
+class AxisScene : public DemoSceneBase {
 protected:
-    // 三角形・OBJ・スプライトの生成
+    // OBJ・球の生成
     void OnInitialize(ID3D12Device* device) override;
 
     // 各オブジェクトの行列計算・定数バッファ更新・カリング判定
@@ -21,36 +21,32 @@ protected:
     void OnDraw(ID3D12GraphicsCommandList* commandList) override;
 
 #ifdef USE_IMGUI
-    // "3D Objects"ウィンドウ内の三角形・OBJの編集UI
+    // "3D Objects"ウィンドウ内のOBJ・球の編集UI
     void OnDrawObjectsImGui() override;
-
-    // "2D Objects"ウィンドウ（スプライトの編集UI）
-    void OnDrawExtraImGui() override;
 
     // 各オブジェクトのカリング判定結果表示
     void OnDrawCullingImGui() override;
 #endif
 
 #ifndef NDEBUG
-    // デバッグカメラのピッキング対象（三角形・OBJ）
+    // デバッグカメラのピッキング対象（OBJ・球）
     void AppendPickTargets(std::vector<Engine::DebugCamera::PickTarget>& targets) const override;
 #endif
 
 private:
     // --- メッシュ（形状データ）---
-    Engine::Mesh triangleMesh_;  // 三角形2枚（6頂点。2枚目は1枚目を貫通する）
-    Engine::Mesh objMesh_;       // plane.obj
+    Engine::Mesh objMesh_;     // axis.obj
+    Engine::Mesh sphereMesh_;
 
     // --- 描画オブジェクト ---
-    Engine::Object3D triangle_;
     Engine::Object3D obj_;
-    Engine::Sprite sprite_;
+    Engine::Object3D sphere_;
+
+    // --- 球の分割数（ImGuiで変更すると頂点を再生成する）---
+    uint32_t subdivision_ = 16;
+    uint32_t prevSubdivision_ = 16;
 
     // --- テクスチャ選択（DemoSceneBaseのtextureHandles_のインデックス。ImGuiのComboに対応）---
-    int triangleTextureIndex_ = 0;
     int objTextureIndex_ = 0;
-    int spriteTextureIndex_ = 0;
-
-    // --- スプライト描画のオン/オフ（ImGuiで切り替え） ---
-    bool drawSprite_ = true;
+    int sphereTextureIndex_ = 1;
 };

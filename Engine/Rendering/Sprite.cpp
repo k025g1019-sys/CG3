@@ -1,6 +1,7 @@
 #include "Engine/Rendering/Sprite.h"
 
 #include "Engine/Core/DirectXCore.h"
+#include "Engine/Core/WinApp.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Math/Matrix4x4.h"
 
@@ -29,7 +30,7 @@ void Sprite::Initialize(ID3D12Device* device, uint32_t textureHandle, const Vect
 
 	// 2Dなのでライティング無効
 	material_.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	material_.enableLighting = false;
+	material_.lightingMode = LightingMode::kNone;
 	material_.uvTransform = MakeIdentity4x4();
 
 	transformCB_.Create(device, DirectXCore::kFramesInFlight);
@@ -38,8 +39,19 @@ void Sprite::Initialize(ID3D12Device* device, uint32_t textureHandle, const Vect
 }
 
 void Sprite::Update(float screenWidth, float screenHeight) {
+	// 基準解像度に対する実画面の倍率。サイズは小さい方の倍率で等比スケールして
+	// スプライトの縦横比を保ち、位置は縦横それぞれ比例させて画面内の相対位置を保つ。
+	// （std::minはWindows.hのmin/maxマクロと衝突するため比較で求める）
+	const float scaleX = screenWidth / float(WinApp::kClientWidth);
+	const float scaleY = screenHeight / float(WinApp::kClientHeight);
+	const float sizeScale = (scaleX < scaleY) ? scaleX : scaleY;
+
 	// ワールド行列と正射影（画面左上原点）を計算する
-	Matrix4x4 world = MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+	const Vector3 scaledScale{
+		transform_.scale.x * sizeScale, transform_.scale.y * sizeScale, transform_.scale.z };
+	const Vector3 scaledTranslate{
+		transform_.translate.x * scaleX, transform_.translate.y * scaleY, transform_.translate.z };
+	Matrix4x4 world = MakeAffineMatrix(scaledScale, transform_.rotate, scaledTranslate);
 	Matrix4x4 projection = MakeOrthographicMatrix(0.0f, 0.0f, screenWidth, screenHeight, 0.0f, 100.0f);
 	TransformationMatrix transformData{ world };
 

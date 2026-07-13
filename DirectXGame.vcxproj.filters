@@ -183,6 +183,12 @@
     <ClCompile Include="Game\MyGame.cpp">
       <Filter>Game</Filter>
     </ClCompile>
+    <ClCompile Include="Game\Scene\AxisScene.cpp">
+      <Filter>Game\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Scene\DemoSceneBase.cpp">
+      <Filter>Game\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Game\Scene\GameScene.cpp">
       <Filter>Game\Scene</Filter>
     </ClCompile>
@@ -341,7 +347,13 @@
     <ClInclude Include="Game\MyGame.h">
       <Filter>Game</Filter>
     </ClInclude>
+    <ClInclude Include="Game\Scene\AxisScene.h">
+      <Filter>Game\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Game\Scene\BaseScene.h">
+      <Filter>Game\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Scene\DemoSceneBase.h">
       <Filter>Game\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Game\Scene\GameScene.h">

@@ -24,8 +24,10 @@ public:
 
     /// <param name="mesh">形状（非所有。呼び出し側が生存期間を管理する）</param>
     /// <param name="textureHandle">TextureManagerのテクスチャハンドル</param>
-    /// <param name="enableLighting">平行光源によるライティングを行うか</param>
-    void Initialize(ID3D12Device* device, Mesh* mesh, uint32_t textureHandle, bool enableLighting = true);
+    /// <param name="lightingMode">ライティングの計算方式（なし/Lambert/Half Lambert）</param>
+    void Initialize(
+        ID3D12Device* device, Mesh* mesh, uint32_t textureHandle,
+        LightingMode lightingMode = LightingMode::kHalfLambert);
 
     // ワールド行列・マテリアルの定数バッファ更新と視錐台カリング判定（毎フレーム呼ぶ）。
     // ビュー射影は視点ごとの共有CBuffer（VSのb1）で供給されるため、ここでは扱わない。

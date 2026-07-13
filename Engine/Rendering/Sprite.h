@@ -16,16 +16,19 @@ namespace Engine {
 /// <summary>
 /// 2Dスプライト。スクリーン座標系（左上原点・ピクセル単位）のクアッドを
 /// 正射影で描画する。ライティングは無効。
+/// サイズ・位置は基準解像度（WinApp::kClientWidth×kClientHeight）のピクセルで指定し、
+/// 実画面へはサイズを等比（縦横比維持）、位置を縦横比例でスケールして追従する。
 /// Updateで画面矩形との2Dカリングも判定し、画面外なら描画をスキップする。
 /// </summary>
 class Sprite {
 public:
 
     /// <param name="textureHandle">TextureManagerのテクスチャハンドル</param>
-    /// <param name="size">スプライトのサイズ（ピクセル）</param>
+    /// <param name="size">スプライトのサイズ（基準解像度のピクセル）</param>
     void Initialize(ID3D12Device* device, uint32_t textureHandle, const Vector2& size);
 
-    // ワールド行列・正射影・マテリアルの定数バッファ更新と、画面矩形との2Dカリング判定（毎フレーム呼ぶ）
+    // ワールド行列・正射影・マテリアルの定数バッファ更新と、画面矩形との2Dカリング判定（毎フレーム呼ぶ）。
+    // screenWidth/screenHeight: 実際の描画先矩形の大きさ（基準解像度との比でスプライトをスケールする）
     void Update(float screenWidth, float screenHeight);
 
     // カリング結果がOutsideでなければ描画する。

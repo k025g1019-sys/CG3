@@ -57,14 +57,28 @@ void MyGame::Finalize() {
 }
 
 void MyGame::Update() {
-	// Tキーで立体視デモシーンと従来デモシーンを切り替える。
-	// アクティブなシーンだけを保持する方針のため、旧シーンを破棄して新シーンを作り直す。
+	// シーン切り替え。
+	//   T   : 通常デモシーン ⇔ 立体視デモシーン（戻り先は直前にいた通常デモシーン）
+	//   Tab : 通常デモシーン同士（kGame ⇔ kAxis）を切り替える（立体視デモ中は無効）
+	SceneId nextSceneId = sceneId_;
 	if (Input::GetInstance()->IsTrigger(DIK_T)) {
+		if (sceneId_ == SceneId::kStereoDemo) {
+			nextSceneId = lastDemoSceneId_;
+		} else {
+			lastDemoSceneId_ = sceneId_;
+			nextSceneId = SceneId::kStereoDemo;
+		}
+	} else if (Input::GetInstance()->IsTrigger(DIK_TAB) && sceneId_ != SceneId::kStereoDemo) {
+		nextSceneId = (sceneId_ == SceneId::kGame) ? SceneId::kAxis : SceneId::kGame;
+	}
+
+	// アクティブなシーンだけを保持する方針のため、旧シーンを破棄して新シーンを作り直す。
+	if (nextSceneId != sceneId_) {
 		// 実行中のフレームが旧シーンの定数バッファ等を参照し終えるのを待ってから破棄する
 		DirectXCore::GetInstance()->WaitForGPU();
 		scene_.reset();
 
-		sceneId_ = (sceneId_ == SceneId::kStereoDemo) ? SceneId::kGame : SceneId::kStereoDemo;
+		sceneId_ = nextSceneId;
 		scene_ = CreateScene(sceneId_);
 		// テクスチャの転送コマンドは記録中のコマンドリストに積まれ、このフレームの描画より先に実行される
 		scene_->Initialize();

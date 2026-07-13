@@ -1,15 +1,6 @@
 #include "Game/Scene/GameScene.h"
 
-#include <vector>
-
-#include "Engine/Audio/Audio.h"
-#include "Engine/Culling/FrustumCulling.h"
-#include "Engine/Core/DirectXCore.h"
-#include "Engine/Core/WinApp.h"
-#include "Engine/Graphics/PipelineManager.h"
-#include "Engine/Graphics/TextureManager.h"
-#include "Engine/Input/Input.h"
-#include "Engine/Math/Matrix4x4.h"
+#include "Engine/Rendering/VertexData.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -17,13 +8,7 @@
 
 using namespace Engine;
 
-void GameScene::Initialize() {
-	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
-
-	// --- シーンで使うテクスチャ ---
-	textureHandles_[0] = TextureManager::GetInstance()->Load("resources/uvChecker.png");
-	textureHandles_[1] = TextureManager::GetInstance()->Load("resources/monsterBall.png");
-
+void GameScene::OnInitialize(ID3D12Device* device) {
 	// --- 三角形（2枚。2枚目は1枚目を貫通する）---
 	VertexData triangleVertices[6]{};
 	triangleVertices[0].position = { -0.5f, -0.5f, 0.0f, 1.0f }; // 左下
@@ -45,118 +30,34 @@ void GameScene::Initialize() {
 	triangle_.Initialize(device, &triangleMesh_, textureHandles_[triangleTextureIndex_]);
 	triangle_.GetTransform().translate = { 2.5f, 0.0f, 0.0f };
 
-	// --- 球 ---
-	sphereMesh_.CreateSphere(device, subdivision_);
-	sphere_.Initialize(device, &sphereMesh_, textureHandles_[sphereTextureIndex_]);
-
 	// --- OBJモデル ---
-	objMesh_.CreateFromObj(device, "resources", "axis.obj");
+	objMesh_.CreateFromObj(device, "resources", "plane.obj");
 	obj_.Initialize(device, &objMesh_, textureHandles_[objTextureIndex_]);
-	obj_.GetTransform().rotate.y = 3.1415f;
+	obj_.GetTransform().rotate.y = 0.0f;
 
 	// --- スプライト ---
 	sprite_.Initialize(device, textureHandles_[spriteTextureIndex_], { 640.0f, 360.0f });
-
-	// --- 天球（背景。ライティング無効・カリング無効PSO）---
-	skydome_.Initialize(device);
-
-	// --- 平行光源 ---
-	lightCB_.Create(device, DirectXCore::kFramesInFlight);
-
-	// --- 点光源（初期状態は1灯だけ有効。残りはImGuiから有効化できる）---
-	pointLights_.lights[0].enabled = 1;
-	pointLightCB_.Create(device, DirectXCore::kFramesInFlight);
-
-	// --- 立体視：視点ごとのビュー射影CBuffer ---
-	stereoCamera_.Initialize(device);
-
-	// --- カメラ初期位置 ---
-	camera_.GetTransform().rotate = { 0.04f, 0.0f, 0.0f };
-	camera_.GetTransform().translate = { 0.0f, 1.7f, -10.0f };
-
-	// --- サウンド読み込み ---
-	soundHandle_ = Audio::GetInstance()->LoadWave("resources/Alarm01.wav");
-	Audio::GetInstance()->SetVolume(soundHandle_, soundVolume_);
 }
 
-void GameScene::Update() {
-	// スペースキーを押した瞬間にサウンド再生（Enterはデバッグカメラの有効・無効切り替えに割り当て）
-	if (Input::GetInstance()->IsTrigger(DIK_SPACE)) {
-		Audio::GetInstance()->Play(soundHandle_);
-	}
-
-	// ゲームの処理
-	//triangle_.GetTransform().rotate.y += 0.04f;
-	sphere_.GetTransform().rotate.y += 0.02f;
-
-	// ゲームの描画先矩形に合わせて投影アスペクトを決める（リサイズやドッキングの
-	// レイアウト変更に追従し、物体が伸び縮みして見えるのを防ぐ）。
-	// 未設定（サイズ0）の間はウィンドウ全体を使う。
-	const float width = float(WinApp::GetInstance()->GetClientWidth());
-	const float height = float(WinApp::GetInstance()->GetClientHeight());
-	const bool hasRenderArea = (renderAreaWidth_ > 0.0f && renderAreaHeight_ > 0.0f);
-	const float viewWidth = hasRenderArea ? renderAreaWidth_ : width;
-	const float viewHeight = hasRenderArea ? renderAreaHeight_ : height;
-
-	Matrix4x4 projection = camera_.GetProjectionMatrix(viewWidth / viewHeight);
-	Matrix4x4 view = camera_.GetViewMatrix();
-
-#ifndef NDEBUG
-	// --- デバッグカメラ更新（Debugビルドのみ。Releaseでは丸ごと除外される）---
-	// ピッキング対象（ワールド空間のバウンディング球）を毎フレーム組み立てる
-	std::vector<DebugCamera::PickTarget> pickTargets;
-	for (const Object3D* object : { &triangle_, &sphere_, &obj_ }) {
-		Sphere sphere = object->CalcWorldBoundingSphere();
-		pickTargets.push_back({ sphere.center, sphere.radius });
-	}
-
-	// ImGuiがマウスを使用中はデバッグカメラのマウス操作を無視する
-	bool blockMouse = false;
-#ifdef USE_IMGUI
-	blockMouse = ImGui::GetIO().WantCaptureMouse;
-#endif
-	const float viewX = hasRenderArea ? renderAreaX_ : 0.0f;
-	const float viewY = hasRenderArea ? renderAreaY_ : 0.0f;
-	debugCamera_.Update(pickTargets, viewX, viewY, viewWidth, viewHeight, projection, blockMouse);
-
-	// デバッグカメラ有効時は通常カメラのビューを上書きする
-	if (debugCamera_.IsEnabled()) {
-		view = debugCamera_.GetViewMatrix();
-	}
-#endif  // !NDEBUG
-
-	// --- 各オブジェクトの更新（ワールド行列・定数バッファ書き込み・視錐台カリング）---
-	// カリングは中心カメラの視錐台で判定する（視点間のずれは眼間距離程度で無視できる）。
-	Frustum3D frustum = MakeFrustumFromViewProjection(view * projection);
+void GameScene::OnUpdate(const Frustum3D& frustum, float viewWidth, float viewHeight) {
 	triangle_.Update(frustum);
-	sphere_.Update(frustum);
 	obj_.Update(frustum);
 
-	// 天球（カメラ追従ON時は中心がカメラ位置へ追従する）
-	skydome_.Update(view);
-
-	// スプライト（正射影・2Dカリング）
-	// スプライトの正射影はゲーム描画先矩形の大きさ基準（縮小表示でも縦横比が崩れない）
+	// スプライト（正射影・2Dカリング。基準解像度との比に応じて等比スケールされる）
 	sprite_.Update(viewWidth, viewHeight);
-
-	// 平行光源・点光源
-	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	lightCB_.Write(frameIndex, light_);
-	pointLightCB_.Write(frameIndex, pointLights_);
-
-	// --- 立体視：中心カメラから各視点（眼）のビュー射影を更新する ---
-	stereoCamera_.Update(view, projection);
 }
 
+#ifndef NDEBUG
+void GameScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets) const {
+	for (const Object3D* object : { &triangle_, &obj_ }) {
+		Sphere sphere = object->CalcWorldBoundingSphere();
+		targets.push_back({ sphere.center, sphere.radius });
+	}
+}
+#endif
+
 #ifdef USE_IMGUI
-void GameScene::DrawImGui() {
-	const char* textureItems[] = {
-		"uvChecker",
-		"monsterBall"
-	};
-
-	ImGui::Begin("3D Objects");
-
+void GameScene::OnDrawObjectsImGui() {
 	// ----Triangle----
 	if (ImGui::TreeNode("Triangle")) {
 		ImGui::PushID("Triangle");
@@ -173,43 +74,10 @@ void GameScene::DrawImGui() {
 		ImGui::Separator();
 
 		ImGui::ColorEdit4("Color", &triangle_.GetMaterial().color.x);
-		bool lighting = triangle_.GetMaterial().enableLighting != 0;
-		if (ImGui::Checkbox("Enable Lighting", &lighting)) {
-			triangle_.GetMaterial().enableLighting = lighting;
-		}
+		DrawLightingModeCombo(triangle_.GetMaterial());
 
-		if (ImGui::Combo("Texture", &triangleTextureIndex_, textureItems, IM_ARRAYSIZE(textureItems))) {
+		if (ImGui::Combo("Texture", &triangleTextureIndex_, kTextureItems, kTextureCount)) {
 			triangle_.SetTextureHandle(textureHandles_[triangleTextureIndex_]);
-		}
-
-		ImGui::PopID();
-		ImGui::TreePop();
-	}
-
-	// ----Sphere----
-	if (ImGui::TreeNode("Sphere")) {
-		ImGui::PushID("Sphere");
-
-		Transform3D& transform = sphere_.GetTransform();
-		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
-		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
-		ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
-		ImGui::Separator();
-
-		ImGui::DragInt("Sphere Subdivision", reinterpret_cast<int*>(&subdivision_), 1, 3, 128);
-
-		if (subdivision_ != prevSubdivision_) {
-			// FenceでGPU完了待ちをしてから差し替える（旧頂点バッファは自動開放）
-			DirectXCore::GetInstance()->WaitForGPU();
-
-			sphereMesh_.CreateSphere(DirectXCore::GetInstance()->GetDevice(), subdivision_);
-
-			prevSubdivision_ = subdivision_;
-		}
-		ImGui::Separator();
-
-		if (ImGui::Combo("Texture", &sphereTextureIndex_, textureItems, IM_ARRAYSIZE(textureItems))) {
-			sphere_.SetTextureHandle(textureHandles_[sphereTextureIndex_]);
 		}
 
 		ImGui::PopID();
@@ -227,24 +95,18 @@ void GameScene::DrawImGui() {
 		ImGui::Separator();
 
 		ImGui::ColorEdit4("Color", &obj_.GetMaterial().color.x);
-		bool lighting = obj_.GetMaterial().enableLighting != 0;
-		if (ImGui::Checkbox("Enable Lighting", &lighting)) {
-			obj_.GetMaterial().enableLighting = lighting;
-		}
+		DrawLightingModeCombo(obj_.GetMaterial());
 
-		if (ImGui::Combo("Texture", &objTextureIndex_, textureItems, IM_ARRAYSIZE(textureItems))) {
+		if (ImGui::Combo("Texture", &objTextureIndex_, kTextureItems, kTextureCount)) {
 			obj_.SetTextureHandle(textureHandles_[objTextureIndex_]);
 		}
 
 		ImGui::PopID();
 		ImGui::TreePop();
 	}
+}
 
-	// ----Skydome----
-	skydome_.DrawImGui();
-
-	ImGui::End();
-
+void GameScene::OnDrawExtraImGui() {
 	ImGui::Begin("2D Objects");
 	if (ImGui::TreeNode("Square")) {
 		ImGui::PushID("Square");
@@ -277,12 +139,9 @@ void GameScene::DrawImGui() {
 
 		ImGui::Separator();
 
-		bool lightingSprite = sprite_.GetMaterial().enableLighting != 0;
-		if (ImGui::Checkbox("Enable Lighting", &lightingSprite)) {
-			sprite_.GetMaterial().enableLighting = lightingSprite;
-		}
+		DrawLightingModeCombo(sprite_.GetMaterial());
 
-		if (ImGui::Combo("Texture", &spriteTextureIndex_, textureItems, IM_ARRAYSIZE(textureItems))) {
+		if (ImGui::Combo("Texture", &spriteTextureIndex_, kTextureItems, kTextureCount)) {
 			sprite_.SetTextureHandle(textureHandles_[spriteTextureIndex_]);
 		}
 
@@ -290,138 +149,17 @@ void GameScene::DrawImGui() {
 		ImGui::TreePop();
 	}
 	ImGui::End();
+}
 
-	// --- カメラ（変換・立体視・視線追跡）---
-	ImGui::Begin("Camera");
-
-	Transform3D& cameraTransform = camera_.GetTransform();
-	ImGui::DragFloat3("Camera scale", &cameraTransform.scale.x, 0.01f);
-	ImGui::DragFloat3("Camera rotate", &cameraTransform.rotate.x, 0.01f);
-	ImGui::DragFloat3("Camera translate", &cameraTransform.translate.x, 0.01f);
-
-	ImGui::Separator();
-
-	// 立体視の共有パラメータと頭連動オフアクシスの調整
-	stereoCamera_.DrawImGuiSection();
-
-	ImGui::End();
-
-	// --- 平行光源 ---
-	ImGui::Begin("Directional Light");
-
-	bool directionalEnabled = light_.enabled != 0;
-	if (ImGui::Checkbox("Enable", &directionalEnabled)) {
-		light_.enabled = directionalEnabled ? 1 : 0;
-	}
-	ImGui::ColorEdit4("Color", &light_.color.x);
-	ImGui::DragFloat3("Direction", &light_.direction.x, 0.01f);
-	ImGui::DragFloat("Intensity", &light_.intensity, 0.01f, 0.0f, 10.0f);
-
-	ImGui::End();
-
-	// --- 点光源 ---
-	ImGui::Begin("Point Lights");
-
-	// 全灯まとめて切り替え
-	if (ImGui::Button("All ON")) {
-		for (PointLight& pointLight : pointLights_.lights) {
-			pointLight.enabled = 1;
-		}
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("All OFF")) {
-		for (PointLight& pointLight : pointLights_.lights) {
-			pointLight.enabled = 0;
-		}
-	}
-
-	ImGui::Separator();
-
-	for (uint32_t i = 0; i < kMaxPointLightCount; ++i) {
-		PointLight& pointLight = pointLights_.lights[i];
-
-		// ラベルに現在の状態を表示する（IDはインデックス由来なのでラベルが変わっても開閉状態は保たれる）
-		if (ImGui::TreeNode(reinterpret_cast<void*>(static_cast<intptr_t>(i)),
-			"Light %u (%s)", i, pointLight.enabled != 0 ? "ON" : "OFF")) {
-
-			bool enabled = pointLight.enabled != 0;
-			if (ImGui::Checkbox("Enable", &enabled)) {
-				pointLight.enabled = enabled ? 1 : 0;
-			}
-			ImGui::ColorEdit4("Color", &pointLight.color.x);
-			ImGui::DragFloat3("Position", &pointLight.position.x, 0.01f);
-			ImGui::DragFloat("Intensity", &pointLight.intensity, 0.01f, 0.0f, 10.0f);
-			ImGui::DragFloat("Radius", &pointLight.radius, 0.05f, 0.01f, 100.0f);
-			ImGui::DragFloat("Decay", &pointLight.decay, 0.01f, 0.05f, 8.0f);
-
-			ImGui::TreePop();
-		}
-	}
-
-	ImGui::End();
-
-#ifndef NDEBUG
-	// デバッグカメラの状態表示・調整（Debugビルドのみ）
-	debugCamera_.DrawImGui();
-#endif
-
-	ImGui::Begin("Sound");
-
-	// ボタンでもSpaceキーでも再生できる（再生中は頭から鳴らし直す）
-	if (ImGui::Button("Play (Alarm01)")) {
-		Audio::GetInstance()->Play(soundHandle_);
-	}
-
-	// 音量を増減する
-	if (ImGui::SliderFloat("Volume", &soundVolume_, 0.0f, 1.0f)) {
-		Audio::GetInstance()->SetVolume(soundHandle_, soundVolume_);
-	}
-
-	ImGui::End();
-
-	// --- 視錐台カリングの判定結果表示 ---
-	ImGui::Begin("Frustum Culling");
-	auto visibilityText = [](FrustumVisibility visibility) -> const char* {
-		switch (visibility) {
-		case FrustumVisibility::Inside:    return "Inside";
-		case FrustumVisibility::Intersect: return "Intersect";
-		case FrustumVisibility::Outside:   return "Outside";
-		}
-		return "Unknown";
-	};
-	ImGui::Text("Triangle (sphere) : %s", visibilityText(triangle_.GetVisibility()));
-	ImGui::Text("Sphere   (sphere) : %s", visibilityText(sphere_.GetVisibility()));
-	ImGui::Text("Obj      (sphere) : %s", visibilityText(obj_.GetVisibility()));
-	ImGui::Text("Sprite   (2D AABB): %s", visibilityText(sprite_.GetVisibility()));
-	ImGui::End();
+void GameScene::OnDrawCullingImGui() {
+	ImGui::Text("Triangle (sphere) : %s", VisibilityText(triangle_.GetVisibility()));
+	ImGui::Text("Obj      (sphere) : %s", VisibilityText(obj_.GetVisibility()));
+	ImGui::Text("Sprite   (2D AABB): %s", VisibilityText(sprite_.GetVisibility()));
 }
 #endif
 
-void GameScene::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) {
-	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-
-	// --- 共通設定（Viewport/Scissor/RenderTarget/DescriptorHeapは
-	//     DirectXCore::BeginFrameまたはStereoRenderer::BeginViewで設定済み）---
-	commandList->SetGraphicsRootSignature(PipelineManager::GetInstance()->GetRootSignature());
-
-	// この視点のビュー射影をVS(b1)へバインド（以降の3D描画で共有。スプライトのみ自前の正射影へ差し替える）
-	commandList->SetGraphicsRootConstantBufferView(
-		4, stereoCamera_.GetViewProjectionAddress(frameIndex, viewIndex));
-
-	// 点光源のCBufferはシーン共通（PS b2。天球を含む以降の全描画で共有される）
-	commandList->SetGraphicsRootConstantBufferView(5, pointLightCB_.GetGPUAddress(frameIndex));
-
-	// --- 天球を最初に描画（背景。カリング無効PSOに切り替わる）---
-	skydome_.Draw(commandList, lightCB_.GetGPUAddress(frameIndex));
-
-	// --- 以降は標準PSO（裏面カリング）で描画 ---
-	commandList->SetPipelineState(PipelineManager::GetInstance()->Get(PipelineManager::Pipeline::kStandard));
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	// 平行光源のCBufferはシーン共通（各オブジェクトのマテリアル・Transformは各自が設定する）
-	commandList->SetGraphicsRootConstantBufferView(2, lightCB_.GetGPUAddress(frameIndex));
-
+void GameScene::OnDraw(ID3D12GraphicsCommandList* commandList) {
 	triangle_.Draw(commandList);
-	sphere_.Draw(commandList);
 	obj_.Draw(commandList);
 
 	// スプライト（drawSprite_がfalse、または画面外なら描かれない）

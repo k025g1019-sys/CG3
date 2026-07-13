@@ -9,14 +9,15 @@
 
 namespace Engine {
 
-void Object3D::Initialize(ID3D12Device* device, Mesh* mesh, uint32_t textureHandle, bool enableLighting) {
+void Object3D::Initialize(
+	ID3D12Device* device, Mesh* mesh, uint32_t textureHandle, LightingMode lightingMode) {
 	assert(mesh != nullptr);
 
 	mesh_ = mesh;
 	textureHandle_ = textureHandle;
 
 	material_.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	material_.enableLighting = enableLighting;
+	material_.lightingMode = lightingMode;
 	material_.uvTransform = MakeIdentity4x4();
 
 	transformCB_.Create(device, DirectXCore::kFramesInFlight);

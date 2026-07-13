@@ -12,7 +12,8 @@
 /// このゲームのアプリケーションクラス。
 /// Frameworkのメインループから呼ばれる更新・描画を現在のシーンへ委譲し、
 /// 視線追跡（アプリ内顔検出／共有メモリ）とWebカメラ表示をシーンへ配線する。
-/// Tキーで立体視デモシーンと従来デモシーンを切り替える。
+/// Tキーで立体視デモシーンと通常デモシーン（直前にいた方）を、
+/// Tabキーで通常デモシーン同士（kGame ⇔ kAxis）を切り替える。
 /// </summary>
 class MyGame : public Engine::Framework {
 protected:
@@ -34,11 +35,14 @@ protected:
 
 private:
 
-    // 現在のシーン（Tキーで切り替え。Finalizeでエンジン終了処理より先に解放する）
+    // 現在のシーン（T/Tabキーで切り替え。Finalizeでエンジン終了処理より先に解放する）
     std::unique_ptr<BaseScene> scene_;
 
     // 現在のシーンID（起動時のシーンはSceneFactory.hのkInitialSceneIdで指定する）
     SceneId sceneId_ = kInitialSceneId;
+
+    // 立体視デモへ入る直前にいた通常デモシーン（Tキーで立体視デモから戻る先）
+    SceneId lastDemoSceneId_ = SceneId::kGame;
 
     // --- 視線追跡とWebカメラ ---
     Engine::CameraCapture camera_;    // Webカメラ取得・表示（使わない間はワーカー停止）

@@ -3,10 +3,15 @@
 struct Material
 {
     float4 color;
-    int enableLighting;
+    int lightingMode;
     float3 padding;
     float4x4 uvTransform;
 };
+
+// ライティングの計算方式（CPU側Engine::LightingModeと一致させる）
+static const int kLightingModeNone = 0;        // ライティングなし
+static const int kLightingModeLambert = 1;     // ランバート反射
+static const int kLightingModeHalfLambert = 2; // ハーフランバート反射
 
 cbuffer MaterialBuffer : register(b0)
 {
@@ -31,6 +36,23 @@ struct PixelShaderOutput
     float4 color : SV_TARGET0;
 };
 
+// N・Lから拡散反射係数を求める。
+// Lambert:負を切り捨ててそのまま / Half Lambert:0..1へ写して2乗（陰が柔らかい）
+// （分岐先でreturnするとコンパイラがX4000警告を出すため、単一returnで書く）
+float DiffuseFactor(float NdotL, int lightingMode)
+{
+    float factor;
+    if (lightingMode == kLightingModeLambert)
+    {
+        factor = saturate(NdotL);
+    }
+    else
+    {
+        factor = saturate(pow(NdotL * 0.5f + 0.5f, 2.0f));
+    }
+    return factor;
+}
+
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
@@ -40,14 +62,14 @@ PixelShaderOutput main(VertexShaderOutput input)
             float4(input.texcoord, 0.0f, 1.0f),
             material.uvTransform
         );
-    
+
     float4 textureColor =
         gTexture.Sample(
             gSampler,
             transformedUV.xy
         );
-    
-    if (material.enableLighting == 0)
+
+    if (material.lightingMode == kLightingModeNone)
     {
         output.color =
             material.color *
@@ -55,10 +77,10 @@ PixelShaderOutput main(VertexShaderOutput input)
 
         return output;
     }
-    
+
     float3 normal = normalize(input.normal);
 
-    // 各光源の拡散反射（ハーフランバート）を加算合成する
+    // 各光源の拡散反射（Lambert/Half Lambertはマテリアルの方式に従う）を加算合成する
     float3 diffuseLight = float3(0.0f, 0.0f, 0.0f);
 
     // --- 平行光源 ---
@@ -70,8 +92,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                 -normalize(gDirectionalLight.direction)
             );
 
-        float cos =
-        saturate(pow(NdotL * 0.5f + 0.5f, 2.0f));
+        float cos = DiffuseFactor(NdotL, material.lightingMode);
 
         diffuseLight +=
             gDirectionalLight.color.rgb *
@@ -101,8 +122,7 @@ PixelShaderOutput main(VertexShaderOutput input)
 
         float NdotL = dot(normal, -direction);
 
-        float cos =
-        saturate(pow(NdotL * 0.5f + 0.5f, 2.0f));
+        float cos = DiffuseFactor(NdotL, material.lightingMode);
 
         diffuseLight +=
             gPointLights[i].color.rgb *

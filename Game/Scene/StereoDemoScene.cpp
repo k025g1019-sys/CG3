@@ -166,9 +166,11 @@ void StereoDemoScene::DrawImGui() {
 			ImGui::Separator();
 
 			ImGui::ColorEdit4("Color", &cube.GetMaterial().color.x);
-			bool lighting = cube.GetMaterial().enableLighting != 0;
+			// このシーンは従来どおりON/OFFのみ（ON=Half Lambert）
+			bool lighting = cube.GetMaterial().lightingMode != LightingMode::kNone;
 			if (ImGui::Checkbox("Enable Lighting", &lighting)) {
-				cube.GetMaterial().enableLighting = lighting;
+				cube.GetMaterial().lightingMode =
+					lighting ? LightingMode::kHalfLambert : LightingMode::kNone;
 			}
 
 			if (ImGui::Button("Remove")) {

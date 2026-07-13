@@ -20,7 +20,7 @@ void Skydome::Initialize(ID3D12Device* device) {
 
 	// --- マテリアル（ライティング無効でテクスチャをそのまま表示）---
 	material_.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	material_.enableLighting = false;
+	material_.lightingMode = LightingMode::kNone;
 	material_.uvTransform = MakeIdentity4x4();
 	materialCB_.Create(device, DirectXCore::kFramesInFlight);
 

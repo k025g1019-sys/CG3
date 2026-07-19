@@ -1,5 +1,6 @@
 #include "Engine/Graphics/TextureManager.h"
 #include <cassert>
+#include <cstring>
 #include <wrl.h>
 #include "Engine/String/ConvertString.h"
 #include "Engine/Graphics/GpuResource.h"
@@ -34,11 +35,34 @@ uint32_t TextureManager::Load(const std::string& filepath) {
         }
     }
 
-    // 読み込み → リソース作成 → 転送コマンド発行
-    Texture texture;
-    texture.filepath = filepath;
-
+    // 読み込み → リソース作成 → 転送コマンド発行 → SRV作成 → キャッシュ登録
     ScratchImage mipImages = LoadTextureImage(filepath);
+    return Register(filepath, mipImages);
+}
+
+uint32_t TextureManager::GetWhiteTexture() {
+    assert(device_ != nullptr && "TextureManager::Initializeが呼ばれていない");
+
+    // 予約キー（実ファイルパスと衝突しないよう<>で囲む）でキャッシュ検索
+    static const std::string kWhiteKey = "<white1x1>";
+    for (uint32_t i = 0; i < textures_.size(); ++i) {
+        if (textures_[i].filepath == kWhiteKey) {
+            return i;
+        }
+    }
+
+    // 1x1の白イメージをプログラム生成する（1x1なのでミップマップ生成は不要）
+    ScratchImage image;
+    [[maybe_unused]] HRESULT hr = image.Initialize2D(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1, 1, 1, 1);
+    assert(SUCCEEDED(hr));
+    std::memset(image.GetPixels(), 0xFF, image.GetPixelsSize()); // RGBA = (255, 255, 255, 255)
+
+    return Register(kWhiteKey, image);
+}
+
+uint32_t TextureManager::Register(const std::string& key, const ScratchImage& mipImages) {
+    Texture texture;
+    texture.filepath = key;
     texture.metadata = mipImages.GetMetadata();
     texture.resource = CreateTextureResource(device_, texture.metadata);
     texture.intermediate = UploadTextureData(texture.resource.Get(), mipImages, device_, commandList_);

@@ -31,6 +31,12 @@ public:
     /// <returns>GetSrvHandleGPUに渡すテクスチャハンドル</returns>
     uint32_t Load(const std::string& filepath);
 
+    /// <summary>
+    /// 1x1の白テクスチャのハンドルを返す（初回呼び出し時に生成してキャッシュする）。
+    /// map_Kdを持たないマテリアル（テクスチャなしモデル）のフォールバックに使う。
+    /// </summary>
+    uint32_t GetWhiteTexture();
+
     // 描画に使うSRVのGPUハンドルを取得する
     D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU(uint32_t textureHandle) const;
 
@@ -58,6 +64,9 @@ private:
         Microsoft::WRL::ComPtr<ID3D12Resource> intermediate;
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU{};
     };
+
+    // 読み込み済みイメージをGPUリソース化しSRVを作ってキャッシュへ登録する（Loadと共通の後半処理）
+    uint32_t Register(const std::string& key, const DirectX::ScratchImage& mipImages);
 
     // ファイルからミップマップ付きイメージを読み込む
     static DirectX::ScratchImage LoadTextureImage(const std::string& filepath);

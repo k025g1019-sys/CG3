@@ -7,11 +7,12 @@
 #include "Engine/Rendering/Sprite.h"
 #include "Game/Scene/DemoSceneBase.h"
 
-// 最初のデモシーン。plane.obj・2Dスプライト・三角形2枚（1メッシュ）を描画する。
+// 最初のデモシーン。2Dスプライトと4つのOBJモデル
+// （plane・bunny・multiMaterial・suzanne）を描画する。
 // カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBaseが提供する。
 class GameScene : public DemoSceneBase {
 protected:
-    // 三角形・OBJ・スプライトの生成
+    // OBJモデル・スプライトの生成
     void OnInitialize(ID3D12Device* device) override;
 
     // 各オブジェクトの行列計算・定数バッファ更新・カリング判定
@@ -21,7 +22,7 @@ protected:
     void OnDraw(ID3D12GraphicsCommandList* commandList) override;
 
 #ifdef USE_IMGUI
-    // "3D Objects"ウィンドウ内の三角形・OBJの編集UI
+    // "3D Objects"ウィンドウ内の各OBJモデルの編集UI
     void OnDrawObjectsImGui() override;
 
     // "2D Objects"ウィンドウ（スプライトの編集UI）
@@ -32,23 +33,31 @@ protected:
 #endif
 
 #ifndef NDEBUG
-    // デバッグカメラのピッキング対象（三角形・OBJ）
+    // デバッグカメラのピッキング対象（各OBJモデル）
     void AppendPickTargets(std::vector<Engine::DebugCamera::PickTarget>& targets) const override;
 #endif
 
 private:
     // --- メッシュ（形状データ）---
-    Engine::Mesh triangleMesh_;  // 三角形2枚（6頂点。2枚目は1枚目を貫通する）
-    Engine::Mesh objMesh_;       // plane.obj
+    Engine::Mesh planeMesh_;          // plane.obj
+    Engine::Mesh bunnyMesh_;          // bunny.obj（スタンフォードバニー）
+    Engine::Mesh multiMaterialMesh_;  // multiMaterial.obj（2サブメッシュ・2マテリアル）
+    Engine::Mesh suzanneMesh_;        // suzanne.obj（UVなし・テクスチャなし）
 
     // --- 描画オブジェクト ---
-    Engine::Object3D triangle_;
-    Engine::Object3D obj_;
+    Engine::Object3D plane_;
+    Engine::Object3D bunny_;
+    Engine::Object3D multiMaterial_;
+    Engine::Object3D suzanne_;
     Engine::Sprite sprite_;
 
-    // --- テクスチャ選択（DemoSceneBaseのtextureHandles_のインデックス。ImGuiのComboに対応）---
-    int triangleTextureIndex_ = 0;
-    int objTextureIndex_ = 0;
+    // --- テクスチャ選択（ImGuiのComboに対応）---
+    // OBJモデルは0="MTL (default)"（mtl由来）、1以降でtextureHandles_の一括上書き
+    int planeTextureIndex_ = 0;
+    int bunnyTextureIndex_ = 0;
+    int multiMaterialTextureIndex_ = 0;
+    int suzanneTextureIndex_ = 0;
+    // スプライトはtextureHandles_のインデックス
     int spriteTextureIndex_ = 0;
 
     // --- スプライト描画のオン/オフ（ImGuiで切り替え） ---

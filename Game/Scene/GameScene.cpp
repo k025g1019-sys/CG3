@@ -1,7 +1,5 @@
 #include "Game/Scene/GameScene.h"
 
-#include "Engine/Rendering/VertexData.h"
-
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
 #endif
@@ -9,39 +7,35 @@
 using namespace Engine;
 
 void GameScene::OnInitialize(ID3D12Device* device) {
-	// --- 三角形（2枚。2枚目は1枚目を貫通する）---
-	VertexData triangleVertices[6]{};
-	triangleVertices[0].position = { -0.5f, -0.5f, 0.0f, 1.0f }; // 左下
-	triangleVertices[0].texcoord = { 0.0f, 1.0f };
-	triangleVertices[1].position = { 0.0f, 0.5f, 0.0f, 1.0f }; // 上
-	triangleVertices[1].texcoord = { 0.5f, 0.0f };
-	triangleVertices[2].position = { 0.5f, -0.5f, 0.0f, 1.0f }; // 右下
-	triangleVertices[2].texcoord = { 1.0f, 1.0f };
-	triangleVertices[3].position = { -0.5f, -0.5f, 0.5f, 1.0f }; // 左下
-	triangleVertices[3].texcoord = { 0.0f, 1.0f };
-	triangleVertices[4].position = { 0.0f, 0.0f, 0.0f, 1.0f }; // 上
-	triangleVertices[4].texcoord = { 0.5f, 0.0f };
-	triangleVertices[5].position = { 0.5f, -0.5f, -0.5f, 1.0f }; // 右下
-	triangleVertices[5].texcoord = { 1.0f, 1.0f };
-	for (VertexData& vertex : triangleVertices) {
-		vertex.normal = { 0.0f, 0.0f, -1.0f };
-	}
-	triangleMesh_.Create(device, triangleVertices, 6);
-	triangle_.Initialize(device, &triangleMesh_, textureHandles_[triangleTextureIndex_]);
-	triangle_.GetTransform().translate = { 2.5f, 0.0f, 0.0f };
+	// --- plane.obj（左下。左上はスプライトに隠れるため下段に置く）---
+	planeMesh_.CreateFromObj(device, "resources", "plane.obj");
+	plane_.Initialize(device, &planeMesh_, textureHandles_[0]);
+	plane_.GetTransform().translate = { -2.25f, -1.45f, 6.0f };
 
-	// --- OBJモデル ---
-	objMesh_.CreateFromObj(device, "resources", "plane.obj");
-	obj_.Initialize(device, &objMesh_, textureHandles_[objTextureIndex_]);
-	obj_.GetTransform().rotate.y = 0.0f;
+	// --- bunny.obj（スタンフォードバニー。mtl由来のuvCheckerで描かれる）---
+	bunnyMesh_.CreateFromObj(device, "resources", "bunny.obj");
+	bunny_.Initialize(device, &bunnyMesh_, textureHandles_[0]);
+	bunny_.GetTransform().translate = { -0.1f, -0.4f, 6.0f };
+
+	// --- multiMaterial.obj（2サブメッシュ・2マテリアル。monsterBallとuvCheckerの2色になる）---
+	multiMaterialMesh_.CreateFromObj(device, "resources", "multiMaterial.obj");
+	multiMaterial_.Initialize(device, &multiMaterialMesh_, textureHandles_[0]);
+	multiMaterial_.GetTransform().translate = { -0.2f, -1.5f, 6.0f };
+
+	// --- suzanne.obj（UVなし。mtlにmap_Kdも無いので白テクスチャ＋ライティングの単色で描かれる）---
+	suzanneMesh_.CreateFromObj(device, "resources", "suzanne.obj");
+	suzanne_.Initialize(device, &suzanneMesh_, textureHandles_[0]);
+	suzanne_.GetTransform().translate = { 1.7f, 3.0f, 6.0f };
 
 	// --- スプライト ---
 	sprite_.Initialize(device, textureHandles_[spriteTextureIndex_], { 640.0f, 360.0f });
 }
 
 void GameScene::OnUpdate(const Frustum3D& frustum, float viewWidth, float viewHeight) {
-	triangle_.Update(frustum);
-	obj_.Update(frustum);
+	plane_.Update(frustum);
+	bunny_.Update(frustum);
+	multiMaterial_.Update(frustum);
+	suzanne_.Update(frustum);
 
 	// スプライト（正射影・2Dカリング。基準解像度との比に応じて等比スケールされる）
 	sprite_.Update(viewWidth, viewHeight);
@@ -49,7 +43,7 @@ void GameScene::OnUpdate(const Frustum3D& frustum, float viewWidth, float viewHe
 
 #ifndef NDEBUG
 void GameScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets) const {
-	for (const Object3D* object : { &triangle_, &obj_ }) {
+	for (const Object3D* object : { &plane_, &bunny_, &multiMaterial_, &suzanne_ }) {
 		Sphere sphere = object->CalcWorldBoundingSphere();
 		targets.push_back({ sphere.center, sphere.radius });
 	}
@@ -58,51 +52,39 @@ void GameScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets)
 
 #ifdef USE_IMGUI
 void GameScene::OnDrawObjectsImGui() {
-	// ----Triangle----
-	if (ImGui::TreeNode("Triangle")) {
-		ImGui::PushID("Triangle");
+	// OBJモデル共通の編集UI（Transform・色・ライティング・テクスチャ・サブメッシュ表示）
+	struct ModelEntry {
+		const char* label;
+		Engine::Object3D* object;
+		Engine::Mesh* mesh;
+		int* textureIndex;
+	};
+	const ModelEntry entries[] = {
+		{ "Plane",         &plane_,         &planeMesh_,         &planeTextureIndex_ },
+		{ "Bunny",         &bunny_,         &bunnyMesh_,         &bunnyTextureIndex_ },
+		{ "MultiMaterial", &multiMaterial_, &multiMaterialMesh_, &multiMaterialTextureIndex_ },
+		{ "Suzanne",       &suzanne_,       &suzanneMesh_,       &suzanneTextureIndex_ },
+	};
 
-		Transform3D& transform = triangle_.GetTransform();
-		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
-		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
-		ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
-		ImGui::Separator();
-		VertexData* vertices = triangleMesh_.GetMappedVertices();
-		ImGui::DragFloat4("Vertex0", &vertices[0].position.x, 0.01f);
-		ImGui::DragFloat4("Vertex1", &vertices[1].position.x, 0.01f);
-		ImGui::DragFloat4("Vertex2", &vertices[2].position.x, 0.01f);
-		ImGui::Separator();
+	for (const ModelEntry& entry : entries) {
+		if (ImGui::TreeNode(entry.label)) {
+			ImGui::PushID(entry.label);
 
-		ImGui::ColorEdit4("Color", &triangle_.GetMaterial().color.x);
-		DrawLightingModeCombo(triangle_.GetMaterial());
+			Transform3D& transform = entry.object->GetTransform();
+			ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+			ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
+			ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
+			ImGui::Separator();
 
-		if (ImGui::Combo("Texture", &triangleTextureIndex_, kTextureItems, kTextureCount)) {
-			triangle_.SetTextureHandle(textureHandles_[triangleTextureIndex_]);
+			DrawMaterialEditor(*entry.object);
+			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
+
+			ImGui::Separator();
+			DrawSubMeshInfo(*entry.mesh);
+
+			ImGui::PopID();
+			ImGui::TreePop();
 		}
-
-		ImGui::PopID();
-		ImGui::TreePop();
-	}
-
-	// ----Obj----
-	if (ImGui::TreeNode("Obj")) {
-		ImGui::PushID("Obj");
-
-		Transform3D& transform = obj_.GetTransform();
-		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
-		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
-		ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
-		ImGui::Separator();
-
-		ImGui::ColorEdit4("Color", &obj_.GetMaterial().color.x);
-		DrawLightingModeCombo(obj_.GetMaterial());
-
-		if (ImGui::Combo("Texture", &objTextureIndex_, kTextureItems, kTextureCount)) {
-			obj_.SetTextureHandle(textureHandles_[objTextureIndex_]);
-		}
-
-		ImGui::PopID();
-		ImGui::TreePop();
 	}
 }
 
@@ -152,15 +134,19 @@ void GameScene::OnDrawExtraImGui() {
 }
 
 void GameScene::OnDrawCullingImGui() {
-	ImGui::Text("Triangle (sphere) : %s", VisibilityText(triangle_.GetVisibility()));
-	ImGui::Text("Obj      (sphere) : %s", VisibilityText(obj_.GetVisibility()));
-	ImGui::Text("Sprite   (2D AABB): %s", VisibilityText(sprite_.GetVisibility()));
+	ImGui::Text("Plane         (sphere) : %s", VisibilityText(plane_.GetVisibility()));
+	ImGui::Text("Bunny         (sphere) : %s", VisibilityText(bunny_.GetVisibility()));
+	ImGui::Text("MultiMaterial (sphere) : %s", VisibilityText(multiMaterial_.GetVisibility()));
+	ImGui::Text("Suzanne       (sphere) : %s", VisibilityText(suzanne_.GetVisibility()));
+	ImGui::Text("Sprite        (2D AABB): %s", VisibilityText(sprite_.GetVisibility()));
 }
 #endif
 
 void GameScene::OnDraw(ID3D12GraphicsCommandList* commandList) {
-	triangle_.Draw(commandList);
-	obj_.Draw(commandList);
+	plane_.Draw(commandList);
+	bunny_.Draw(commandList);
+	multiMaterial_.Draw(commandList);
+	suzanne_.Draw(commandList);
 
 	// スプライト（drawSprite_がfalse、または画面外なら描かれない）
 	if (drawSprite_) {

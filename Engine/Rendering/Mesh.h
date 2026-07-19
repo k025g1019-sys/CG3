@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <d3d12.h>
 #include <string>
+#include <vector>
 #include <wrl.h>
 
 #include "Engine/Math/Vector3.h"
@@ -14,9 +15,22 @@ namespace Engine {
 /// 頂点（＋任意でインデックス）バッファと、カリング／ピッキング用の
 /// ローカル空間バウンディング球を持つメッシュ。
 /// 頂点バッファはMapしたままにするため、GetMappedVerticesで直接編集できる。
+/// OBJから生成した場合はo/g/usemtl単位のサブメッシュ範囲も保持する。
 /// </summary>
 class Mesh {
 public:
+
+    /// <summary>
+    /// OBJのo/g/usemtl単位の描画範囲。テクスチャの読み込み・バインドはObject3D側で行う
+    /// （Meshはmtlから解決したパス文字列を保持するだけで、TextureManagerには依存しない）。
+    /// </summary>
+    struct SubMesh {
+        std::string name;             // o/gの名前（無ければ空）
+        std::string materialName;     // usemtlのマテリアル名（無ければ空）
+        std::string textureFilePath;  // mtlのmap_Kdから解決したパス（無ければ空）
+        uint32_t vertexStart = 0;     // 頂点バッファ内の開始位置
+        uint32_t vertexCount = 0;     // 頂点数
+    };
 
     // 頂点配列から生成する（verticesがnullptrなら領域確保のみ）
     void Create(ID3D12Device* device, const VertexData* vertices, uint32_t vertexCount);
@@ -38,6 +52,15 @@ public:
 
     // 頂点（インデックスがあればインデックス）バッファを設定して描画コマンドを積む
     void Draw(ID3D12GraphicsCommandList* commandList) const;
+
+    // 指定サブメッシュの頂点範囲だけ描画する（OBJ由来の非インデックスメッシュ専用）
+    void DrawSubMesh(ID3D12GraphicsCommandList* commandList, uint32_t index) const;
+
+    // サブメッシュ数（OBJ以外から生成したメッシュは0）
+    uint32_t GetSubMeshCount() const { return uint32_t(subMeshes_.size()); }
+
+    // 指定サブメッシュの情報を取得する
+    const SubMesh& GetSubMesh(uint32_t index) const { return subMeshes_[index]; }
 
     // Map済み頂点への書き込みアクセス（ImGuiでの頂点編集用）
     VertexData* GetMappedVertices() { return mappedVertices_; }
@@ -61,6 +84,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
     D3D12_INDEX_BUFFER_VIEW ibv_{};
     uint32_t indexCount_ = 0;
+
+    std::vector<SubMesh> subMeshes_;  // OBJ以外から生成した場合は空
 
     Vector3 localCenter_{ 0.0f, 0.0f, 0.0f };
     float localRadius_ = 0.0f;

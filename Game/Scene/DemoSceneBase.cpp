@@ -255,4 +255,62 @@ void DemoSceneBase::DrawLightingModeCombo(Material& material) {
 		material.lightingMode = static_cast<LightingMode>(mode);
 	}
 }
+
+void DemoSceneBase::DrawMaterialEditor(Object3D& object) {
+	const uint32_t materialCount = object.GetMaterialCount();
+	const bool useTreeNode = materialCount > 1;
+
+	for (uint32_t i = 0; i < materialCount; ++i) {
+		if (useTreeNode) {
+			// ノード名はmtlのマテリアル名（同名でも区別できるようインデックスをIDにする）。
+			// Framedで背景付きのヘッダーバーにし、開閉できる項目だと分かりやすくする
+			const std::string& materialName = object.GetMesh()->GetSubMesh(i).materialName;
+			if (!ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(i)),
+					ImGuiTreeNodeFlags_Framed,
+					"Material %u: %s", i,
+					materialName.empty() ? "(nomtl)" : materialName.c_str())) {
+				continue;
+			}
+		}
+		ImGui::PushID(static_cast<int>(i));
+
+		Material& material = object.GetMaterial(i);
+		ImGui::ColorEdit4("Color", &material.color.x);
+		DrawLightingModeCombo(material);
+
+		Transform3D& uvTransform = object.GetUVTransform(i);
+		ImGui::DragFloat2("UVTranslate", &uvTransform.translate.x, 0.01f, -10.0f, 10.0f);
+		ImGui::DragFloat2("UVScale", &uvTransform.scale.x, 0.01f, -10.0f, 10.0f);
+		ImGui::SliderAngle("UVRotate", &uvTransform.rotate.z);
+
+		ImGui::PopID();
+		if (useTreeNode) {
+			ImGui::TreePop();
+		}
+	}
+}
+
+void DemoSceneBase::DrawModelTextureCombo(Object3D& object, int& textureIndex) {
+	// 先頭にmtl由来（既定）の項目を足した選択肢（一括上書き後もここで0を選べば戻せる）
+	static const char* kModelTextureItems[] = { "MTL (default)", "uvChecker", "monsterBall" };
+	if (ImGui::Combo("Texture", &textureIndex, kModelTextureItems, IM_ARRAYSIZE(kModelTextureItems))) {
+		if (textureIndex == 0) {
+			object.ClearTextureOverride();
+		} else {
+			object.SetTextureHandle(textureHandles_[textureIndex - 1]);
+		}
+	}
+}
+
+void DemoSceneBase::DrawSubMeshInfo(const Mesh& mesh) {
+	ImGui::Text("SubMeshes: %u", mesh.GetSubMeshCount());
+	for (uint32_t i = 0; i < mesh.GetSubMeshCount(); ++i) {
+		const Mesh::SubMesh& subMesh = mesh.GetSubMesh(i);
+		ImGui::BulletText("%s / %s : %u verts (%s)",
+			subMesh.name.empty() ? "(noname)" : subMesh.name.c_str(),
+			subMesh.materialName.empty() ? "(nomtl)" : subMesh.materialName.c_str(),
+			subMesh.vertexCount,
+			subMesh.textureFilePath.empty() ? "white" : subMesh.textureFilePath.c_str());
+	}
+}
 #endif

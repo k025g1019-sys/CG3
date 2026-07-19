@@ -10,6 +10,8 @@
 #include "Engine/Light/PointLight.h"
 #include "Engine/Rendering/ConstantBuffer.h"
 #include "Engine/Rendering/Material.h"
+#include "Engine/Rendering/Mesh.h"
+#include "Engine/Rendering/Object3D.h"
 #include "Game/Object/Skydome.h"
 #include "Game/Scene/BaseScene.h"
 // デバッグカメラはDebugビルド限定。このプロジェクトはReleaseでも_DEBUGが定義される
@@ -72,6 +74,17 @@ protected:
 
     // マテリアルのライティング方式（なし/Lambert/Half Lambert）を選択するCombo
     static void DrawLightingModeCombo(Engine::Material& material);
+
+    // マテリアル編集UI（色・ライティング・UVTransform）。マテリアルが1個ならそのまま並べ、
+    // 複数（マルチマテリアルOBJ）ならmtlのマテリアル名のTreeNodeに分けて個別に編集する
+    static void DrawMaterialEditor(Engine::Object3D& object);
+
+    // OBJモデル用のテクスチャCombo。0:"MTL (default)"＝サブメッシュごとのmtl由来テクスチャ、
+    // 1以降:共有テクスチャ（textureHandles_）で全サブメッシュを一括上書き
+    void DrawModelTextureCombo(Engine::Object3D& object, int& textureIndex);
+
+    // サブメッシュ構成（名前・マテリアル・頂点数・テクスチャ）の読み取り専用表示
+    static void DrawSubMeshInfo(const Engine::Mesh& mesh);
 #endif
 
 #ifndef NDEBUG

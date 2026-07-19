@@ -1,5 +1,6 @@
 #include "Engine/Rendering/Mesh.h"
 
+#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -18,6 +19,9 @@ void Mesh::Create(
 	ID3D12Device* device,
 	const VertexData* vertices, uint32_t vertexCount,
 	const uint32_t* indices, uint32_t indexCount) {
+
+	// 再生成時（球の分割数変更等）に前のサブメッシュ範囲が残らないようにする
+	subMeshes_.clear();
 
 	// --- 頂点バッファ ---
 	vertexCount_ = vertexCount;
@@ -51,6 +55,19 @@ void Mesh::Create(
 void Mesh::CreateFromObj(ID3D12Device* device, const std::string& directoryPath, const std::string& filename) {
 	ModelData modelData = LoadObjFile(directoryPath, filename);
 	Create(device, modelData.vertices.data(), uint32_t(modelData.vertices.size()));
+
+	// サブメッシュ範囲を取り込み、マテリアル名からテクスチャパスを解決する。
+	// ここでは文字列の解決のみ行い、テクスチャの読み込みはObject3D::Initializeに任せる
+	// （mtlに存在しないパスが書かれていても、Object3Dで使わない限り事故にならない）
+	subMeshes_.reserve(modelData.subMeshes.size());
+	for (const SubMeshData& src : modelData.subMeshes) {
+		SubMesh subMesh{ src.name, src.materialName, {}, src.vertexStart, src.vertexCount };
+		auto it = modelData.materials.find(src.materialName);
+		if (it != modelData.materials.end()) {
+			subMesh.textureFilePath = it->second.textureFilePath;
+		}
+		subMeshes_.push_back(std::move(subMesh));
+	}
 }
 
 void Mesh::CreateSphere(ID3D12Device* device, uint32_t subdivision) {
@@ -74,6 +91,13 @@ void Mesh::Draw(ID3D12GraphicsCommandList* commandList) const {
 	} else {
 		commandList->DrawInstanced(vertexCount_, 1, 0, 0);
 	}
+}
+
+void Mesh::DrawSubMesh(ID3D12GraphicsCommandList* commandList, uint32_t index) const {
+	assert(index < subMeshes_.size());
+	const SubMesh& subMesh = subMeshes_[index];
+	commandList->IASetVertexBuffers(0, 1, &vbv_);
+	commandList->DrawInstanced(subMesh.vertexCount, 1, subMesh.vertexStart, 0);
 }
 
 void Mesh::RecomputeBoundingSphere() {

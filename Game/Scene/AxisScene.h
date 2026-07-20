@@ -34,6 +34,9 @@ protected:
     void AppendPickTargets(std::vector<Engine::DebugCamera::PickTarget>& targets) const override;
 #endif
 
+    // パッドで操作できるオブジェクト（各オブジェクト）
+    void AppendPadTargets(std::vector<PadObjectController::Target>& targets) override;
+
 private:
     // --- メッシュ（形状データ）---
     Engine::Mesh triangleMesh_;   // 三角形2枚（6頂点。2枚目は1枚目を貫通する）

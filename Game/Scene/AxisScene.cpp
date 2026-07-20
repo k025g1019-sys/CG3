@@ -75,6 +75,14 @@ void AxisScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets)
 }
 #endif
 
+void AxisScene::AppendPadTargets(std::vector<PadObjectController::Target>& targets) {
+	targets.push_back({ "Triangle", &triangle_ });
+	targets.push_back({ "Axis", &axis_ });
+	targets.push_back({ "Teapot", &teapot_ });
+	targets.push_back({ "MultiMesh", &multiMesh_ });
+	targets.push_back({ "Sphere", &sphere_ });
+}
+
 #ifdef USE_IMGUI
 void AxisScene::OnDrawObjectsImGui() {
 	// ----Triangle----

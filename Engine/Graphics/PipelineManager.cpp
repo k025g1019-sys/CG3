@@ -29,6 +29,9 @@ void PipelineManager::Initialize(ID3D12Device* device) {
 
     pipelines_[size_t(Pipeline::kNoCull)] = CreateStandardPipeline(
         device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get(), D3D12_CULL_MODE_NONE);
+
+    pipelines_[size_t(Pipeline::kLine)] = CreateLinePipeline(
+        device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get());
 }
 
 void PipelineManager::Finalize() {
@@ -68,7 +71,7 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateGraphicsPipeline(const Pipeli
 
     desc.DSVFormat = config.dsvFormat;
 
-    desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    desc.PrimitiveTopologyType = config.topologyType;
     desc.SampleDesc.Count = 1;
     desc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
@@ -206,6 +209,59 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
     config.depthStencilDesc = depthStencilDesc;
     config.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     config.dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    config.vertexShader = vertexShader;
+    config.pixelShader = pixelShader;
+
+    return CreateGraphicsPipeline(config);
+}
+
+ComPtr<ID3D12PipelineState> PipelineManager::CreateLinePipeline(
+    ID3D12Device* device,
+    ID3D12RootSignature* rootSignature,
+    IDxcBlob* vertexShader,
+    IDxcBlob* pixelShader) {
+    // InputLayout（標準と同じPOSITION / TEXCOORD / NORMAL。頂点構造を共有する）
+    D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
+    inputElementDescs[0].SemanticName = "POSITION";
+    inputElementDescs[0].SemanticIndex = 0;
+    inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[1].SemanticName = "TEXCOORD";
+    inputElementDescs[1].SemanticIndex = 0;
+    inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+    inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[2].SemanticName = "NORMAL";
+    inputElementDescs[2].SemanticIndex = 0;
+    inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+    inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+    inputLayoutDesc.pInputElementDescs = inputElementDescs;
+    inputLayoutDesc.NumElements = _countof(inputElementDescs);
+
+    // BlendState（全色要素を書き込む）
+    D3D12_BLEND_DESC blendDesc{};
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    // RasterizerState（線分にカリングは意味を持たないため無効）
+    D3D12_RASTERIZER_DESC rasterizerDesc{};
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+
+    // DepthStencilState（深度無効。ギズモが他オブジェクトに隠れず常に手前に表示される）
+    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+    depthStencilDesc.DepthEnable = false;
+
+    PipelineConfig config{};
+    config.device = device;
+    config.rootSignature = rootSignature;
+    config.inputLayout = inputLayoutDesc;
+    config.blendDesc = blendDesc;
+    config.rasterizerDesc = rasterizerDesc;
+    config.depthStencilDesc = depthStencilDesc;
+    config.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    config.dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    config.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     config.vertexShader = vertexShader;
     config.pixelShader = pixelShader;
 

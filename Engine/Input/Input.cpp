@@ -207,14 +207,14 @@ float Input::GetLeftTrigger(int playerIndex) const {
     if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
         return 0.0f;
     }
-    return static_cast<float>(padState_[playerIndex].Gamepad.bLeftTrigger) / 255.0f;
+    return ApplyTriggerDeadzone(padState_[playerIndex].Gamepad.bLeftTrigger);
 }
 
 float Input::GetRightTrigger(int playerIndex) const {
     if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
         return 0.0f;
     }
-    return static_cast<float>(padState_[playerIndex].Gamepad.bRightTrigger) / 255.0f;
+    return ApplyTriggerDeadzone(padState_[playerIndex].Gamepad.bRightTrigger);
 }
 
 Vector2 Input::GetLeftStick(int playerIndex) const {
@@ -263,6 +263,17 @@ void Input::StopVibration(int playerIndex) {
     }
     vibrationTimer_[playerIndex] = 0.0f;
     ApplyVibration(playerIndex, 0.0f, 0.0f);
+}
+
+float Input::ApplyTriggerDeadzone(BYTE value) {
+    // XInput推奨の閾値未満は「押していない」とみなす
+    // （トリガーが完全に戻らない個体で、無入力なのに拡縮し続けるような誤反応を防ぐ）
+    if (value < XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
+        return 0.0f;
+    }
+    // 閾値から最大値までを0.0〜1.0へ再スケールする（浅い踏み込みでも滑らかに立ち上がる）
+    return static_cast<float>(value - XINPUT_GAMEPAD_TRIGGER_THRESHOLD) /
+           static_cast<float>(255 - XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
 }
 
 Vector2 Input::ApplyStickDeadzone(short x, short y, float deadzone) {

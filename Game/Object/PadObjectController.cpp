@@ -78,7 +78,7 @@ void PadObjectController::Update() {
 	transform.translate.z += leftStick.y * kMoveSpeed;
 
 	// B / A：Y軸の上昇・下降
-	if (input->IsPadPress(kPadB)) {
+	if (input->IsPadPress(kPadX)) {
 		transform.translate.y += kVerticalSpeed;
 	}
 	if (input->IsPadPress(kPadA)) {
@@ -87,7 +87,7 @@ void PadObjectController::Update() {
 
 	// 右スティック：回転（横=Y軸ヨー / 縦=X軸ピッチ。上に倒すと頭が奥へ倒れる向き）
 	const Vector2 rightStick = input->GetRightStick();
-	transform.rotate.y += rightStick.x * kRotateSpeed;
+	transform.rotate.y -= rightStick.x * kRotateSpeed;
 	transform.rotate.x += rightStick.y * kRotateSpeed;
 
 	// RT / LT：拡大・縮小（踏み込み量に応じた倍率を毎フレーム掛ける。全軸等倍）

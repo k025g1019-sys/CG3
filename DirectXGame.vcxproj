@@ -126,6 +126,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Engine\Input\FaceTracker.cpp" />
     <ClCompile Include="Engine\Input\Input.cpp" />
     <ClCompile Include="Engine\Math\Matrix4x4.cpp" />
+    <ClCompile Include="Game\Object\AxisGizmo.cpp" />
+    <ClCompile Include="Game\Object\PadObjectController.cpp" />
     <ClCompile Include="Game\Object\Skydome.cpp" />
     <ClCompile Include="Engine\Rendering\Mesh.cpp" />
     <ClCompile Include="Engine\Rendering\Object3D.cpp" />
@@ -193,6 +195,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Engine\Math\Vector2.h" />
     <ClInclude Include="Engine\Math\Vector3.h" />
     <ClInclude Include="Engine\Math\Vector4.h" />
+    <ClInclude Include="Game\Object\AxisGizmo.h" />
+    <ClInclude Include="Game\Object\PadObjectController.h" />
     <ClInclude Include="Game\Object\Skydome.h" />
     <ClInclude Include="Engine\Rendering\ConstantBuffer.h" />
     <ClInclude Include="Engine\Rendering\Material.h" />

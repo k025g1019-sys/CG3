@@ -12,6 +12,8 @@
 #include "Engine/Rendering/Material.h"
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
+#include "Game/Object/AxisGizmo.h"
+#include "Game/Object/PadObjectController.h"
 #include "Game/Object/Skydome.h"
 #include "Game/Scene/BaseScene.h"
 // デバッグカメラはDebugビルド限定。このプロジェクトはReleaseでも_DEBUGが定義される
@@ -92,6 +94,9 @@ protected:
     virtual void AppendPickTargets(std::vector<Engine::DebugCamera::PickTarget>& targets) const = 0;
 #endif
 
+    // パッド（XBoxコントローラー）で操作できるオブジェクトを追加する
+    virtual void AppendPadTargets(std::vector<PadObjectController::Target>& targets) = 0;
+
     // --- 全デモシーン共通の「標準機能」（派生シーンから直接使える）---
 
     // シーン共通のテクスチャ（TextureManagerのハンドル。ImGuiのComboに対応）
@@ -117,6 +122,12 @@ protected:
     // サウンド（Spaceキーまたは ImGuiのボタンで再生）
     size_t soundHandle_ = 0;     // Alarm01.wavのハンドル
     float soundVolume_ = 1.0f;   // ImGuiで調整する音量
+
+    // パッドによる選択オブジェクト操作（対象は派生シーンがAppendPadTargetsで追加する）
+    PadObjectController padController_;
+
+    // 選択オブジェクトのローカル回転軸ギズモ（X=赤/Y=緑/Z=青）
+    AxisGizmo axisGizmo_;
 
 #ifndef NDEBUG
     // デバッグカメラ（Debugビルドのみ。Releaseでは無効）

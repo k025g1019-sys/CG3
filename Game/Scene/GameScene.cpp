@@ -50,6 +50,13 @@ void GameScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets)
 }
 #endif
 
+void GameScene::AppendPadTargets(std::vector<PadObjectController::Target>& targets) {
+	targets.push_back({ "Plane", &plane_ });
+	targets.push_back({ "Bunny", &bunny_ });
+	targets.push_back({ "MultiMaterial", &multiMaterial_ });
+	targets.push_back({ "Suzanne", &suzanne_ });
+}
+
 #ifdef USE_IMGUI
 void GameScene::OnDrawObjectsImGui() {
 	// OBJモデル共通の編集UI（Transform・色・ライティング・テクスチャ・サブメッシュ表示）

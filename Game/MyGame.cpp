@@ -57,18 +57,20 @@ void MyGame::Finalize() {
 }
 
 void MyGame::Update() {
-	// シーン切り替え。
-	//   T   : 通常デモシーン ⇔ 立体視デモシーン（戻り先は直前にいた通常デモシーン）
-	//   Tab : 通常デモシーン同士（kGame ⇔ kAxis）を切り替える（立体視デモ中は無効）
+	// シーン切り替え（キーボードとXBoxコントローラーの両対応）。
+	//   T   / Viewボタン（四角2つ）  : 通常デモシーン ⇔ 立体視デモシーン（戻り先は直前にいた通常デモシーン）
+	//   Tab / Menuボタン（横三本線）: 通常デモシーン同士（kGame ⇔ kAxis）を切り替える（立体視デモ中は無効）
+	Input* input = Input::GetInstance();
 	SceneId nextSceneId = sceneId_;
-	if (Input::GetInstance()->IsTrigger(DIK_T)) {
+	if (input->IsTrigger(DIK_T) || input->IsPadTrigger(kPadBack)) {
 		if (sceneId_ == SceneId::kStereoDemo) {
 			nextSceneId = lastDemoSceneId_;
 		} else {
 			lastDemoSceneId_ = sceneId_;
 			nextSceneId = SceneId::kStereoDemo;
 		}
-	} else if (Input::GetInstance()->IsTrigger(DIK_TAB) && sceneId_ != SceneId::kStereoDemo) {
+	} else if ((input->IsTrigger(DIK_TAB) || input->IsPadTrigger(kPadStart))
+		&& sceneId_ != SceneId::kStereoDemo) {
 		nextSceneId = (sceneId_ == SceneId::kGame) ? SceneId::kAxis : SceneId::kGame;
 	}
 

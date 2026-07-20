@@ -111,7 +111,7 @@ public:
     // 離した瞬間のフレームだけtrueを返す
     bool IsPadRelease(int button, int playerIndex = 0) const;
 
-    // 左/右トリガーの踏み込み量（0.0〜1.0）を返す
+    // 左/右トリガーの踏み込み量（0.0〜1.0）を返す。デッドゾーン処理済み
     float GetLeftTrigger(int playerIndex = 0) const;
     float GetRightTrigger(int playerIndex = 0) const;
 
@@ -146,6 +146,9 @@ private:
     Input(const Input&) = delete;
 
     Input& operator=(const Input&) = delete;
+
+    // トリガーの生値に遊び（デッドゾーン）を適用し、0.0〜1.0へ正規化する
+    static float ApplyTriggerDeadzone(BYTE value);
 
     // スティックの生値にデッドゾーンを適用し、各成分-1.0〜1.0へ正規化する
     static Vector2 ApplyStickDeadzone(short x, short y, float deadzone);

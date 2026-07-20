@@ -159,6 +159,12 @@
     <ClCompile Include="Engine\Math\Matrix4x4.cpp">
       <Filter>Engine\Math</Filter>
     </ClCompile>
+    <ClCompile Include="Game\Object\AxisGizmo.cpp">
+      <Filter>Game\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Object\PadObjectController.cpp">
+      <Filter>Game\Object</Filter>
+    </ClCompile>
     <ClCompile Include="Game\Object\Skydome.cpp">
       <Filter>Game\Object</Filter>
     </ClCompile>
@@ -307,6 +313,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Math\Vector4.h">
       <Filter>Engine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Object\AxisGizmo.h">
+      <Filter>Game\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Object\PadObjectController.h">
+      <Filter>Game\Object</Filter>
     </ClInclude>
     <ClInclude Include="Game\Object\Skydome.h">
       <Filter>Game\Object</Filter>

@@ -1,5 +1,6 @@
 #include "Game/Scene/StereoDemoScene.h"
 
+#include <string>
 #include <vector>
 
 #include "Engine/Core/DirectXCore.h"
@@ -56,6 +57,9 @@ void StereoDemoScene::Initialize() {
 	// --- 天球（背景。ライティング無効・カリング無効PSO）---
 	skydome_.Initialize(device);
 
+	// --- 選択立方体の回転軸ギズモ ---
+	axisGizmo_.Initialize(device);
+
 	// --- 平行光源 ---
 	lightCB_.Create(device, DirectXCore::kFramesInFlight);
 
@@ -107,6 +111,18 @@ void StereoDemoScene::Update() {
 	}
 #endif  // !NDEBUG
 
+	// --- パッドで選択立方体を操作（対象リストは毎フレーム組み立て、追加・削除に追従する）---
+	std::vector<PadObjectController::Target> padTargets;
+	padTargets.reserve(cubes_.size());
+	for (int i = 0; i < int(cubes_.size()); ++i) {
+		padTargets.push_back({ "Cube " + std::to_string(i), cubes_[size_t(i)].get() });
+	}
+	padController_.SetTargets(std::move(padTargets));
+	padController_.Update();
+
+	// 選択立方体の回転軸ギズモを追従させる（定数バッファ書き込みは毎フレームここだけ）
+	axisGizmo_.Update(padController_.GetSelectedObject());
+
 	// --- 各立方体の更新（ワールド行列・定数バッファ書き込み・視錐台カリング）---
 	// カリングは中心カメラの視錐台で判定する（視点間のずれは眼間距離程度で無視できる）。
 	Frustum3D frustum = MakeFrustumFromViewProjection(view * projection);
@@ -137,6 +153,10 @@ void StereoDemoScene::AddCube(const Vector3& position, float rotateY) {
 #ifdef USE_IMGUI
 void StereoDemoScene::DrawImGui() {
 	ImGui::Begin("3D Objects");
+
+	padController_.DrawImGui();
+	axisGizmo_.DrawImGui();
+	ImGui::Separator();
 
 	// ----Cubes----
 	ImGui::Text("Cubes: %d", int(cubes_.size()));
@@ -253,4 +273,7 @@ void StereoDemoScene::Draw(ID3D12GraphicsCommandList* commandList, uint32_t view
 	for (const std::unique_ptr<Object3D>& cube : cubes_) {
 		cube->Draw(commandList);
 	}
+
+	// --- 選択立方体の回転軸ギズモ（最後に描画。深度無効で他オブジェクトに隠れない）---
+	axisGizmo_.Draw(commandList, stereoCamera_.GetViewProjectionAddress(frameIndex, viewIndex));
 }

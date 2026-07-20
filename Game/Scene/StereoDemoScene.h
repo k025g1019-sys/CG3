@@ -12,6 +12,8 @@
 #include "Engine/Rendering/ConstantBuffer.h"
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
+#include "Game/Object/AxisGizmo.h"
+#include "Game/Object/PadObjectController.h"
 #include "Game/Object/Skydome.h"
 #include "Game/Scene/BaseScene.h"
 // デバッグカメラはDebugビルド限定。このプロジェクトはReleaseでも_DEBUGが定義される
@@ -57,6 +59,12 @@ private:
 
     // --- 背景（最初に描画）---
     Skydome skydome_;
+
+    // --- パッドによる選択立方体の操作（対象リストはUpdateで毎フレーム組み立てる）---
+    PadObjectController padController_;
+
+    // --- 選択立方体のローカル回転軸ギズモ（X=赤/Y=緑/Z=青）---
+    AxisGizmo axisGizmo_;
 
     // --- カメラ ---
     Engine::Camera camera_;

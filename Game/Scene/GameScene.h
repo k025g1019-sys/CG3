@@ -37,6 +37,9 @@ protected:
     void AppendPickTargets(std::vector<Engine::DebugCamera::PickTarget>& targets) const override;
 #endif
 
+    // パッドで操作できるオブジェクト（各OBJモデル）
+    void AppendPadTargets(std::vector<PadObjectController::Target>& targets) override;
+
 private:
     // --- メッシュ（形状データ）---
     Engine::Mesh planeMesh_;          // plane.obj

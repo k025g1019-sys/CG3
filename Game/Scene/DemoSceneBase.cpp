@@ -47,6 +47,9 @@ void DemoSceneBase::Initialize() {
 	soundHandle_ = Audio::GetInstance()->LoadWave("resources/Alarm01.wav");
 	Audio::GetInstance()->SetVolume(soundHandle_, soundVolume_);
 
+	// --- 選択オブジェクトの回転軸ギズモ ---
+	axisGizmo_.Initialize(device);
+
 	// --- シーン固有のリソース生成 ---
 	OnInitialize(device);
 }
@@ -90,6 +93,16 @@ void DemoSceneBase::Update() {
 	}
 #endif  // !NDEBUG
 
+	// --- パッドで選択オブジェクトを操作（対象リストは毎フレーム組み立てる）---
+	// ワールド行列の計算（OnUpdate）より前に反映し、操作が同じフレームの描画に効くようにする
+	std::vector<PadObjectController::Target> padTargets;
+	AppendPadTargets(padTargets);
+	padController_.SetTargets(std::move(padTargets));
+	padController_.Update();
+
+	// 選択オブジェクトの回転軸ギズモを追従させる（定数バッファ書き込みは毎フレームここだけ）
+	axisGizmo_.Update(padController_.GetSelectedObject());
+
 	// --- シーン固有オブジェクトの更新（ワールド行列・定数バッファ書き込み・カリング判定）---
 	// カリングは中心カメラの視錐台で判定する（視点間のずれは眼間距離程度で無視できる）。
 	Frustum3D frustum = MakeFrustumFromViewProjection(view * projection);
@@ -132,12 +145,18 @@ void DemoSceneBase::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIn
 
 	// --- シーン固有オブジェクトの描画 ---
 	OnDraw(commandList);
+
+	// --- 選択オブジェクトの回転軸ギズモ（最後に描画。深度無効で他オブジェクトに隠れない）---
+	axisGizmo_.Draw(commandList, stereoCamera_.GetViewProjectionAddress(frameIndex, viewIndex));
 }
 
 #ifdef USE_IMGUI
 void DemoSceneBase::DrawImGui() {
 	// --- 3Dオブジェクト（シーン固有＋天球）---
 	ImGui::Begin("3D Objects");
+	padController_.DrawImGui();
+	axisGizmo_.DrawImGui();
+	ImGui::Separator();
 	OnDrawObjectsImGui();
 	skydome_.DrawImGui();
 	ImGui::End();

@@ -18,6 +18,7 @@ public:
     enum class Pipeline {
         kStandard,  // 裏面カリング（通常の3Dオブジェクト・スプライト）
         kNoCull,    // カリング無効（内側から見る天球など）
+        kLine,      // ライントポロジ・深度無効（選択オブジェクトの軸ギズモなど常に手前に描く線分）
 
         kCount,     // PSOの総数（enumの末尾に置くこと）
     };
@@ -46,6 +47,7 @@ public:
         D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
         DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
         DXGI_FORMAT dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
         Microsoft::WRL::ComPtr<IDxcBlob> vertexShader;
         Microsoft::WRL::ComPtr<IDxcBlob> pixelShader;
@@ -65,6 +67,14 @@ public:
         IDxcBlob* vertexShader,
         IDxcBlob* pixelShader,
         D3D12_CULL_MODE cullMode = D3D12_CULL_MODE_BACK);
+
+    // 線分描画用パイプラインを生成する（軸ギズモなど常に手前に表示する線分向け）。
+    // ライントポロジ・カリング無効・深度無効（他オブジェクトに隠れず常に手前に表示される）。
+    static Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateLinePipeline(
+        ID3D12Device* device,
+        ID3D12RootSignature* rootSignature,
+        IDxcBlob* vertexShader,
+        IDxcBlob* pixelShader);
 
 private:
 

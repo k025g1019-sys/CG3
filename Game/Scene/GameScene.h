@@ -46,12 +46,14 @@ private:
     Engine::Mesh bunnyMesh_;          // bunny.obj（スタンフォードバニー）
     Engine::Mesh multiMaterialMesh_;  // multiMaterial.obj（2サブメッシュ・2マテリアル）
     Engine::Mesh suzanneMesh_;        // suzanne.obj（UVなし・テクスチャなし）
+    Engine::Mesh fenceMesh_;
 
     // --- 描画オブジェクト ---
     Engine::Object3D plane_;
     Engine::Object3D bunny_;
     Engine::Object3D multiMaterial_;
     Engine::Object3D suzanne_;
+    Engine::Object3D fence_;
     Engine::Sprite sprite_;
 
     // --- テクスチャ選択（ImGuiのComboに対応）---
@@ -60,6 +62,7 @@ private:
     int bunnyTextureIndex_ = 0;
     int multiMaterialTextureIndex_ = 0;
     int suzanneTextureIndex_ = 0;
+    int fenceTextureIndex_ = 0;
     // スプライトはtextureHandles_のインデックス
     int spriteTextureIndex_ = 0;
 

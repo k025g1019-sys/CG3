@@ -27,6 +27,11 @@ void GameScene::OnInitialize(ID3D12Device* device) {
 	suzanne_.Initialize(device, &suzanneMesh_, textureHandles_[0]);
 	suzanne_.GetTransform().translate = { 1.7f, 3.0f, 6.0f };
 
+	// --- fence ---
+	fenceMesh_.CreateFromObj(device, "resources", "fence.obj");
+	fence_.Initialize(device, &fenceMesh_, textureHandles_[0]);
+	fence_.GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+
 	// --- スプライト ---
 	sprite_.Initialize(device, textureHandles_[spriteTextureIndex_], { 640.0f, 360.0f });
 }
@@ -36,6 +41,7 @@ void GameScene::OnUpdate(const Frustum3D& frustum, float viewWidth, float viewHe
 	bunny_.Update(frustum);
 	multiMaterial_.Update(frustum);
 	suzanne_.Update(frustum);
+	fence_.Update(frustum);
 
 	// スプライト（正射影・2Dカリング。基準解像度との比に応じて等比スケールされる）
 	sprite_.Update(viewWidth, viewHeight);
@@ -43,7 +49,7 @@ void GameScene::OnUpdate(const Frustum3D& frustum, float viewWidth, float viewHe
 
 #ifndef NDEBUG
 void GameScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets) const {
-	for (const Object3D* object : { &plane_, &bunny_, &multiMaterial_, &suzanne_ }) {
+	for (const Object3D* object : { &plane_, &bunny_, &multiMaterial_, &suzanne_, &fence_ }) {
 		Sphere sphere = object->CalcWorldBoundingSphere();
 		targets.push_back({ sphere.center, sphere.radius });
 	}
@@ -55,6 +61,7 @@ void GameScene::AppendPadTargets(std::vector<PadObjectController::Target>& targe
 	targets.push_back({ "Bunny", &bunny_ });
 	targets.push_back({ "MultiMaterial", &multiMaterial_ });
 	targets.push_back({ "Suzanne", &suzanne_ });
+	targets.push_back({ "fence" , &fence_ });
 }
 
 #ifdef USE_IMGUI
@@ -71,6 +78,7 @@ void GameScene::OnDrawObjectsImGui() {
 		{ "Bunny",         &bunny_,         &bunnyMesh_,         &bunnyTextureIndex_ },
 		{ "MultiMaterial", &multiMaterial_, &multiMaterialMesh_, &multiMaterialTextureIndex_ },
 		{ "Suzanne",       &suzanne_,       &suzanneMesh_,       &suzanneTextureIndex_ },
+		{ "Fence",       &fence_,       &fenceMesh_,       &fenceTextureIndex_ },
 	};
 
 	for (const ModelEntry& entry : entries) {
@@ -145,6 +153,7 @@ void GameScene::OnDrawCullingImGui() {
 	ImGui::Text("Bunny         (sphere) : %s", VisibilityText(bunny_.GetVisibility()));
 	ImGui::Text("MultiMaterial (sphere) : %s", VisibilityText(multiMaterial_.GetVisibility()));
 	ImGui::Text("Suzanne       (sphere) : %s", VisibilityText(suzanne_.GetVisibility()));
+	ImGui::Text("Fence         (sphere) : %s", VisibilityText(fence_.GetVisibility()));
 	ImGui::Text("Sprite        (2D AABB): %s", VisibilityText(sprite_.GetVisibility()));
 }
 #endif
@@ -154,6 +163,7 @@ void GameScene::OnDraw(ID3D12GraphicsCommandList* commandList) {
 	bunny_.Draw(commandList);
 	multiMaterial_.Draw(commandList);
 	suzanne_.Draw(commandList);
+	fence_.Draw(commandList);
 
 	// スプライト（drawSprite_がfalse、または画面外なら描かれない）
 	if (drawSprite_) {

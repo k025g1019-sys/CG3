@@ -187,7 +187,20 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
 
     // BlendState（全色要素を書き込む）
     D3D12_BLEND_DESC blendDesc{};
-    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    auto& rt = blendDesc.RenderTarget[0];
+
+    rt.BlendEnable = TRUE;
+
+    rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    rt.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    rt.BlendOp = D3D12_BLEND_OP_ADD;
+
+    rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rt.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+    rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     // RasterizerState（カリング(既定は裏面), 塗りつぶし）
     D3D12_RASTERIZER_DESC rasterizerDesc{};
@@ -197,7 +210,7 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
     // DepthStencilState（深度有効, 書き込み, LessEqual）
     D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
     depthStencilDesc.DepthEnable = true;
-    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
     depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
     PipelineConfig config{};

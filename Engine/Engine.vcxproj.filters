@@ -120,6 +120,12 @@
     <ClCompile Include="Input\Input.cpp">
       <Filter>Input</Filter>
     </ClCompile>
+    <ClCompile Include="Math\Collision.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Math\Curve.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
     <ClCompile Include="Math\Matrix4x4.cpp">
       <Filter>Math</Filter>
     </ClCompile>
@@ -251,7 +257,16 @@
     <ClInclude Include="Light\PointLight.h">
       <Filter>Light</Filter>
     </ClInclude>
+    <ClInclude Include="Math\Collision.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Curve.h">
+      <Filter>Math</Filter>
+    </ClInclude>
     <ClInclude Include="Math\Matrix4x4.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Shapes.h">
       <Filter>Math</Filter>
     </ClInclude>
     <ClInclude Include="Math\Vector2.h">

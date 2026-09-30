@@ -85,6 +85,8 @@
     <ClCompile Include="Input\EyeTracker.cpp" />
     <ClCompile Include="Input\FaceTracker.cpp" />
     <ClCompile Include="Input\Input.cpp" />
+    <ClCompile Include="Math\Collision.cpp" />
+    <ClCompile Include="Math\Curve.cpp" />
     <ClCompile Include="Math\Matrix4x4.cpp" />
     <ClCompile Include="Rendering\Mesh.cpp" />
     <ClCompile Include="Rendering\MeshManager.cpp" />
@@ -151,7 +153,10 @@
     <ClInclude Include="Input\Input.h" />
     <ClInclude Include="Light\DirectionalLight.h" />
     <ClInclude Include="Light\PointLight.h" />
+    <ClInclude Include="Math\Collision.h" />
+    <ClInclude Include="Math\Curve.h" />
     <ClInclude Include="Math\Matrix4x4.h" />
+    <ClInclude Include="Math\Shapes.h" />
     <ClInclude Include="Math\Vector2.h" />
     <ClInclude Include="Math\Vector3.h" />
     <ClInclude Include="Math\Vector4.h" />

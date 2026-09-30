@@ -16,7 +16,7 @@
       <BuildType Solution="Release|*" Project="Development" />
     </Project>
   </Folder>
-  <Project Path="Sandbox/Sandbox.vcxproj" Id="915fa14e-4f3e-4237-adfe-9cdaad5d7722">
+  <Project Path="Game/Game.vcxproj" Id="915fa14e-4f3e-4237-adfe-9cdaad5d7722">
     <BuildType Solution="Release|*" Project="Development" />
   </Project>
 </Solution>

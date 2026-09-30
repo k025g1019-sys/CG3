@@ -1,0 +1,2623 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CG2 Engine API リファレンス</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
+<style>
+/* Layout: a sticky index rail (search + class list) beside one reading column of API entries; below 900px the rail stacks on top. */
+:root {
+  --bg: #F4F6F9;
+  --surface: #FFFFFF;
+  --fg: #17202B;
+  --muted: #5A6779;
+  --line: #D8DFE8;
+  --accent: #2C5A8C;       /* エンジンのクリア色 (0.1, 0.25, 0.5) を明るい地に合わせて暗くしたもの */
+  --clear: #5989BC;        /* クリア色が実際に画面に出る色（sRGB） */
+  --accent-soft: #E2EBF5;
+  --code-bg: #EDF1F6;
+  --code-fg: #1E2A38;
+  --comment: #6B7A8C;
+  --pp: #8A4B1C;
+  --debug: #6A3E9C;  --debug-bg: #EFE7FA;
+  --warn: #8A5300;   --warn-bg: #FFF1D6;
+  --engine: #56616F; --engine-bg: #E6EAF0;
+  --ok: #2F6B45;     --ok-bg: #E1F2E7;
+  --font-display: "Zen Kaku Gothic New", "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif;
+  --font-body: "BIZ UDPGothic", "Yu Gothic UI", "Hiragino Sans", "Meiryo", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, "BIZ UDGothic", "MS Gothic", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E141C; --surface: #141C27; --fg: #E3E9F1; --muted: #95A3B5; --line: #263244;
+    --accent: #86AEDB; --clear: #5989BC; --accent-soft: #1A2838;
+    --code-bg: #0B1118; --code-fg: #D6E0EC; --comment: #8091A6; --pp: #E0A36E;
+    --debug: #C9A8F2; --debug-bg: #281E3A; --warn: #F1B45C; --warn-bg: #2F2412;
+    --engine: #A9B4C2; --engine-bg: #1D2733; --ok: #86D3A0; --ok-bg: #15291D;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E141C; --surface: #141C27; --fg: #E3E9F1; --muted: #95A3B5; --line: #263244;
+  --accent: #86AEDB; --clear: #5989BC; --accent-soft: #1A2838;
+  --code-bg: #0B1118; --code-fg: #D6E0EC; --comment: #8091A6; --pp: #E0A36E;
+  --debug: #C9A8F2; --debug-bg: #281E3A; --warn: #F1B45C; --warn-bg: #2F2412;
+  --engine: #A9B4C2; --engine-bg: #1D2733; --ok: #86D3A0; --ok-bg: #15291D;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 16px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.8;
+  -webkit-text-size-adjust: 100%;
+}
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+code, pre, kbd { font-family: var(--font-mono); font-size: 0.86em; }
+p code, li code, td code, dd code, .d code {
+  background: var(--code-bg); color: var(--code-fg);
+  padding: 0.08em 0.36em; border-radius: 4px; overflow-wrap: anywhere;
+}
+kbd {
+  display: inline-block; padding: 0 0.45em; border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 4px; background: var(--surface); line-height: 1.6;
+}
+table { font-size: inherit; }
+[hidden] { display: none !important; }
+
+.shell { max-width: 1260px; margin: 0 auto; padding-inline: 24px; }
+
+/* ---------- ヘッダー ---------- */
+.masthead { padding-block: 40px 28px; border-bottom: 1px solid var(--line); }
+.eyebrow {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em;
+  color: var(--muted); margin: 0 0 6px;
+}
+.masthead h1 {
+  font-family: var(--font-display); font-weight: 900; font-size: clamp(28px, 4.2vw, 44px);
+  line-height: 1.2; margin: 0; letter-spacing: 0.01em; text-wrap: balance;
+}
+.masthead h1 .ns { color: var(--accent); }
+.masthead .intro { max-width: 68ch; margin: 14px 0 0; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; font-size: 13px; color: var(--muted); }
+.meta b { color: var(--fg); font-weight: 700; }
+.meta code { font-size: 12.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; font-size: 13px; color: var(--muted); }
+
+/* ---------- 2カラム ---------- */
+.layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 44px; align-items: start; }
+.rail {
+  position: sticky; top: env(safe-area-inset-top, 0px);
+  max-height: 100vh; max-height: 100dvh; overflow-y: auto;
+  padding-block: 22px 40px; font-size: 13.5px; scrollbar-width: thin;
+}
+.search { position: relative; }
+.search input {
+  width: 100%; padding: 9px 12px; font: inherit; font-size: 14px; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+}
+.search input::placeholder { color: var(--muted); }
+.search-status { min-height: 1.6em; margin: 6px 2px 0; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.toc summary { display: none; }
+.toc .grp { margin-top: 18px; }
+.toc .grp-label {
+  font-size: 11.5px; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; margin: 0 0 4px;
+}
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc li a {
+  display: block; padding: 2px 8px; margin-left: -8px; border-radius: 4px;
+  color: var(--fg); text-decoration: none; overflow-wrap: anywhere;
+}
+.toc li a.mono { font-family: var(--font-mono); font-size: 12.5px; }
+.toc li a:hover { background: var(--accent-soft); color: var(--accent); }
+.toc li[hidden] { display: none; }
+
+main { min-width: 0; padding-block: 12px 96px; }
+
+/* ---------- 見出し・本文 ---------- */
+.group, .guide { padding-top: 36px; }
+.group > h2, .guide > h2 {
+  font-family: var(--font-display); font-weight: 900; font-size: 26px; line-height: 1.35;
+  margin: 0 0 6px; text-wrap: balance;
+}
+.group > .group-lead, .guide > .group-lead { color: var(--muted); margin: 0 0 8px; max-width: 70ch; }
+.guide h3 { font-family: var(--font-display); font-size: 18px; margin: 28px 0 8px; }
+.guide p, .guide li { max-width: 72ch; }
+.guide ul { padding-left: 1.3em; }
+
+.cls { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--line); }
+.cls-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.cls-head h3 {
+  font-family: var(--font-mono); font-weight: 600; font-size: 21px; margin: 0; letter-spacing: -0.01em;
+}
+.cls-head .path { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.cls-head .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.lead { margin: 10px 0 0; max-width: 72ch; }
+.cls > p, .cls > ul { max-width: 72ch; }
+.sub { font-family: var(--font-display); font-size: 15px; margin: 22px 0 4px; color: var(--muted); letter-spacing: 0.02em; }
+
+.tag {
+  display: inline-block; font-size: 11.5px; line-height: 1.5; padding: 1px 8px; border-radius: 999px;
+  font-family: var(--font-body); font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
+  background: var(--accent-soft); color: var(--accent);
+}
+.tag.t-debug { background: var(--debug-bg); color: var(--debug); }
+.tag.t-rel { background: var(--warn-bg); color: var(--warn); }
+.tag.t-engine { background: var(--engine-bg); color: var(--engine); }
+.tag.t-static { background: var(--ok-bg); color: var(--ok); }
+
+/* ---------- 関数エントリ ---------- */
+.fns { margin-top: 12px; }
+.fn { padding-block: 12px; border-bottom: 1px dashed var(--line); }
+.fn:last-child { border-bottom: 0; }
+.sig {
+  display: block; font-family: var(--font-mono); font-size: 13.2px; line-height: 1.6;
+  background: var(--code-bg); color: var(--code-fg);
+  padding: 7px 12px; border-radius: 5px;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.sig .tag { margin-left: 8px; vertical-align: 1px; }
+.fn .d { margin: 8px 0 0 2px; max-width: 72ch; }
+.fn .d p { margin: 0 0 6px; }
+.pr { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 14px; margin: 8px 0 0 2px; font-size: 14px; }
+.pr dt { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent); padding-top: 2px; }
+.pr dd { margin: 0; min-width: 0; }
+.ret { font-size: 14px; margin: 6px 0 0 2px; color: var(--muted); }
+.ret b { color: var(--fg); }
+
+/* ---------- コード例 ---------- */
+.ex { margin-top: 14px; }
+.ex-label { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; margin: 0 0 4px; font-weight: 700; }
+pre.code {
+  margin: 0; padding: 14px 16px; overflow-x: auto; background: var(--code-bg); color: var(--code-fg);
+  border-radius: 6px; border: 1px solid var(--line); font-size: 13px; line-height: 1.65; tab-size: 4;
+}
+pre.code .c { color: var(--comment); }
+pre.code .p { color: var(--pp); }
+.sig .c { color: var(--comment); }
+.sig .p { color: var(--pp); }
+
+/* ---------- 表 ---------- */
+.tbl { overflow-x: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.tbl table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.tbl th, .tbl td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl th { font-size: 12.5px; color: var(--muted); font-weight: 700; background: var(--code-bg); white-space: nowrap; }
+.tbl td.m, .tbl th.m { font-family: var(--font-mono); font-size: 12.8px; white-space: nowrap; }
+.tbl td.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- 注記 ---------- */
+.note { margin-top: 12px; padding: 10px 14px; border-radius: 6px; background: var(--warn-bg); font-size: 14px; max-width: 76ch; }
+.note .note-label { font-weight: 700; color: var(--warn); margin-right: 6px; }
+.note.info { background: var(--accent-soft); }
+.note.info .note-label { color: var(--accent); }
+
+/* ---------- フレームの流れ ---------- */
+.frame { list-style: none; counter-reset: step; margin: 14px 0 0; padding: 0; max-width: 78ch; }
+.frame li {
+  counter-increment: step; display: grid; grid-template-columns: 2.4em minmax(0, 1fr); gap: 0 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--line);
+}
+.frame li::before {
+  content: counter(step, decimal-leading-zero); font-family: var(--font-mono); font-size: 12.5px;
+  color: var(--muted); padding-top: 3px; font-variant-numeric: tabular-nums;
+}
+.frame li.hook { background: linear-gradient(90deg, var(--accent-soft), transparent 80%); }
+.frame li.hook::before { color: var(--accent); font-weight: 600; }
+.frame .who { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-left: 6px; }
+
+/* ---------- 決まりごと ---------- */
+.rules { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 12px; }
+.rules dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; }
+.rules dt { font-weight: 700; white-space: nowrap; }
+.rules dd { margin: 0; min-width: 0; }
+.axes { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.axes svg { display: block; width: 100%; height: auto; max-width: 100%; }
+.axes figcaption { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.swatch { display: inline-block; width: 1.05em; height: 1.05em; border-radius: 3px; background: var(--clear); vertical-align: -0.15em; border: 1px solid var(--line); margin-right: 4px; }
+
+/* ---------- 絞り込み中 ---------- */
+.filtering .ex, .filtering .lead, .filtering .note, .filtering .tbl, .filtering .sub, .filtering > p, .filtering > ul { display: none; }
+
+footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .rail { position: static; max-height: none; overflow: visible; padding-block: 18px 0; }
+  .toc { border: 1px solid var(--line); border-radius: 6px; padding: 4px 14px 12px; margin-top: 8px; background: var(--surface); }
+  .toc summary { display: list-item; cursor: pointer; padding: 6px 0; font-weight: 700; }
+  .toc-cols { columns: 2; column-gap: 20px; }
+  .toc .grp { break-inside: avoid; }
+  .rules { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .shell { padding-inline: 16px; }
+  .toc-cols { columns: 1; }
+  .rules dl, .pr { grid-template-columns: minmax(0, 1fr); }
+  .rules dt { white-space: normal; }
+  .pr dt { padding-top: 6px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+</style>
+</head>
+<body>
+<div class="shell" lang="ja">
+
+<header class="masthead">
+  <p class="eyebrow">CG2.slnx · Engine.lib · namespace Engine</p>
+  <h1>CG2 Engine <span class="ns">API</span> リファレンス</h1>
+  <p class="intro">
+    エンジン（<code>Engine/</code>）の公開ヘッダーを、クラスと関数ごとにまとめたものです。
+    ゲーム（<code>Game/</code>）から使う機能を先に、エンジン内部の仕組みを最後に並べています。
+    左上の検索欄に関数名や「当たり判定」「音」などを入れると絞り込めます。
+  </p>
+  <div class="meta">
+    <span>作成元 <b>CG3_develop</b> <code>16bb434</code>（2026-09-30）</span>
+    <span>インクルード <code>#include "Engine/…"</code>（ルートはリポジトリ直下）</span>
+    <span>名前空間 <code>Engine</code>（<code>using namespace Engine;</code> で省略可）</span>
+  </div>
+  <div class="legend">
+    <span>記号:</span>
+    <span class="tag">シングルトン</span><span>GetInstance() で取得</span>
+    <span class="tag t-static">static</span><span>インスタンス不要</span>
+    <span class="tag t-debug">Debug のみ</span><span>USE_IMGUI 時だけ存在</span>
+    <span class="tag t-rel">Release 除外</span><span>#ifndef NDEBUG で囲む</span>
+    <span class="tag t-engine">エンジンが呼ぶ</span><span>ゲームからは呼ばない</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<nav class="rail" aria-label="目次">
+  <div class="search">
+    <input id="q" type="search" placeholder="検索（例: IsTrigger, 当たり判定）" autocomplete="off" aria-label="関数やクラスを検索">
+  </div>
+  <p class="search-status" id="q-status" aria-live="polite"></p>
+  <details class="toc" id="toc" open>
+    <summary>目次</summary>
+    <div class="toc-cols">
+      <div class="grp">
+        <p class="grp-label">ガイド</p>
+        <ul>
+          <li><a href="#start">はじめに</a></li>
+          <li><a href="#frame">1フレームの流れ</a></li>
+          <li><a href="#rules">決まりごと</a></li>
+          <li><a href="#recipes">逆引き</a></li>
+          <li><a href="#pitfalls">つまずきやすい点</a></li>
+        </ul>
+      </div>
+      <div class="grp">
+        <p class="grp-label">アプリとシーン</p>
+        <ul>
+          <li><a class="mono" href="#Framework">Framework</a></li>
+          <li><a class="mono" href="#BaseScene">BaseScene</a></li>
+          <li><a class="mono" href="#SceneManager">SceneManager</a></li>
+        </ul>
+      </div>
+      <div class="grp">
+        <p class="grp-label">描画</p>
+        <ul>
+          <li><a class="mono" href="#Object3D">Object3D</a></li>
+          <li><a class="mono" href="#Primitive">Primitive</a></li>
+          <li><a class="mono" href="#Material">Material / LightingMode</a></li>
+          <li><a class="mono" href="#Sprite">Sprite</a></li>
+          <li><a class="mono" href="#Camera">Camera</a></li>
+          <li><a class="mono" href="#Light">DirectionalLight / PointLight</a></li>
+          <li><a class="mono" href="#DebugDraw">DebugDraw</a></li>
+          <li><a class="mono" href="#DebugCamera">DebugCamera</a></li>
+          <li><a class="mono" href="#TextureManager">TextureManager</a></li>
+          <li><a class="mono" href="#MeshManager">MeshManager</a></li>
+          <li><a class="mono" href="#Mesh">Mesh</a></li>
+        </ul>
+      </div>
+      <div class="grp">
+        <p class="grp-label">入力・音・時間・ウィンドウ</p>
+        <ul>
+          <li><a class="mono" href="#Input">Input</a></li>
+          <li><a class="mono" href="#Audio">Audio</a></li>
+          <li><a class="mono" href="#Time">Time</a></li>
+          <li><a class="mono" href="#WinApp">WinApp</a></li>
+        </ul>
+      </div>
+      <div class="grp">
+        <p class="grp-label">数学・当たり判定</p>
+        <ul>
+          <li><a class="mono" href="#Vector">Vector2 / 3 / 4</a></li>
+          <li><a class="mono" href="#Transform3D">Transform3D</a></li>
+          <li><a class="mono" href="#Matrix4x4">Matrix4x4</a></li>
+          <li><a class="mono" href="#Shapes">Shapes</a></li>
+          <li><a class="mono" href="#Collision">Collision</a></li>
+          <li><a class="mono" href="#Curve">Curve / Bezier</a></li>
+          <li><a class="mono" href="#FrustumCulling">FrustumCulling</a></li>
+        </ul>
+      </div>
+      <div class="grp">
+        <p class="grp-label">ユーティリティ</p>
+        <ul>
+          <li><a class="mono" href="#Log">Log</a></li>
+          <li><a class="mono" href="#ConvertString">ConvertString</a></li>
+          <li><a class="mono" href="#CrashHandler">CrashHandler</a></li>
+        </ul>
+      </div>
+      <div class="grp">
+        <p class="grp-label">立体視・視線追跡</p>
+        <ul>
+          <li><a class="mono" href="#StereoRenderer">StereoRenderer</a></li>
+          <li><a class="mono" href="#StereoCamera">StereoCamera</a></li>
+          <li><a class="mono" href="#EyeTracker">EyeTracker</a></li>
+          <li><a class="mono" href="#FaceTracker">FaceTracker</a></li>
+          <li><a class="mono" href="#CameraCapture">CameraCapture</a></li>
+          <li><a class="mono" href="#GazePacket">GazePacket</a></li>
+        </ul>
+      </div>
+      <div class="grp">
+        <p class="grp-label">エンジン内部</p>
+        <ul>
+          <li><a class="mono" href="#DirectXCore">DirectXCore</a></li>
+          <li><a class="mono" href="#PipelineManager">PipelineManager</a></li>
+          <li><a class="mono" href="#ShaderCompiler">ShaderCompiler</a></li>
+          <li><a class="mono" href="#DescriptorHeapManager">DescriptorHeapManager</a></li>
+          <li><a class="mono" href="#ConstantBuffer">ConstantBuffer&lt;T&gt;</a></li>
+          <li><a class="mono" href="#RenderContext">RenderContext</a></li>
+          <li><a class="mono" href="#GpuResource">GpuResource</a></li>
+          <li><a class="mono" href="#GeometryGenerator">GeometryGenerator</a></li>
+          <li><a class="mono" href="#LoadObjFile">LoadObjFile</a></li>
+          <li><a class="mono" href="#ImGuiManager">ImGuiManager</a></li>
+          <li><a class="mono" href="#VertexData">VertexData ほか</a></li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</nav>
+
+<main id="main">
+
+<!-- ================================================================ ガイド -->
+<section class="guide" id="start">
+  <h2>はじめに</h2>
+  <p class="group-lead">ゲームは「<code>Framework</code> を継承したアプリクラス」と「<code>BaseScene</code> を継承したシーン」で書きます。Game ブランチの最小構成は次のとおりです。</p>
+
+  <div class="ex">
+    <p class="ex-label">Game/main.cpp ・ Game/MyGame.cpp</p>
+<pre class="code">int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+    MyGame game;
+    game.Run();   // 初期化 → メインループ → 終了処理
+    return 0;
+}
+
+// MyGame は Engine::Framework を継承し、Initialize だけをオーバーライドする
+void MyGame::Initialize() {
+    SetWindowTitle(L"My Game");   // Framework::Initialize より前に呼ぶと最初からこのタイトルで開く
+    Framework::Initialize();      // エンジン各機能の初期化
+    ChangeScene&lt;TitleScene&gt;();    // 最初のシーンを予約する
+}</pre>
+  </div>
+
+  <div class="ex">
+    <p class="ex-label">Game/Scene/TitleScene.h ・ .cpp</p>
+<pre class="code">#include "Engine/Rendering/Object3D.h"
+#include "Engine/Scene/BaseScene.h"
+
+class TitleScene : public Engine::BaseScene {
+protected:
+    void OnInitialize() override;   // 開始時に1回
+    void OnUpdate() override;       // 毎フレーム：処理と各オブジェクトの Update()
+    void OnDraw() override;         // 毎フレーム：各オブジェクトの Draw()
+private:
+    Engine::Object3D logo_;
+};
+
+// ---- TitleScene.cpp ----
+#include "Engine/Input/Input.h"
+#include "Game/Scene/GameScene.h"
+using namespace Engine;
+
+void TitleScene::OnInitialize() {
+    camera_.GetTransform().translate = { 0.0f, 0.0f, -6.0f };  // カメラを手前に引く
+    logo_.Initialize(Primitive::kCube);                        // 仮モデル（白い立方体）
+    logo_.SetColor({ 1.0f, 0.8f, 0.2f, 1.0f });
+}
+
+void TitleScene::OnUpdate() {
+    if (Input::GetInstance()-&gt;IsTrigger(DIK_RETURN)) {
+        ChangeScene&lt;GameScene&gt;();                              // 次のフレームの頭で切り替わる
+    }
+    logo_.GetTransform().rotate.y += 0.02f;
+    logo_.Update();                                            // Draw より前に毎フレーム
+}
+
+void TitleScene::OnDraw() {
+    logo_.Draw();
+}</pre>
+  </div>
+
+  <h3>ファイルの置き場所</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>場所</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td class="m">Engine/</td><td>エンジン本体（静的ライブラリ）。変更は CG3_develop で行い、<code>tools/MergeEngine.ps1</code> でゲームのブランチへ取り込む。</td></tr>
+      <tr><td class="m">Game/</td><td>ゲーム本体（AL4_develop）。実行時のカレントディレクトリもここになる。</td></tr>
+      <tr><td class="m">Game/resources/</td><td>モデル・画像・音。コードでは <code>"resources/player.obj"</code> のように Game/ からの相対パスで書く。</td></tr>
+      <tr><td class="m">Shaders/</td><td>エンジンのシェーダー。実行時に <code>Shaders/</code> → <code>../Shaders/</code> の順で探される。</td></tr>
+      <tr><td class="m">Game/logs/ ・ Game/Dumps/</td><td>実行ごとのログファイルと、クラッシュ時のダンプファイルの出力先。</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="guide" id="frame">
+  <h2>1フレームの流れ</h2>
+  <p class="group-lead"><code>Framework::Run()</code> のメインループが毎フレーム行う処理です。色の付いた行がゲーム側のコード（シーンの On～）が呼ばれるところです。</p>
+  <ol class="frame">
+    <li>ウィンドウのメッセージを処理する（×ボタンでループを抜けて終了処理へ）</li>
+    <li>ウィンドウサイズが変わっていれば、スワップチェーンや深度バッファを作り直す</li>
+    <li class="hook">予約されたシーンがあれば切り替える（GPUの完了待ち → 前のシーンを破棄 → 次のシーンの <code>OnInitialize</code>）<span class="who">SceneManager</span></li>
+    <li class="hook">[Debug] ImGui のフレームを始め、<code>DrawImGui</code>（シーンの <code>OnDrawImGui</code>）で UI を組み立てる</li>
+    <li>入力を更新する（キーボード・マウス・パッドの今フレームの状態を取る）<span class="who">Input::Update</span></li>
+    <li><kbd>F11</kbd> が押されたらボーダレス全画面を切り替える</li>
+    <li>ゲームの描画先矩形をシーンへ渡す（Debug では ImGui のドッキングで空いた中央領域）</li>
+    <li class="hook"><code>Update</code> → シーンの <code>OnUpdate</code> → カメラの確定（ビュー・射影・視錐台）→ 光源を定数バッファへ</li>
+    <li>画面をクリアする（<code>BeginFrame</code>）→ <code>PreDraw</code> フック</li>
+    <li class="hook"><code>Draw</code> → ルートシグネチャ・カメラ・光源・標準PSOを設定 → シーンの <code>OnDraw</code> → <code>DebugDraw</code> の線</li>
+    <li>[Debug] ImGui を画面全体へ描く</li>
+    <li>画面に表示する（<code>EndFrame</code>。垂直同期あり）→ このフレームの <code>DebugDraw</code> の線を消す</li>
+    <li>1/60 秒が経つまで待ち、次のフレームの経過時間を確定する<span class="who">Time::WaitForNextFrame</span></li>
+  </ol>
+  <div class="note info"><span class="note-label">順番のポイント</span>
+    <code>OnDrawImGui</code> は同じフレームの <code>OnUpdate</code> より先に呼ばれます（入力の更新よりも前）。ImGui で変えた値はそのフレームの <code>OnUpdate</code> と描画に反映されますが、<code>OnDrawImGui</code> の中で <code>Input</code> を読むと前のフレームの状態になります。
+  </div>
+</section>
+
+<section class="guide" id="rules">
+  <h2>決まりごと</h2>
+  <p class="group-lead">座標・行列・単位の約束です。自分で計算するときはこれに合わせます。</p>
+  <div class="rules">
+    <dl>
+      <dt>座標系</dt><dd>左手系。<b>+X が右、+Y が上、+Z が奥</b>（画面の向こう）。カメラは既定で原点から +Z を向く。</dd>
+      <dt>角度</dt><dd>すべてラジアン。<code>Transform3D::rotate</code> は <b>X → Y → Z</b> の順に回す。カメラの <code>rotate.x</code> を正にすると下を向き、<code>rotate.y</code> を正にすると右を向く。</dd>
+      <dt>行列</dt><dd>行優先・行ベクトル（<code>v * M</code>）。合成は左から右：<code>world = S * R * T</code>、<code>WVP = world * view * proj</code>。平行移動は <code>m[3][0..2]</code>。</dd>
+      <dt>深度</dt><dd>DirectX の規約で 0（手前）〜 1（奥）。</dd>
+      <dt>大きさ</dt><dd>長さの単位は自由。組み込みの形状（<code>Primitive</code>）は1辺・直径が 1。</dd>
+      <dt>色</dt><dd><code>Vector4</code> の RGBA、各 0.0〜1.0。</dd>
+      <dt>時間</dt><dd>更新は毎秒 60 回に固定。「1フレームあたりの量」で書いてよい。秒単位なら <code>Time::GetDeltaTime()</code> を掛ける。</dd>
+      <dt>2D座標</dt><dd>スプライトとマウスは左上原点・ピクセル・<b>+Y が下</b>。スプライトは 1280×720 を基準に指定する。</dd>
+      <dt>画面</dt><dd>最初は 1280×720（<code>WinApp::kClientWidth/Height</code>）。ウィンドウはサイズ変更でき、<kbd>F11</kbd> で全画面。</dd>
+      <dt>背景色</dt><dd><span class="swatch" aria-hidden="true"></span>RGB (0.1, 0.25, 0.5) で画面をクリアする。変える関数は無い（<code>DirectXCore.cpp</code> の <code>clearColor</code> で固定）。このページのアクセント色もこの色。</dd>
+    </dl>
+    <figure class="axes" style="margin:0">
+      <svg viewBox="0 0 300 220" role="img" aria-label="左手系の座標軸。Xは右、Yは上、Zは奥。カメラは原点から+Zを向く">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--fg)"></path>
+          </marker>
+          <marker id="ahA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+        <!-- 奥の面（画面） -->
+        <polygon points="150,40 262,18 262,118 150,140" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="1"></polygon>
+        <text x="206" y="34" font-size="10" fill="var(--muted)" font-family="var(--font-body)" text-anchor="middle">+Z（奥）</text>
+        <!-- 軸 -->
+        <line x1="110" y1="150" x2="230" y2="150" stroke="var(--fg)" stroke-width="2" marker-end="url(#ah)"></line>
+        <line x1="110" y1="150" x2="110" y2="40" stroke="var(--fg)" stroke-width="2" marker-end="url(#ah)"></line>
+        <line x1="110" y1="150" x2="200" y2="105" stroke="var(--accent)" stroke-width="2" marker-end="url(#ahA)"></line>
+        <text x="236" y="154" font-size="13" fill="var(--fg)" font-family="var(--font-mono)">+X</text>
+        <text x="100" y="34" font-size="13" fill="var(--fg)" font-family="var(--font-mono)">+Y</text>
+        <text x="204" y="100" font-size="13" fill="var(--accent)" font-family="var(--font-mono)">+Z</text>
+        <!-- カメラ -->
+        <rect x="46" y="174" width="34" height="22" rx="3" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.5"></rect>
+        <polygon points="80,179 92,173 92,197 80,191" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.5"></polygon>
+        <line x1="96" y1="180" x2="120" y2="168" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ah)"></line>
+        <text x="40" y="212" font-size="10.5" fill="var(--muted)" font-family="var(--font-body)">camera_（既定は原点で +Z 向き）</text>
+      </svg>
+      <figcaption>左手の親指が X、人差し指が Y、中指が Z の向き。</figcaption>
+    </figure>
+  </div>
+
+  <h3>ビルド構成</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>構成</th><th>定義される記号</th><th>ImGui</th><th>DebugCamera</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td class="m">Debug</td><td class="m">_DEBUG, USE_IMGUI</td><td>あり</td><td>あり</td><td>ふだんの開発</td></tr>
+      <tr><td class="m">Development</td><td class="m">_DEBUG</td><td>なし</td><td>あり</td><td>ImGui を抜いた見た目の確認（最適化なし・assert 有効）</td></tr>
+      <tr><td class="m">Release</td><td class="m">_DEBUG, NDEBUG</td><td>なし</td><td>なし</td><td>提出・配布用</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><code>_DEBUG</code> は全構成で定義されるので、分岐には使わない。ImGui のコードは <code>#ifdef USE_IMGUI</code>、開発中だけのコードは <code>#ifndef NDEBUG</code> で囲む。</li>
+    <li>全構成で警告レベル4・警告はエラー扱い。使っていない変数や引数があるとビルドが止まる（引数名を消す、<code>[[maybe_unused]]</code> を付ける、など）。</li>
+    <li><code>Input.h</code>・<code>WinApp.h</code>・<code>Audio.h</code> などは <code>&lt;Windows.h&gt;</code> を含み、<code>min</code>/<code>max</code> マクロが有効なままです。これらを含むファイルで <code>std::min</code>/<code>std::max</code> はコンパイルエラーになるので、比較（<code>a &lt; b ? a : b</code>）で書くか <code>(std::min)(a, b)</code> と括弧で囲む。</li>
+  </ul>
+</section>
+
+<section class="guide" id="recipes">
+  <h2>逆引き</h2>
+  <p class="group-lead">やりたいことから、使う関数を探す表です。コードはシーンの中（<code>using namespace Engine;</code> 済み）で書く想定です。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>やりたいこと</th><th>書き方</th><th>詳しく</th></tr></thead>
+    <tbody>
+      <tr><td>シーンを切り替える</td><td><code>ChangeScene&lt;GameScene&gt;();</code>（次のフレームの頭で切り替わる）</td><td><a href="#BaseScene">BaseScene</a></td></tr>
+      <tr><td>仮の立方体・球・床を置く</td><td><code>obj.Initialize(Primitive::kCube);</code> → <code>obj.SetColor({1, 0, 0, 1});</code></td><td><a href="#Primitive">Primitive</a></td></tr>
+      <tr><td>OBJ モデルを表示する</td><td><code>obj.Initialize("resources/player.obj");</code> → 毎フレーム <code>Update()</code> / <code>Draw()</code></td><td><a href="#Object3D">Object3D</a></td></tr>
+      <tr><td>位置・回転・大きさを変える</td><td><code>obj.GetTransform().translate.x += 0.1f;</code>（<code>rotate</code> はラジアン）</td><td><a href="#Transform3D">Transform3D</a></td></tr>
+      <tr><td>テクスチャを差し替える</td><td><code>obj.SetTexture("resources/red.png");</code></td><td><a href="#Object3D">Object3D</a></td></tr>
+      <tr><td>陰影を付けない（ベタ塗り）</td><td><code>obj.Initialize(Primitive::kCube, LightingMode::kNone);</code></td><td><a href="#Material">LightingMode</a></td></tr>
+      <tr><td>半透明にする</td><td><code>obj.SetColor({1, 1, 1, 0.5f});</code>（不透明な物の後に描く）</td><td><a href="#pitfalls">つまずきやすい点</a></td></tr>
+      <tr><td>2D の画像・UI を出す</td><td><code>sprite.Initialize("resources/title.png", {640, 360});</code></td><td><a href="#Sprite">Sprite</a></td></tr>
+      <tr><td>カメラを動かす・見下ろす</td><td><code>camera_.GetTransform().translate = {0, 3, -12};</code> <code>rotate.x = 0.15f;</code></td><td><a href="#Camera">Camera</a></td></tr>
+      <tr><td>光の向きを変える</td><td><code>directionalLight_.direction = {0.4f, -1.0f, 0.6f};</code></td><td><a href="#Light">DirectionalLight</a></td></tr>
+      <tr><td>点光源を置く</td><td><code>pointLights_.lights[0].enabled = 1;</code> ほか位置・色・半径</td><td><a href="#Light">PointLight</a></td></tr>
+      <tr><td>キーの押しっぱなし／押した瞬間</td><td><code>Input::GetInstance()-&gt;IsPress(DIK_A)</code> ／ <code>IsTrigger(DIK_SPACE)</code></td><td><a href="#Input">Input</a></td></tr>
+      <tr><td>パッドのスティック・ボタン</td><td><code>GetLeftStick()</code>（上が +Y）／ <code>IsPadTrigger(kPadA)</code></td><td><a href="#Input">Input</a></td></tr>
+      <tr><td>パッドを振動させる</td><td><code>SetVibrationForTime(0.5f, 0.5f, 0.3f);</code></td><td><a href="#Input">Input</a></td></tr>
+      <tr><td>秒単位で動かす・時間を測る</td><td><code>x += speed * Time::GetDeltaTime();</code> ／ <code>Time::GetTotalTime()</code></td><td><a href="#Time">Time</a></td></tr>
+      <tr><td>効果音を鳴らす</td><td><code>h = Audio::GetInstance()-&gt;LoadWave("resources/se.wav");</code> → <code>Play(h);</code></td><td><a href="#Audio">Audio</a></td></tr>
+      <tr><td>球同士・箱同士の当たり判定</td><td><code>IsCollision(a.CalcWorldBoundingSphere(), b.CalcWorldBoundingSphere())</code></td><td><a href="#Collision">Collision</a></td></tr>
+      <tr><td>当たり判定の形を画面で見る</td><td><code>DebugDraw::DrawSphere(sphere, {0, 1, 0, 1});</code>（毎フレーム呼ぶ）</td><td><a href="#DebugDraw">DebugDraw</a></td></tr>
+      <tr><td>曲線に沿って動かす</td><td><code>pos = curve.GetPoint(t);</code>（t は 0〜1）</td><td><a href="#Curve">Curve</a></td></tr>
+      <tr><td>値を画面で調整する（開発中）</td><td><code>OnDrawImGui</code> で <code>ImGui::DragFloat3(...)</code>（<code>#ifdef USE_IMGUI</code>）</td><td><a href="#BaseScene">BaseScene</a></td></tr>
+      <tr><td>マウスで自由に見回す（開発中）</td><td><code>DebugCamera</code> ＋ <code>CalcViewMatrix</code> のオーバーライド</td><td><a href="#DebugCamera">DebugCamera</a></td></tr>
+      <tr><td>ログを出す</td><td><code>Log(std::format("hp = {}", hp));</code></td><td><a href="#Log">Log</a></td></tr>
+      <tr><td>ウィンドウのタイトル・全画面</td><td><code>SetWindowTitle(L"...");</code> ／ <kbd>F11</kbd> か <code>WinApp::GetInstance()-&gt;SetFullscreen(true);</code></td><td><a href="#WinApp">WinApp</a></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="guide" id="pitfalls">
+  <h2>つまずきやすい点</h2>
+  <p class="group-lead">エンジンの実装から分かる、ハマりやすいところです。</p>
+  <h3>描画</h3>
+  <ul>
+    <li><b><code>Update()</code> を呼ばないと反映されない。</b><code>Object3D</code> と <code>Sprite</code> は <code>OnUpdate</code> で <code>Update()</code>、<code>OnDraw</code> で <code>Draw()</code> の両方が必要です。Transform や色を変えても、次の <code>Update()</code> までは画面に出ません。</li>
+    <li><b><code>OnDraw</code> でゲームの状態を変えない。</b>立体視が有効なときは <code>OnDraw</code> が視点の数だけ（2〜8回）呼ばれます。移動や当たり判定は <code>OnUpdate</code> に書きます。</li>
+    <li><b>Initialize 済みの <code>Object3D</code> / <code>Sprite</code> をコピーして両方使わない。</b>コピーは定数バッファを共有するため、両方が同じ位置・色で描かれます。複数体を出すときは1体ずつ <code>Initialize</code> します（<code>std::vector&lt;Object3D&gt;</code> に入れてから各要素を <code>Initialize</code> するのは問題ありません）。</li>
+    <li><b>半透明は描く順番が大事。</b>アルファブレンドは有効ですが深度も書き込むので、半透明の物は不透明な物をすべて描いた後に、奥から手前の順で描きます。</li>
+    <li><b>テクスチャのアルファが 0.8 未満のピクセルは描かれない</b>（シェーダーで切り抜き）。フェンスのような抜きは簡単ですが、ぼかした半透明の縁は欠けます。全体を薄くしたいときはテクスチャではなく <code>SetColor</code> のアルファを使います。</li>
+    <li><b>スプライトは <code>OnDraw</code> の最後に描く。</b>スプライトは深度 0 で書かれるので、3D より常に手前に表示されます。先に描くと、スプライトの半透明部分の下に後から描いた 3D が見えなくなります。</li>
+    <li><b><code>Primitive::kPlane</code> は上からしか見えない。</b>裏面カリングがあるので、下から見ると消えます。</li>
+    <li><b>遠くの物が消える。</b>カメラの描画距離は既定で 100 まで。広いステージでは <code>camera_.SetClipPlanes(0.1f, 500.0f)</code> などで伸ばします。</li>
+    <li><b>テクスチャは 120 枚弱まで。</b>SRV ヒープが 128 枠で、ImGui と立体視も使います。読み込んだテクスチャはアプリ終了まで解放されません（同じパスはキャッシュされるので、何度 Load しても増えません）。</li>
+  </ul>
+  <h3>リソース</h3>
+  <ul>
+    <li><b>ファイルが見つからないと assert で止まる。</b>パスは Game/ からの相対パスです（<code>"resources/..."</code>）。止まったら綴りと、ファイルが <code>Game/resources/</code> にあるかを確認します。</li>
+    <li><b>OBJ は三角面にして書き出す。</b>四角形以上の面は読み込めません（Blender の OBJ 書き出しでは三角形化（Triangulate）の設定を ON）。mtl はOBJと同じフォルダに置き、map_Kd の画像パスもそのフォルダからの相対パスにします。</li>
+    <li><b>サウンドはシーンを切り替えても解放されない。</b><code>LoadWave</code> にはキャッシュが無く、呼ぶたびに新しく読み込みます。シーンの <code>OnInitialize</code> で毎回読むと、シーンを行き来するたびに増えていきます。アプリ全体で1回だけ読むようにします。</li>
+    <li><b>音はループ・停止ができない。</b>今ある関数は <code>LoadWave</code>・<code>Play</code>・<code>SetVolume</code> だけです。BGM のループが必要ならエンジン側に機能を足します。</li>
+  </ul>
+  <h3>入力・その他</h3>
+  <ul>
+    <li><b><kbd>F11</kbd> はエンジンが使う</b>（全画面の切り替え）。<code>DebugCamera</code> を使うシーンでは <kbd>Enter</kbd> もデバッグカメラの ON/OFF に使われます。</li>
+    <li><b>スティックは上が +Y、マウスは下が +Y。</b></li>
+    <li><b>ウィンドウが後ろにあるとキーボードとマウスは取れない</b>（DirectInput の前面モード）。パッドは取れます。</li>
+    <li><b><code>OnUpdate</code> の中の <code>GetViewMatrix()</code> は前のフレームの値。</b>カメラはOnUpdate の後に確定します。</li>
+    <li><b>ImGui のコードは Debug 構成にしか無い。</b><code>ImGui::</code> を使う行は必ず <code>#ifdef USE_IMGUI</code> の中に書きます（Release でビルドエラーになります）。</li>
+  </ul>
+</section>
+
+<!-- ================================================================ アプリとシーン -->
+<section class="group" id="g-app">
+  <h2>アプリとシーン</h2>
+  <p class="group-lead">アプリの骨組みと、シーンの作り方・切り替え方です。</p>
+
+  <!-- ---------------------------------------------------------- Framework -->
+  <section class="cls" id="Framework">
+    <div class="cls-head"><h3>Framework</h3><span class="path">Engine/Core/Framework.h</span><span class="tags"><span class="tag">継承して使う</span></span></div>
+    <p class="lead">アプリ全体の骨組みです。ゲーム側はこれを継承したクラス（Game の <code>MyGame</code>）を1つ作り、<code>WinMain</code> で <code>Run()</code> を呼びます。<code>Initialize</code> でタイトルと最初のシーンを決めるだけで動きます。シーンの更新と描画は、既定で <a href="#SceneManager">SceneManager</a> に任されます。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Run();</code>
+        <div class="d">初期化 → メインループ → 終了処理をまとめて行います。ウィンドウが閉じられるまで戻りません。<code>WinMain</code> から1回だけ呼びます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void Initialize();</code>
+        <div class="d">
+          <p>エンジンの各機能を初期化します。順番は COM → クラッシュダンプ → ログ → Time → ウィンドウ → DirectX → シェーダー → パイプライン → DebugDraw → テクスチャ → 立体視 → Audio → Input → ImGui です。</p>
+          <p>オーバーライドするときは <code>SetWindowTitle</code> → <code>Framework::Initialize()</code> → <code>ChangeScene&lt;最初のシーン&gt;()</code> の順に書きます。</p>
+        </div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void Finalize();</code>
+        <div class="d">シーンを破棄し、エンジンの各機能を生成と逆の順に解放して、解放漏れ（リソースリーク）を出力ウィンドウに報告します。オーバーライドするなら、自分のリソースを解放してから最後に <code>Framework::Finalize()</code> を呼びます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void Update();</code>
+        <div class="d">毎フレームの更新です。既定では現在のシーンを更新します（<code>SceneManager::Update</code>）。全シーン共通の処理を足すときはオーバーライドし、最後に <code>Framework::Update()</code> を呼びます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex);</code>
+        <div class="d">描画コマンドを積みます。既定では現在のシーンを描画します。</div>
+        <dl class="pr">
+          <dt>commandList</dt><dd>描画コマンドを積むコマンドリスト</dd>
+          <dt>viewIndex</dt><dd>描画する視点の番号。立体視が OFF なら常に 0 で1回だけ呼ばれる</dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void PreDraw(ID3D12GraphicsCommandList* commandList);</code>
+        <div class="d">画面のクリアの後、シーンの描画の前に毎フレーム呼ばれるフックです。既定では何もしません（Sandbox では Web カメラ映像の転送に使っています）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void DrawImGui();<span class="tag t-debug">Debug のみ</span></code>
+        <div class="d">開発用の ImGui ウィンドウを組み立てます。既定では現在のシーンの <code>OnDrawImGui</code> を呼びます。全シーン共通のウィンドウを出すときにオーバーライドし、<code>Framework::DrawImGui()</code> も呼びます。宣言・定義とも <code>#ifdef USE_IMGUI</code> で囲みます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: void SetWindowTitle(const std::wstring&amp; title);</code>
+        <div class="d">ウィンドウのタイトルを設定します。<code>Framework::Initialize()</code> より前に呼ぶと最初からそのタイトルで開き、後から呼ぶとその場で変わります。例: <code>SetWindowTitle(L"My Game");</code></div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: template &lt;class TScene&gt; void ChangeScene();</code>
+        <div class="d">次のシーンを予約します（<code>SceneManager::GetInstance()-&gt;ChangeScene&lt;TScene&gt;()</code> と同じ）。最初のシーンもこれで指定します。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- BaseScene -->
+  <section class="cls" id="BaseScene">
+    <div class="cls-head"><h3>BaseScene</h3><span class="path">Engine/Scene/BaseScene.h</span><span class="tags"><span class="tag">継承して使う</span></span></div>
+    <p class="lead">シーンの基底クラスです。カメラのビュー射影・視錐台・平行光源・点光源・立体視・PSO の設定といった定型処理はこのクラスが行うので、派生シーンは <code>OnInitialize</code> / <code>OnUpdate</code> / <code>OnDraw</code>（必要なら <code>OnDrawImGui</code>）を書くだけで済みます。シーンは切り替えのたびに新しく作られ、前のシーンは破棄されます。メンバー変数は毎回初期状態から始まります。</p>
+
+    <div class="ex">
+      <p class="ex-label">ImGui で値を調整する（Debug のみ）</p>
+<pre class="code">// GameScene.h
+#ifdef USE_IMGUI
+    void OnDrawImGui() override;
+#endif
+
+// GameScene.cpp
+#ifdef USE_IMGUI
+#include "externals/imgui/imgui.h"
+#endif
+
+#ifdef USE_IMGUI
+void GameScene::OnDrawImGui() {
+    ImGui::Begin("Game");
+    ImGui::DragFloat3("Camera translate", &amp;camera_.GetTransform().translate.x, 0.01f);
+    ImGui::ColorEdit4("Light color", &amp;directionalLight_.color.x);
+    ImGui::End();
+}
+#endif</pre>
+    </div>
+
+    <p class="sub">派生シーンが実装する関数</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">protected: virtual void OnInitialize() = 0;</code>
+        <div class="d">シーンの開始時に1回呼ばれます。オブジェクトの <code>Initialize</code>、リソースの読み込み、カメラや光源の初期設定をここで行います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void OnUpdate() = 0;</code>
+        <div class="d">毎フレーム呼ばれます。入力・ゲームの処理・各オブジェクトの <code>Update()</code> を書きます。ここでカメラを動かすと、同じフレームの描画に反映されます。<code>DebugDraw</code> の線もここで積みます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void OnDraw() = 0;</code>
+        <div class="d">毎フレーム呼ばれます（立体視では視点の数だけ呼ばれます）。各オブジェクトの <code>Draw()</code> だけを書きます。標準の PSO・カメラ・光源は設定済みです。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual void OnDrawImGui() {}<span class="tag t-debug">Debug のみ</span></code>
+        <div class="d">開発用の ImGui を組み立てます。必要なシーンだけオーバーライドします。<code>OnUpdate</code> より先に呼ばれます（<a href="#frame">1フレームの流れ</a>）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: virtual Matrix4x4 CalcViewMatrix() const;</code>
+        <div class="d">描画に使うビュー行列を返します。既定は <code>camera_.GetViewMatrix()</code>。デバッグカメラなどで視点を差し替えるときにオーバーライドします（<a href="#DebugCamera">DebugCamera</a> の例）。</div>
+      </div>
+    </div>
+
+    <p class="sub">派生シーンから使えるメンバー変数</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">protected: Camera camera_;</code>
+        <div class="d">シーンのカメラ。既定は原点・回転なし（+Z 向き）・画角 0.45 rad・描画距離 0.1〜100。<code>OnUpdate</code> で動かすとそのフレームに反映されます。→ <a href="#Camera">Camera</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: DirectionalLight directionalLight_;</code>
+        <div class="d">平行光源。既定は白・真下向き <code>(0, -1, 0)</code>・強さ 1・有効。値を変えると <code>Update</code> で反映されます。→ <a href="#Light">DirectionalLight</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: PointLightGroup pointLights_;</code>
+        <div class="d">点光源 4 個（既定はすべて OFF）。<code>pointLights_.lights[i]</code> を編集します。→ <a href="#Light">PointLight</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: StereoCamera stereoCamera_;</code>
+        <div class="d">立体視用の視点別ビュー射影。通常のゲームでは触りません。→ <a href="#StereoCamera">StereoCamera</a></div>
+      </div>
+    </div>
+
+    <p class="sub">派生シーンから使える関数</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">protected: template &lt;class TScene&gt; void ChangeScene();</code>
+        <div class="d">次のシーンを予約します。例: <code>ChangeScene&lt;GameScene&gt;();</code> 切り替わるのは次のフレームの頭なので、呼んだ後もこのフレームの <code>OnUpdate</code> と <code>OnDraw</code> は最後まで実行されます。続きの処理を止めたいときは <code>return;</code> します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: float GetRenderAreaX() const;
+protected: float GetRenderAreaY() const;
+protected: float GetRenderAreaWidth() const;
+protected: float GetRenderAreaHeight() const;</code>
+        <div class="d">ゲームの描画先の矩形（ウィンドウのクライアント座標・ピクセル）。Debug では ImGui のドッキングで空いた中央の領域、それ以外ではウィンドウ全体です。マウス座標をゲーム画面内の座標にするときは <code>GetMousePosition()</code> から X・Y を引きます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: float GetAspectRatio() const;</code>
+        <div class="d">描画先の 幅 ÷ 高さ。射影行列を自分で作るときに使います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">protected: const Matrix4x4&amp; GetViewMatrix() const;
+protected: const Matrix4x4&amp; GetProjectionMatrix() const;</code>
+        <div class="d">直近の <code>Update</code> で確定したビュー行列と射影行列。<code>OnUpdate</code> の中で読むと前のフレームの値、<code>OnDraw</code> の中で読むとそのフレームの値です。</div>
+      </div>
+    </div>
+
+    <p class="sub">エンジンが呼ぶ関数</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Initialize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">光源と立体視の定数バッファを作ってから <code>OnInitialize</code> を呼びます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Update();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">描画先サイズを <code>RenderContext</code> へ渡す → <code>OnUpdate</code> → 射影・ビュー行列と視錐台を確定 → 光源を定数バッファへ書き込み → 立体視の視点を更新、の順に行います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex);<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">ルートシグネチャ・この視点のビュー射影・光源・標準 PSO を設定 → <code>OnDraw</code> → <code>DebugDraw</code> の線、の順に描きます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void DrawImGui();<span class="tag t-engine">エンジンが呼ぶ</span><span class="tag t-debug">Debug のみ</span></code>
+        <div class="d"><code>OnDrawImGui</code> を呼びます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetEyeTracking(bool enabled, float gazeX, float gazeY, float headZ);</code>
+        <div class="d">視線追跡の値を渡し、頭の位置に合わせてカメラの視点をずらします（運動視差）。<code>Update</code> より前に毎フレーム呼びます。通常のゲームでは使いません。</div>
+        <dl class="pr">
+          <dt>enabled</dt><dd>視線追跡を効かせるか</dd>
+          <dt>gazeX, gazeY</dt><dd>正規化した視線位置 -1〜1（-1 が左・下、+1 が右・上）</dd>
+          <dt>headZ</dt><dd>奥行き -1〜1（今は未使用）</dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetRenderArea(float x, float y, float width, float height);<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">ゲームの描画先矩形を設定します（SceneManager が毎フレーム呼びます）。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- SceneManager -->
+  <section class="cls" id="SceneManager">
+    <div class="cls-head"><h3>SceneManager</h3><span class="path">Engine/Scene/SceneManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">現在のシーンを1つだけ持ち、切り替えを行います。切り替えは予約制で、次のフレームの頭で「GPU の完了待ち → 前のシーンを破棄 → 次のシーンを初期化」の順に行われます。シーンの登録は要りません。ふだんは <code>Framework</code> や <code>BaseScene</code> の <code>ChangeScene&lt;T&gt;()</code> を使えば十分です。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static SceneManager* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void ChangeScene(std::unique_ptr&lt;BaseScene&gt; nextScene);</code>
+        <div class="d">作成済みのシーンを予約します。コンストラクタに引数を渡したいシーン（ステージ番号など）に使います。同じフレームに何回か呼んだ場合は最後の予約が有効です。</div>
+        <dl class="pr"><dt>nextScene</dt><dd>次のシーン。所有権は SceneManager に移る</dd></dl>
+        <div class="ex">
+<pre class="code">SceneManager::GetInstance()-&gt;ChangeScene(std::make_unique&lt;StageScene&gt;(2));</pre>
+        </div>
+      </div>
+      <div class="fn">
+        <code class="sig">template &lt;class TScene&gt; void ChangeScene();</code>
+        <div class="d">型を指定して予約します（<code>std::make_unique&lt;TScene&gt;()</code> で作る）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">BaseScene* GetCurrentScene() const;</code>
+        <div class="d">現在のシーンを返します。最初の切り替えの前は <code>nullptr</code>。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void ApplySceneChange();
+void SetRenderArea(float x, float y, float width, float height);
+void Update();
+void Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex);
+void DrawImGui();
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">Framework がフレームの各段階で呼びます。<code>ApplySceneChange</code> が予約中のシーンへの切り替え、<code>Finalize</code> が現在と予約中のシーンの破棄です。</div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ 描画 -->
+<section class="group" id="g-draw">
+  <h2>描画</h2>
+  <p class="group-lead">3D オブジェクト・2D スプライト・カメラ・光源・デバッグ表示と、テクスチャやメッシュの読み込みです。</p>
+
+  <!-- ---------------------------------------------------------- Object3D -->
+  <section class="cls" id="Object3D">
+    <div class="cls-head"><h3>Object3D</h3><span class="path">Engine/Rendering/Object3D.h</span></div>
+    <p class="lead">メッシュ・Transform・マテリアル・テクスチャをまとめた 3D オブジェクトです。<code>Initialize</code> で形を決め、毎フレーム <code>Update()</code> → <code>Draw()</code> の順に呼びます。カメラの視錐台の外にあるときは、<code>Draw()</code> を呼んでも描かれません（自動の視錐台カリング）。</p>
+    <div class="ex">
+      <p class="ex-label">例: モデルと床を置く</p>
+<pre class="code">// メンバー: Engine::Object3D player_;  Engine::Object3D ground_;
+void GameScene::OnInitialize() {
+    player_.Initialize("resources/player.obj");       // mtl のテクスチャも自動で読まれる
+    player_.GetTransform().translate = { 0.0f, 0.5f, 0.0f };
+
+    ground_.Initialize(Primitive::kPlane);            // 仮モデル（白）
+    ground_.GetTransform().scale = { 20.0f, 1.0f, 20.0f };
+    ground_.SetColor({ 0.35f, 0.7f, 0.35f, 1.0f });
+}
+
+void GameScene::OnUpdate() {
+    player_.GetTransform().rotate.y += 0.02f;
+    player_.Update();
+    ground_.Update();
+}
+
+void GameScene::OnDraw() {
+    ground_.Draw();
+    player_.Draw();
+}</pre>
+    </div>
+    <p class="sub">初期化（どれか1つを呼ぶ）</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Initialize(Primitive primitive, LightingMode lightingMode = LightingMode::kHalfLambert);</code>
+        <div class="d">組み込みの形状で初期化します。仮モデル用で、白いテクスチャが貼られるので <code>SetColor</code> で色を付けます。メッシュは同じ形状のオブジェクト同士で共有されます。</div>
+        <dl class="pr">
+          <dt>primitive</dt><dd><code>Primitive::kCube</code>（立方体）/ <code>kSphere</code>（球）/ <code>kPlane</code>（床）。→ <a href="#Primitive">Primitive</a></dd>
+          <dt>lightingMode</dt><dd>陰影の付け方。既定はハーフランバート。→ <a href="#Material">LightingMode</a></dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize(const std::string&amp; objFilePath, LightingMode lightingMode = LightingMode::kHalfLambert);</code>
+        <div class="d">OBJ ファイルで初期化します。同じパスは1回だけ読み込まれ、メッシュは共有されます。mtl の <code>map_Kd</code> のテクスチャは、サブメッシュ（OBJ の <code>o</code> / <code>g</code> / <code>usemtl</code> の単位）ごとに自動で読み込まれ、<code>map_Kd</code> の無いマテリアルは白になります。</div>
+        <dl class="pr">
+          <dt>objFilePath</dt><dd>実行ディレクトリ（Game/）からの相対パス。例 <code>"resources/player.obj"</code></dd>
+          <dt>lightingMode</dt><dd>陰影の付け方（全サブメッシュ共通の初期値）</dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize(Mesh* mesh, uint32_t textureHandle, LightingMode lightingMode = LightingMode::kHalfLambert);</code>
+        <div class="d">自分で作ったメッシュで初期化します。メッシュは所有しないので、呼び出し側が Object3D より長く生かしておきます。</div>
+        <dl class="pr">
+          <dt>mesh</dt><dd>形状（<a href="#Mesh">Mesh</a>。nullptr は不可）</dd>
+          <dt>textureHandle</dt><dd><code>TextureManager</code> のハンドル。サブメッシュを持つメッシュでは mtl のテクスチャが優先され、これは一括上書き用の初期値になる</dd>
+          <dt>lightingMode</dt><dd>陰影の付け方</dd>
+        </dl>
+      </div>
+    </div>
+    <p class="sub">毎フレーム</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Update();</code>
+        <div class="d">ワールド行列（<code>S * R * T</code>）・マテリアル・UV 変換を定数バッファに書き込み、カリング用の境界球を更新します。毎フレーム、<code>Draw()</code> より前に1回呼びます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Draw() const;</code>
+        <div class="d">描画します。シーンの <code>OnDraw</code> の中で呼びます。視錐台の外なら何もしません（結果は <code>GetVisibility()</code> で分かります）。</div>
+      </div>
+    </div>
+    <p class="sub">Transform・見た目</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">Transform3D&amp; GetTransform();
+const Transform3D&amp; GetTransform() const;</code>
+        <div class="d">拡大・回転・移動。既定は scale <code>{1, 1, 1}</code>、rotate <code>{0, 0, 0}</code>、translate <code>{0, 0, 0}</code>。回転はラジアンで X → Y → Z の順。→ <a href="#Transform3D">Transform3D</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetColor(const Vector4&amp; color);</code>
+        <div class="d">全マテリアルの色をまとめて設定します。テクスチャの色に掛け算されます。アルファを 1 未満にすると半透明になります（<a href="#pitfalls">描く順番</a>に注意）。</div>
+        <dl class="pr"><dt>color</dt><dd>RGBA（各 0〜1）。例 <code>{1.0f, 0.4f, 0.3f, 1.0f}</code></dd></dl>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t GetMaterialCount() const;</code>
+        <div class="d">マテリアルの数。サブメッシュを持つ OBJ ではサブメッシュの数、それ以外は 1。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Material&amp; GetMaterial(uint32_t index = 0);</code>
+        <div class="d">CPU 側のマテリアル（色・陰影の付け方）。値を変えると次の <code>Update()</code> で反映されます。例: <code>obj.GetMaterial().lightingMode = LightingMode::kNone;</code> → <a href="#Material">Material</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">Transform3D&amp; GetUVTransform(uint32_t index = 0);</code>
+        <div class="d">マテリアルごとのテクスチャ座標の変換。<code>scale</code>・<code>rotate.z</code>・<code>translate</code> を使います。<code>translate.x</code> を毎フレーム増やすとテクスチャが流れます（水面・ベルトコンベアなど）。</div>
+      </div>
+    </div>
+    <p class="sub">テクスチャ</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void SetTexture(const std::string&amp; textureFilePath);</code>
+        <div class="d">画像を読み込んでテクスチャを差し替えます（<code>TextureManager::Load</code> + <code>SetTextureHandle</code>）。例: <code>obj.SetTexture("resources/red.png");</code></div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetTextureHandle(uint32_t textureHandle);
+uint32_t GetTextureHandle() const;</code>
+        <div class="d">テクスチャをハンドルで差し替える／取得します。サブメッシュを持つ OBJ では全サブメッシュを一括で上書きします。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void ClearTextureOverride();
+bool IsTextureOverridden() const;</code>
+        <div class="d">一括上書きを解除して mtl のテクスチャに戻す／上書き中かどうか。</div>
+      </div>
+    </div>
+    <p class="sub">判定・情報</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">Sphere CalcWorldBoundingSphere() const;</code>
+        <div class="d">今の Transform とメッシュから、ワールド空間でモデルを囲む球を計算します。半径は scale の一番大きい成分で拡大されます。簡単な当たり判定にそのまま使えます。</div>
+        <p class="ret"><b>戻り値</b> 中心と半径（<a href="#Shapes">Sphere</a>）</p>
+        <div class="ex">
+<pre class="code">if (IsCollision(player_.CalcWorldBoundingSphere(), enemy_.CalcWorldBoundingSphere())) {
+    // 当たった
+}</pre>
+        </div>
+      </div>
+      <div class="fn">
+        <code class="sig">FrustumVisibility GetVisibility() const;</code>
+        <div class="d">直近の <code>Draw()</code> での視錐台の判定結果。<code>Outside</code> なら描かれていません。→ <a href="#FrustumCulling">FrustumCulling</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">Mesh* GetMesh() const;</code>
+        <div class="d">使っているメッシュ（共有されている点に注意）。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Primitive -->
+  <section class="cls" id="Primitive">
+    <div class="cls-head"><h3>Primitive</h3><span class="path">Engine/Rendering/Primitive.h</span><span class="tags"><span class="tag">enum class</span></span></div>
+    <p class="lead">仮モデル用の組み込み形状です。どれも原点が中心で、1×1×1 の箱にちょうど収まる大きさなので、<code>scale</code> がそのままワールドでの大きさになります（例: scale <code>{1, 2, 1}</code> で縦長の箱）。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>値</th><th>形</th><th>メモ</th></tr></thead>
+      <tbody>
+        <tr><td class="m">kCube</td><td>立方体（1辺 1）</td><td>各面にテクスチャ全体（UV 0〜1）が貼られる</td></tr>
+        <tr><td class="m">kSphere</td><td>球（直径 1）</td><td>緯度・経度 16 分割</td></tr>
+        <tr><td class="m">kPlane</td><td>XZ 平面上の 1×1（上 +Y 向き）</td><td>床に使う。上面の高さは 0。下からは見えない</td></tr>
+        <tr><td class="m">kCount</td><td>形の数</td><td>末尾の番兵（使わない）</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Material -->
+  <section class="cls" id="Material">
+    <div class="cls-head"><h3>Material / LightingMode</h3><span class="path">Engine/Rendering/Material.h</span></div>
+    <p class="lead">色と陰影の付け方です。<code>Object3D::GetMaterial()</code> や <code>Sprite::GetMaterial()</code> で取り出して編集します。シェーダー（<code>Object3d.hlsli</code>）と同じメモリの並びなので、メンバーの順番は変えません。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">enum class LightingMode : int32_t { kNone = 0, kLambert = 1, kHalfLambert = 2 };</code>
+        <div class="d">
+          <p><code>kNone</code>: 陰影なし。テクスチャ × 色がそのまま出る（UI・空・発光物向け）。</p>
+          <p><code>kLambert</code>: ランバート反射。光の当たらない側が真っ暗になり、境目がはっきりする。</p>
+          <p><code>kHalfLambert</code>: ハーフランバート反射（既定）。陰が柔らかく、裏側も真っ暗にならない。</p>
+        </div>
+      </div>
+      <div class="fn">
+        <code class="sig">struct Material {
+    Vector4 color;              // 色（RGBA）。テクスチャに掛け算される
+    LightingMode lightingMode;  // 陰影の付け方
+    float padding[3];
+    Matrix4x4 uvTransform;      // UV 変換行列（Object3D / Sprite の Update が作るので直接書かない）
+};</code>
+        <div class="d">ピクセルシェーダーでは、テクスチャのアルファが 0.8 未満のピクセルを描きません。出力のアルファは <code>color.a × テクスチャの a</code> です。陰影は平行光源1つと点光源4つの拡散反射を足し合わせて計算します。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Sprite -->
+  <section class="cls" id="Sprite">
+    <div class="cls-head"><h3>Sprite</h3><span class="path">Engine/Rendering/Sprite.h</span></div>
+    <p class="lead">2D の画像です。画面の左上が原点でピクセル単位、<b>1280×720 を基準</b>に指定します。実際の描画先の大きさに合わせて、サイズは縦横比を保ったまま、位置は縦横それぞれの比率で自動的に拡大縮小されます。陰影は付きません。画面の外にあると描画を省きます。</p>
+    <div class="ex">
+      <p class="ex-label">例: タイトル画像を中央に出す</p>
+<pre class="code">// メンバー: Engine::Sprite title_;
+void TitleScene::OnInitialize() {
+    title_.Initialize("resources/title.png", { 640.0f, 360.0f });   // 表示サイズ（1280×720 基準）
+    title_.GetTransform().translate = { 320.0f, 180.0f, 0.0f };      // 左上の位置
+}
+void TitleScene::OnUpdate() {
+    title_.GetMaterial().color.w = 0.5f + 0.5f * std::sin(Time::GetTotalTime() * 3.0f);  // 点滅
+    title_.Update();
+}
+void TitleScene::OnDraw() {
+    // 3D を描いた後、最後に描く
+    title_.Draw();
+}</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Initialize(const std::string&amp; textureFilePath, const Vector2&amp; size);
+void Initialize(uint32_t textureHandle, const Vector2&amp; size);</code>
+        <div class="d">画像のパスかテクスチャハンドルで初期化します。</div>
+        <dl class="pr">
+          <dt>textureFilePath</dt><dd>画像のパス。例 <code>"resources/title.png"</code></dd>
+          <dt>textureHandle</dt><dd><code>TextureManager::Load</code> のハンドル</dd>
+          <dt>size</dt><dd>表示サイズ（1280×720 基準のピクセル）。画像の解像度とは関係なく、この大きさに引き伸ばされる</dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">void Update();</code>
+        <div class="d">行列・正射影・マテリアルを定数バッファに書き込み、画面の外かどうかを判定します。毎フレーム <code>Draw()</code> より前に呼びます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Draw() const;</code>
+        <div class="d">描画します。<code>OnDraw</code> の中で、3D の後に呼びます。画面の外なら何もしません。立体視でも両目で同じ位置（視差なし）に出ます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Transform3D&amp; GetTransform();</code>
+        <div class="d"><code>translate.x / y</code> がスプライトの左上の位置（ピクセル）、<code>scale.x / y</code> が倍率、<code>rotate.z</code> が回転（ラジアン。左上の角を中心に回ります）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Transform3D&amp; GetUVTransform();</code>
+        <div class="d">テクスチャ座標の変換（<code>scale</code>・<code>rotate.z</code>・<code>translate</code>）。1枚の画像の一部だけを出すとき（連番アニメ）は、<code>scale</code> を <code>{1/列数, 1/行数, 1}</code>、<code>translate</code> をコマの左上の UV にします。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Material&amp; GetMaterial();</code>
+        <div class="d">色と不透明度。例: <code>sprite.GetMaterial().color = {1, 1, 1, 0.5f};</code> で半透明。陰影は常に無効です。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetTextureHandle(uint32_t textureHandle);</code>
+        <div class="d">テクスチャを差し替えます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">VertexData* GetMappedVertices();</code>
+        <div class="d">4 頂点へ直接書き込むためのポインタ（頂点の編集用）。並びは 0:左下 / 1:左上 / 2:右下 / 3:右上。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">FrustumVisibility GetVisibility() const;</code>
+        <div class="d">直近の <code>Update()</code> で判定した、画面との重なり具合。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Camera -->
+  <section class="cls" id="Camera">
+    <div class="cls-head"><h3>Camera</h3><span class="path">Engine/Camera/Camera.h</span></div>
+    <p class="lead">シーンのカメラです。シーンの中では <code>camera_</code> として使えます。Transform と画角からビュー行列と射影行列を作ります。<code>scale</code> は 1 のままにします。</p>
+    <div class="ex">
+      <p class="ex-label">例: プレイヤーを斜め上から追いかける</p>
+<pre class="code">void GameScene::OnUpdate() {
+    player_.Update();
+    const Vector3&amp; target = player_.GetTransform().translate;
+    camera_.GetTransform().translate = target + Vector3{ 0.0f, 3.0f, -12.0f };
+    camera_.GetTransform().rotate = { 0.15f, 0.0f, 0.0f };   // 少し下を向く
+}</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">Transform3D&amp; GetTransform();
+const Transform3D&amp; GetTransform() const;</code>
+        <div class="d"><code>translate</code> が位置、<code>rotate</code> が向き（ラジアン）。<code>rotate.x</code> を正にすると下を向き、<code>rotate.y</code> を正にすると右を向きます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetFovY(float fovY);
+float GetFovY() const;</code>
+        <div class="d">縦方向の画角（ラジアン）。既定は 0.45（約 26°）。大きくすると広く映ります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetClipPlanes(float nearClip, float farClip);
+float GetNearClip() const;
+float GetFarClip() const;</code>
+        <div class="d">描画する距離の範囲。既定は 0.1〜100。<code>farClip</code> より遠い物は映りません。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Matrix4x4 GetViewMatrix() const;</code>
+        <div class="d">カメラのワールド行列（<code>S * R * T</code>）の逆行列を返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Matrix4x4 GetProjectionMatrix(float aspectRatio) const;</code>
+        <div class="d">透視投影行列（左手系・深度 0〜1）を返します。</div>
+        <dl class="pr"><dt>aspectRatio</dt><dd>幅 ÷ 高さ。シーンの中では <code>GetAspectRatio()</code> を渡す</dd></dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Light -->
+  <section class="cls" id="Light">
+    <div class="cls-head"><h3>DirectionalLight / PointLight</h3><span class="path">Engine/Light/DirectionalLight.h ・ PointLight.h</span><span class="tags"><span class="tag">struct</span></span></div>
+    <p class="lead">光源のデータです。シーンの中の <code>directionalLight_</code> と <code>pointLights_</code> を書き換えると、<code>Update</code> の後で自動的に反映されます。陰影が効くのは、<code>LightingMode</code> が <code>kNone</code> 以外のマテリアルだけです。シェーダーと同じメモリの並びなので、メンバーの順番は変えません。</p>
+    <div class="ex">
+      <p class="ex-label">例: オレンジの点光源を1つ点ける</p>
+<pre class="code">void GameScene::OnInitialize() {
+    directionalLight_.direction = { 0.4f, -1.0f, 0.6f };   // 斜め上からの光（長さは自由）
+    directionalLight_.intensity = 0.6f;
+
+    PointLight&amp; lamp = pointLights_.lights[0];
+    lamp.enabled = 1;
+    lamp.position = { 0.0f, 2.0f, 0.0f };
+    lamp.color = { 1.0f, 0.6f, 0.2f, 1.0f };
+    lamp.radius = 8.0f;
+}</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">struct DirectionalLight {
+    Vector4 color;       // 光の色（既定 白）
+    Vector3 direction;   // 光の進む向き（既定 {0, -1, 0} = 真下へ）。シェーダーで正規化される
+    float intensity;     // 強さ（既定 1）
+    int32_t enabled;     // 0:無効 / 0以外:有効（既定 1）
+    float padding[3];
+};</code>
+        <div class="d">平行光源（太陽の光のように、どこでも同じ向きから当たる光）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">struct PointLight {
+    Vector4 color = { 1, 1, 1, 1 };
+    Vector3 position = { 0, 2, 0 };   // ワールド座標
+    float intensity = 1.0f;
+    float radius = 10.0f;             // 光が届く距離（ここで 0 になる）
+    float decay = 1.0f;               // 減衰の強さ（大きいほど光源の近くで急に暗くなる）
+    int32_t enabled = 0;              // 0:無効 / 0以外:有効
+    float padding = 0.0f;
+};</code>
+        <div class="d">点光源（電球のように、1点から全方向へ広がる光）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">inline constexpr uint32_t kMaxPointLightCount = 4;
+struct PointLightGroup { PointLight lights[kMaxPointLightCount]; };</code>
+        <div class="d">シーンに置ける点光源は最大 4 個。まとめてシェーダーへ送ります。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- DebugDraw -->
+  <section class="cls" id="DebugDraw">
+    <div class="cls-head"><h3>DebugDraw</h3><span class="path">Engine/Rendering/DebugDraw.h</span><span class="tags"><span class="tag t-static">static</span></span></div>
+    <p class="lead">当たり判定の形・曲線・補助線を線で表示します。<code>OnUpdate</code> の中で呼ぶと、そのフレームのシーン描画の最後に、ほかの物体に隠れずに（深度テストなしで）表示されます。線は毎フレーム消えるので、出したい間は毎フレーム呼びます。全構成でビルドされるので、開発中だけ出すなら <code>#ifndef NDEBUG</code> で囲みます。1フレームに描ける線は 65536 本までで、超えた分は描かれません（ログに1回出ます）。</p>
+    <div class="ex">
+      <p class="ex-label">例: 床のグリッドと当たり判定の球</p>
+<pre class="code">#include "Engine/Rendering/DebugDraw.h"
+
+void GameScene::OnUpdate() {
+    // ...
+#ifndef NDEBUG
+    DebugDraw::DrawGrid();
+    DebugDraw::DrawSphere(player_.CalcWorldBoundingSphere(), { 0.2f, 1.0f, 0.2f, 1.0f });
+#endif
+}</pre>
+    </div>
+    <p class="sub">color を省略すると白。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static void DrawLine(const Vector3&amp; start, const Vector3&amp; end, const Vector4&amp; color = {1, 1, 1, 1});</code>
+        <div class="d">2点を結ぶ線分。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawSegment(const Segment3D&amp; segment, const Vector4&amp; color = {1, 1, 1, 1});</code>
+        <div class="d">線分（<a href="#Shapes">Segment3D</a>）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawSphere(const Sphere&amp; sphere, const Vector4&amp; color = {1, 1, 1, 1});</code>
+        <div class="d">球。緯度・経度 12 分割の線で描きます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawAABB(const AABB3D&amp; aabb, const Vector4&amp; color = {1, 1, 1, 1});</code>
+        <div class="d">軸に平行な箱（12 本の辺）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawOBB(const OBB3D&amp; obb, const Vector4&amp; color = {1, 1, 1, 1});</code>
+        <div class="d">回転した箱（12 本の辺）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawTriangle(const Triangle3D&amp; triangle, const Vector4&amp; color = {1, 1, 1, 1});</code>
+        <div class="d">三角形（3 本の辺）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawCapsule(const Capsule3D&amp; capsule, const Vector4&amp; color = {1, 1, 1, 1});</code>
+        <div class="d">カプセル（両端の球と、それをつなぐ側面の線）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawPlane(const Plane3D&amp; plane, const Vector4&amp; color = {1, 1, 1, 1}, float size = 2.0f);</code>
+        <div class="d">平面。原点に一番近い平面上の点を中心に、<code>size</code> 四方の枠と法線を描きます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawCurve(const Curve&amp; curve, const Vector4&amp; color = {1, 1, 1, 1}, bool drawControlPoints = true);</code>
+        <div class="d">曲線を 32 分割の折れ線で描きます。<code>drawControlPoints</code> が true なら制御点と、制御点を結ぶ線も描きます。→ <a href="#Curve">Curve</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void DrawGrid(float size = 10.0f, uint32_t divisions = 10, const Vector4&amp; color = {0.5f, 0.5f, 0.5f, 1});</code>
+        <div class="d">XZ 平面のグリッド（原点が中心）。<code>size</code> 四方を <code>divisions</code> 分割します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static DebugDraw* GetInstance();
+void Initialize(ID3D12Device* device);
+void Finalize();
+void Render(ID3D12GraphicsCommandList* commandList, D3D12_GPU_VIRTUAL_ADDRESS viewProjection);
+void EndFrame();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">線用のシェーダーと PSO の準備、描画（<code>BaseScene::Draw</code> の最後）、フレーム終わりの消去をエンジンが行います。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- DebugCamera -->
+  <section class="cls" id="DebugCamera">
+    <div class="cls-head"><h3>DebugCamera</h3><span class="path">Engine/Camera/DebugCamera.h</span><span class="tags"><span class="tag t-rel">Release 除外</span></span></div>
+    <p class="lead">マウスでシーンを見回す開発用のカメラです。Release ではビルドされないので、<code>#ifndef NDEBUG</code> で囲んで使います。<kbd>Enter</kbd> で ON/OFF を切り替えます。</p>
+    <ul>
+      <li>左クリック: カーソルの下のオブジェクトを選び、その中心を注視点にする</li>
+      <li>左ドラッグ・中ボタンドラッグ: 注視点のまわりを回る</li>
+      <li>右ドラッグ: 移動（上下で高さ、左右で平行移動）</li>
+      <li>ホイール: 寄る・引く</li>
+    </ul>
+    <div class="ex">
+      <p class="ex-label">例: シーンに組み込む（Sandbox の DemoSceneBase と同じ形）</p>
+<pre class="code">// GameScene.h
+#ifndef NDEBUG
+#include "Engine/Camera/DebugCamera.h"
+#endif
+
+class GameScene : public Engine::BaseScene {
+protected:
+    // ...
+#ifndef NDEBUG
+    // デバッグカメラが ON のときは、そのビュー行列で描く
+    Engine::Matrix4x4 CalcViewMatrix() const override {
+        return debugCamera_.IsEnabled() ? debugCamera_.GetViewMatrix() : camera_.GetViewMatrix();
+    }
+#endif
+private:
+#ifndef NDEBUG
+    Engine::DebugCamera debugCamera_;
+#endif
+};
+
+// GameScene.cpp の OnUpdate の最後
+#ifndef NDEBUG
+    std::vector&lt;DebugCamera::PickTarget&gt; targets;
+    const Sphere bounds = player_.CalcWorldBoundingSphere();
+    targets.push_back({ bounds.center, bounds.radius });
+
+    bool blockMouse = false;
+#ifdef USE_IMGUI
+    blockMouse = ImGui::GetIO().WantCaptureMouse;   // ImGui を操作中はカメラを動かさない
+#endif
+    debugCamera_.Update(targets,
+        GetRenderAreaX(), GetRenderAreaY(), GetRenderAreaWidth(), GetRenderAreaHeight(),
+        camera_.GetProjectionMatrix(GetAspectRatio()), blockMouse);
+#endif</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">struct PickTarget { Vector3 center; float radius; };</code>
+        <div class="d">クリックで選べる対象（ワールド空間の球）。<code>Object3D::CalcWorldBoundingSphere()</code> の値を入れます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Update(const std::vector&lt;PickTarget&gt;&amp; targets, float viewX, float viewY, float viewWidth, float viewHeight, const Matrix4x4&amp; projection, bool blockMouse);</code>
+        <div class="d">入力を反映してカメラを動かします。毎フレーム1回呼びます。</div>
+        <dl class="pr">
+          <dt>targets</dt><dd>クリックで選べる対象の一覧</dd>
+          <dt>viewX, viewY</dt><dd>ゲームの描画先の左上（<code>GetRenderAreaX/Y()</code>）</dd>
+          <dt>viewWidth, viewHeight</dt><dd>ゲームの描画先の大きさ（<code>GetRenderAreaWidth/Height()</code>）</dd>
+          <dt>projection</dt><dd>クリック位置からレイを作るための透視投影行列</dd>
+          <dt>blockMouse</dt><dd>true の間はマウス操作を無視する（ImGui を操作中など）</dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">bool IsEnabled() const;</code>
+        <div class="d">ON かどうか。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Matrix4x4 GetViewMatrix() const;</code>
+        <div class="d">今の注視点・距離・角度から作ったビュー行列。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void DrawImGui();<span class="tag t-debug">Debug のみ</span></code>
+        <div class="d">状態の表示と、回転・移動・ズームの速さなどの調整 UI。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- TextureManager -->
+  <section class="cls" id="TextureManager">
+    <div class="cls-head"><h3>TextureManager</h3><span class="path">Engine/Graphics/TextureManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">テクスチャの読み込み・GPU への転送・キャッシュを行います。同じパスは1回だけ読み込まれ、同じハンドルが返ります。<code>Object3D::SetTexture</code> や <code>Sprite::Initialize(パス, …)</code> の中でも使われているので、直接呼ぶのはハンドルを使い回したいときだけで十分です。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static TextureManager* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t Load(const std::string&amp; filepath);</code>
+        <div class="d">画像を読み込んで、ハンドルを返します。PNG・JPEG・BMP など WIC で読める形式に対応します（DDS は不可）。sRGB として読み込み、ミップマップを自動で作ります。ファイルが無いと assert で止まります。キャッシュはパスの文字列が完全に同じときだけ効きます（<code>"resources/a.png"</code> と <code>"./resources/a.png"</code> は別物扱い）。</div>
+        <dl class="pr"><dt>filepath</dt><dd>Game/ からの相対パス</dd></dl>
+        <p class="ret"><b>戻り値</b> テクスチャハンドル（<code>SetTextureHandle</code> などに渡す）</p>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t GetWhiteTexture();</code>
+        <div class="d">1×1 の白いテクスチャのハンドル。テクスチャなしで色だけ出したいときに使います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU(uint32_t textureHandle) const;</code>
+        <div class="d">描画に使う SRV の GPU ハンドル。自前の描画や、ImGui に画像を出すときに使います。</div>
+        <div class="ex">
+<pre class="code">ImGui::Image(
+    reinterpret_cast&lt;ImTextureID&gt;(TextureManager::GetInstance()-&gt;GetSrvHandleGPU(handle).ptr),
+    ImVec2(128.0f, 128.0f));</pre>
+        </div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize(ID3D12Device* device, ID3D12GraphicsCommandList* commandList);
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">転送コマンドを積むコマンドリストの登録と、全テクスチャの解放。テクスチャを個別に解放する関数はありません。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- MeshManager -->
+  <section class="cls" id="MeshManager">
+    <div class="cls-head"><h3>MeshManager</h3><span class="path">Engine/Rendering/MeshManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">メッシュの読み込みとキャッシュを行います。同じ OBJ は1回だけ読み込まれ、同じメッシュが共有されます。メッシュはアプリの終了まで残ります。<code>Object3D::Initialize</code> が内部で使うので、ふだんは直接呼びません。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static MeshManager* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Mesh* Load(const std::string&amp; objFilePath);</code>
+        <div class="d">OBJ を読み込みます（2回目以降はキャッシュを返す）。重いモデルを先に読んでおきたいときにも使えます。</div>
+        <dl class="pr"><dt>objFilePath</dt><dd>Game/ からの相対パス。例 <code>"resources/player.obj"</code></dd></dl>
+      </div>
+      <div class="fn">
+        <code class="sig">Mesh* GetPrimitive(Primitive primitive);</code>
+        <div class="d">組み込み形状のメッシュ（初回に作る）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">全メッシュを解放します。</div>
+      </div>
+    </div>
+    <div class="note"><span class="note-label">共有に注意</span>メッシュは同じモデルを使う全オブジェクトで共有されます。<code>GetMappedVertices()</code> で頂点を書き換えると、全員の形が変わります。</div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Mesh -->
+  <section class="cls" id="Mesh">
+    <div class="cls-head"><h3>Mesh</h3><span class="path">Engine/Rendering/Mesh.h</span></div>
+    <p class="lead">頂点バッファ（と、あればインデックスバッファ）と、ローカル空間の境界球を持つ形状データです。ふだんは <code>MeshManager</code> 経由で使い、自分で形を作るときだけ直接扱います。頂点バッファは Map したままなので、<code>GetMappedVertices()</code> で直接編集できます。</p>
+    <div class="ex">
+      <p class="ex-label">例: 三角形を自分で作る</p>
+<pre class="code">// メンバー（Mesh を先に宣言する）: Engine::Mesh triangleMesh_;  Engine::Object3D triangle_;
+VertexData v[3]{};
+v[0] = { { -0.5f, -0.5f, 0.0f, 1.0f }, { 0.0f, 1.0f }, { 0.0f, 0.0f, -1.0f } };  // 左下
+v[1] = { {  0.0f,  0.5f, 0.0f, 1.0f }, { 0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f } };  // 上
+v[2] = { {  0.5f, -0.5f, 0.0f, 1.0f }, { 1.0f, 1.0f }, { 0.0f, 0.0f, -1.0f } };  // 右下（時計回りが表）
+triangleMesh_.Create(DirectXCore::GetInstance()-&gt;GetDevice(), v, 3);
+triangle_.Initialize(&amp;triangleMesh_, TextureManager::GetInstance()-&gt;GetWhiteTexture());</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">struct SubMesh {
+    std::string name;             // o / g の名前（無ければ空）
+    std::string materialName;     // usemtl のマテリアル名（無ければ空）
+    std::string textureFilePath;  // mtl の map_Kd から解決したパス（無ければ空）
+    uint32_t vertexStart = 0;     // 頂点バッファ内の開始位置
+    uint32_t vertexCount = 0;     // 頂点数
+};</code>
+        <div class="d">OBJ の <code>o</code> / <code>g</code> / <code>usemtl</code> 単位の描画範囲。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Create(ID3D12Device* device, const VertexData* vertices, uint32_t vertexCount);</code>
+        <div class="d">頂点の配列から作ります。<code>vertices</code> が nullptr なら領域だけ確保します。三角形リストとして、時計回りが表になります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Create(ID3D12Device* device, const VertexData* vertices, uint32_t vertexCount, const uint32_t* indices, uint32_t indexCount);</code>
+        <div class="d">頂点とインデックスの配列から作ります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void CreateFromObj(ID3D12Device* device, const std::string&amp; directoryPath, const std::string&amp; filename);</code>
+        <div class="d">OBJ ファイルから作ります（キャッシュなし）。例: <code>CreateFromObj(device, "resources", "skydome.obj")</code></div>
+      </div>
+      <div class="fn">
+        <code class="sig">void CreateSphere(ID3D12Device* device, uint32_t subdivision);</code>
+        <div class="d">緯度・経度を <code>subdivision</code> 分割した球（半径 1・原点中心）を作ります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void CreateCube(ID3D12Device* device);</code>
+        <div class="d">1辺 1・原点中心の立方体を作ります（面ごとに法線と UV 0〜1 を持つ 24 頂点＋36 インデックス）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Draw(ID3D12GraphicsCommandList* commandList) const;</code>
+        <div class="d">頂点（とインデックス）バッファを設定して描画コマンドを積みます。定数バッファやテクスチャは呼ぶ側で設定しておきます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void DrawSubMesh(ID3D12GraphicsCommandList* commandList, uint32_t index) const;</code>
+        <div class="d">指定したサブメッシュの範囲だけ描きます（OBJ から作ったインデックスなしのメッシュ専用）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t GetSubMeshCount() const;
+const SubMesh&amp; GetSubMesh(uint32_t index) const;</code>
+        <div class="d">サブメッシュの数と情報。OBJ 以外から作ったメッシュでは 0 個。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">VertexData* GetMappedVertices();
+uint32_t GetVertexCount() const;</code>
+        <div class="d">頂点へ直接書き込むためのポインタと、頂点の数。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">const Vector3&amp; GetLocalCenter() const;
+float GetLocalRadius() const;
+void RecomputeBoundingSphere();</code>
+        <div class="d">ローカル空間の境界球（作ったときに頂点から計算）。頂点を編集したら <code>RecomputeBoundingSphere()</code> で計算し直します。視錐台カリングとクリック判定に使われます。</div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ 入力・音・時間 -->
+<section class="group" id="g-io">
+  <h2>入力・音・時間・ウィンドウ</h2>
+  <p class="group-lead">キーボード・マウス・パッド、効果音、フレームの時間、ウィンドウです。</p>
+
+  <!-- ---------------------------------------------------------- Input -->
+  <section class="cls" id="Input">
+    <div class="cls-head"><h3>Input</h3><span class="path">Engine/Input/Input.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">キーボード・マウス（DirectInput）とゲームパッド（XInput、最大 4 人）の入力です。エンジンが毎フレーム状態を更新するので、ゲーム側は問い合わせるだけで済みます。キーごとに問い合わせるので、同時押しもそのまま判定できます。キーボードとマウスは、ウィンドウが前面にあるときだけ取得されます。</p>
+    <div class="ex">
+      <p class="ex-label">例: キーボードとパッドの両方で動かす</p>
+<pre class="code">#include "Engine/Input/Input.h"
+
+Input* input = Input::GetInstance();
+Vector2 move = input-&gt;GetLeftStick();              // パッド（上が +Y）
+if (input-&gt;IsPress(DIK_A)) { move.x = -1.0f; }
+if (input-&gt;IsPress(DIK_D)) { move.x = 1.0f; }
+transform.translate.x += move.x * kSpeed;
+
+if (input-&gt;IsTrigger(DIK_SPACE) || input-&gt;IsPadTrigger(kPadA)) {
+    Jump();
+    input-&gt;SetVibrationForTime(0.3f, 0.3f, 0.15f);  // 0.15 秒だけ振動
+}</pre>
+    </div>
+    <p class="sub">よく使うキーコード（<code>dinput.h</code> の <code>DIK_*</code>。Input.h をインクルードすれば使える）</p>
+    <div class="tbl"><table>
+      <thead><tr><th>キー</th><th>コード</th><th>キー</th><th>コード</th></tr></thead>
+      <tbody>
+        <tr><td>W A S D</td><td class="m">DIK_W DIK_A DIK_S DIK_D</td><td>矢印</td><td class="m">DIK_UP DIK_DOWN DIK_LEFT DIK_RIGHT</td></tr>
+        <tr><td>スペース</td><td class="m">DIK_SPACE</td><td>Enter</td><td class="m">DIK_RETURN</td></tr>
+        <tr><td>Esc</td><td class="m">DIK_ESCAPE</td><td>Tab</td><td class="m">DIK_TAB</td></tr>
+        <tr><td>左 Shift / 左 Ctrl</td><td class="m">DIK_LSHIFT DIK_LCONTROL</td><td>数字</td><td class="m">DIK_0 〜 DIK_9</td></tr>
+        <tr><td>ファンクション</td><td class="m">DIK_F1 〜 DIK_F12</td><td>F11</td><td>エンジンが全画面の切り替えに使う</td></tr>
+      </tbody>
+    </table></div>
+    <p class="sub">列挙型</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">enum MouseButton { kMouseLeft = 0, kMouseRight = 1, kMouseMiddle = 2 };</code>
+        <div class="d">マウスのボタン。<code>IsMousePress</code> などに渡します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">enum PadButton {
+    kPadUp, kPadDown, kPadLeft, kPadRight,   // 十字キー
+    kPadStart, kPadBack,                     // メニュー（三本線）/ ビュー（四角2つ）
+    kPadLeftThumb, kPadRightThumb,           // スティック押し込み
+    kPadLeftShoulder, kPadRightShoulder,     // LB / RB
+    kPadA, kPadB, kPadX, kPadY,
+};</code>
+        <div class="d">Xbox コントローラーのボタン（値は <code>XINPUT_GAMEPAD_*</code> のビット）。LT / RT はボタンではなく <code>GetLeftTrigger</code> / <code>GetRightTrigger</code> で読みます。</div>
+      </div>
+    </div>
+    <p class="sub">キーボード</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static Input* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">bool IsPress(uint8_t keyNumber) const;</code>
+        <div class="d">押している間ずっと true。移動などに使います。</div>
+        <dl class="pr"><dt>keyNumber</dt><dd><code>DIK_*</code> のキーコード。例 <code>DIK_W</code></dd></dl>
+      </div>
+      <div class="fn">
+        <code class="sig">bool IsTrigger(uint8_t keyNumber) const;</code>
+        <div class="d">押した瞬間のフレームだけ true。押しっぱなしでは反応しません。ジャンプや決定に使います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">bool IsRelease(uint8_t keyNumber) const;</code>
+        <div class="d">離した瞬間のフレームだけ true。溜め攻撃の発射などに使います。</div>
+      </div>
+    </div>
+    <p class="sub">マウス</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">bool IsMousePress(int button) const;
+bool IsMouseTrigger(int button) const;
+bool IsMouseRelease(int button) const;</code>
+        <div class="d">押している間／押した瞬間／離した瞬間。<code>button</code> は <code>kMouseLeft</code> などの <code>MouseButton</code>。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Vector2 GetMouseMove() const;</code>
+        <div class="d">このフレームにマウスが動いた量。x は右が正、y は<b>下が正</b>。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">float GetWheel() const;</code>
+        <div class="d">このフレームのホイールの回転量。奥へ回すと正、手前へ回すと負（1目盛りで普通は ±120）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Vector2 GetMousePosition() const;</code>
+        <div class="d">カーソルの位置（ウィンドウのクライアント領域の左上が原点・ピクセル）。Debug ではゲーム画面が ImGui のドッキングでずれるので、ゲーム画面内の位置にするには <code>GetRenderAreaX()</code> / <code>GetRenderAreaY()</code> を引きます。</div>
+      </div>
+    </div>
+    <p class="sub">ゲームパッド（<code>playerIndex</code> は 0〜3、省略すると 0 = 1P）</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">bool IsPadConnected(int playerIndex = 0) const;</code>
+        <div class="d">コントローラーがつながっているか。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">bool IsPadPress(int button, int playerIndex = 0) const;
+bool IsPadTrigger(int button, int playerIndex = 0) const;
+bool IsPadRelease(int button, int playerIndex = 0) const;</code>
+        <div class="d">押している間／押した瞬間／離した瞬間。<code>button</code> は <code>kPadA</code> などの <code>PadButton</code>。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">float GetLeftTrigger(int playerIndex = 0) const;
+float GetRightTrigger(int playerIndex = 0) const;</code>
+        <div class="d">LT / RT の踏み込み量 0.0〜1.0。浅い遊びの部分は 0 になります（デッドゾーン処理済み）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Vector2 GetLeftStick(int playerIndex = 0) const;
+Vector2 GetRightStick(int playerIndex = 0) const;</code>
+        <div class="d">スティックの傾き。各成分 -1.0〜1.0、ベクトルの長さは最大 1。x は右が正、y は<b>上が正</b>。中央付近の遊びは 0 になります（デッドゾーン処理済み）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetVibration(float leftMotor, float rightMotor, int playerIndex = 0);</code>
+        <div class="d">振動をすぐに設定します。<code>StopVibration</code> を呼ぶか別の値で上書きするまで続きます。</div>
+        <dl class="pr">
+          <dt>leftMotor</dt><dd>左モーター＝重い低い振動（0.0〜1.0）</dd>
+          <dt>rightMotor</dt><dd>右モーター＝軽い高い振動（0.0〜1.0）</dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetVibrationForTime(float leftMotor, float rightMotor, float seconds, int playerIndex = 0);</code>
+        <div class="d">振動を設定し、<code>seconds</code> 秒たったら自動で止めます。0 以下ならすぐ止めます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void StopVibration(int playerIndex = 0);</code>
+        <div class="d">振動を止めます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize(HWND hwnd);
+void Finalize();
+void Update();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">デバイスの生成・解放と、毎フレームの状態の取得（前のフレームの状態を残してから新しい状態を読む）。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Audio -->
+  <section class="cls" id="Audio">
+    <div class="cls-head"><h3>Audio</h3><span class="path">Engine/Audio/Audio.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">.wav の読み込みと再生（XAudio2）です。読み込んだ音はアプリの終了まで残ります。今ある機能は読み込み・再生・音量だけで、ループ再生と停止はできません。</p>
+    <div class="ex">
+      <p class="ex-label">例</p>
+<pre class="code">#include "Engine/Audio/Audio.h"
+
+// 読み込みはアプリ全体で1回だけにする（シーンの OnInitialize で毎回読むと増えていく）
+size_t jumpSe = Audio::GetInstance()-&gt;LoadWave("resources/jump.wav");
+Audio::GetInstance()-&gt;SetVolume(jumpSe, 0.5f);
+
+// 鳴らす
+Audio::GetInstance()-&gt;Play(jumpSe);</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static Audio* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">size_t LoadWave(const std::string&amp; filename);</code>
+        <div class="d">PCM の .wav（RIFF の <code>fmt </code> と <code>data</code> チャンク）を読み込み、ハンドルを返します。mp3 などは読めません。ファイルが無い・形式が違うと assert で止まります。キャッシュは無く、同じファイルでも呼ぶたびに別のサウンドとして読み込みます。</div>
+        <dl class="pr"><dt>filename</dt><dd>Game/ からの相対パス。例 <code>"resources/jump.wav"</code></dd></dl>
+        <p class="ret"><b>戻り値</b> サウンドハンドル（<code>Play</code> / <code>SetVolume</code> に渡す）</p>
+      </div>
+      <div class="fn">
+        <code class="sig">void Play(size_t soundHandle);</code>
+        <div class="d">頭から再生します。同じハンドルが再生中なら、止めてから頭から鳴らし直します（同じ音は重なりません）。同じ音を重ねたいときは、同じファイルを別のハンドルとして読み込みます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetVolume(size_t soundHandle, float volume);</code>
+        <div class="d">音量を設定します。0.0 で無音、1.0 で元の音量、それ以上で大きくなります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize();
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">XAudio2 の生成と、全サウンドの解放。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Time -->
+  <section class="cls" id="Time">
+    <div class="cls-head"><h3>Time</h3><span class="path">Engine/Core/Time.h</span><span class="tags"><span class="tag t-static">static</span></span></div>
+    <p class="lead">フレームの時間です。更新はモニターのリフレッシュレートに関係なく毎秒 60 回に固定されるので、「1フレームあたりの移動量」で書いたコードはどの PC でも同じ速さで動きます。秒単位で書きたいときは <code>GetDeltaTime()</code> を掛けます。</p>
+    <div class="ex">
+<pre class="code">#include "Engine/Core/Time.h"
+
+position.x += speedPerSecond * Time::GetDeltaTime();     // 秒速で動かす
+timer_ -= Time::GetDeltaTime();                          // 残り時間のカウントダウン
+bool blink = std::sin(Time::GetTotalTime() * 10.0f) &gt; 0.0f;  // 点滅</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static constexpr float kTargetFrameRate = 60.0f;</code>
+        <div class="d">1秒あたりの更新回数。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static constexpr float kMaxDeltaTime = 0.1f;</code>
+        <div class="d">経過時間の上限（秒）。処理落ちやブレークポイントで止めた直後に、物が一気に動かないようにするためのもの。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static float GetDeltaTime();</code>
+        <div class="d">前のフレームからの経過時間（秒）。ふだんは約 1/60 秒で、<code>kMaxDeltaTime</code> を超えません。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static float GetTotalTime();</code>
+        <div class="d">起動してからの経過時間（秒）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static void Initialize();
+static void WaitForNextFrame();
+static void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">タイマーの精度を 1ms に上げる／1 フレームの目標時間（1/60 秒）が経つまで待って経過時間を更新する／精度を戻す。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- WinApp -->
+  <section class="cls" id="WinApp">
+    <div class="cls-head"><h3>WinApp</h3><span class="path">Engine/Core/WinApp.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">ウィンドウです。サイズ変更と、枠なしの全画面（ボーダレス）に対応しています。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static constexpr int32_t kClientWidth = 1280;
+static constexpr int32_t kClientHeight = 720;</code>
+        <div class="d">起動時の大きさで、スプライトの基準解像度でもあります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static WinApp* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">int32_t GetClientWidth() const;
+int32_t GetClientHeight() const;</code>
+        <div class="d">今のクライアント領域の大きさ（ピクセル）。Debug では ImGui も含んだウィンドウ全体の大きさです。ゲーム画面の大きさはシーンの <code>GetRenderAreaWidth/Height()</code> を使います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetFullscreen(bool enable);
+void ToggleFullscreen();
+bool IsFullscreen() const;</code>
+        <div class="d">ボーダレス全画面の切り替え。<kbd>F11</kbd> でもエンジンが切り替えます。大きさの変化は次のフレームの頭で反映されます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetTitle(const std::wstring&amp; title);
+const std::wstring&amp; GetTitle() const;</code>
+        <div class="d">ウィンドウのタイトル。シーンからタイトルを変えるときに使います（例: スコアを表示）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">HWND GetHwnd() const;</code>
+        <div class="d">ウィンドウハンドル。Win32 API を直接使うときに。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize();
+bool ProcessMessage();
+bool IsSizeChanged() const;
+void ClearSizeChangedFlag();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">ウィンドウの生成、メッセージ処理（閉じられたら false）、サイズ変化の検出。</div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ 数学 -->
+<section class="group" id="g-math">
+  <h2>数学・当たり判定</h2>
+  <p class="group-lead">ベクトル・行列・形状・当たり判定・曲線・視錐台です。どれも <code>namespace Engine</code> の自由関数か構造体です。</p>
+
+  <!-- ---------------------------------------------------------- Vector -->
+  <section class="cls" id="Vector">
+    <div class="cls-head"><h3>Vector2 / Vector3 / Vector4</h3><span class="path">Engine/Math/Vector2.h ・ Vector3.h ・ Vector4.h</span><span class="tags"><span class="tag">struct</span></span></div>
+    <p class="lead">成分が float の構造体です。Vector2 と Vector3 には成分ごとの四則演算子があります。Vector4 は色や同次座標の受け渡し用で、演算子はありません。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">struct Vector2 { float x, y; };
+struct Vector3 { float x, y, z; };
+struct Vector4 { float x, y, z, w; };</code>
+        <div class="d">波かっこで作れます。例: <code>Vector3 v{ 1.0f, 2.0f, 3.0f };</code></div>
+      </div>
+      <div class="fn">
+        <code class="sig">a + b   a - b   -a   a * s   a / s   s * a
+a += b  a -= b  a *= s</code>
+        <div class="d">Vector2 / Vector3 の演算子（<code>s</code> は float）。ベクトル同士の掛け算・<code>==</code>・<code>/=</code> はありません。内積・外積・長さは <a href="#Matrix4x4">Matrix4x4.h の関数</a>（Vector3 用）を使います。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Transform3D -->
+  <section class="cls" id="Transform3D">
+    <div class="cls-head"><h3>Transform3D</h3><span class="path">Engine/Rendering/TransformData3D.h</span><span class="tags"><span class="tag">struct</span></span></div>
+    <p class="lead">拡大・回転・移動の組です。ファイル名は <code>TransformData3D.h</code> で、構造体の名前と違う点に注意します。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">struct Transform3D {
+    Vector3 scale;      // 各軸の倍率
+    Vector3 rotate;     // 各軸の回転（ラジアン。X → Y → Z の順に適用）
+    Vector3 translate;  // 位置
+};</code>
+        <div class="d">行列にするには <code>MakeAffineMatrix(t.scale, t.rotate, t.translate)</code>。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Matrix4x4 -->
+  <section class="cls" id="Matrix4x4">
+    <div class="cls-head"><h3>Matrix4x4</h3><span class="path">Engine/Math/Matrix4x4.h</span><span class="tags"><span class="tag">struct ＋ 関数</span></span></div>
+    <p class="lead">4×4 行列（行優先・行ベクトル）と、行列・ベクトルの計算関数です。変換は <code>v * M</code> の順にかかり、合成は左から右へ掛けます（<code>world = S * R * T</code>、<code>WVP = world * view * proj</code>）。</p>
+    <div class="ex">
+      <p class="ex-label">例: 向いている方向へ進む</p>
+<pre class="code">Transform3D&amp; t = model_.GetTransform();
+Vector3 forward = Transform({ 0.0f, 0.0f, 1.0f }, MakeRotateYMatrix(t.rotate.y));  // Y 回転後の前方向
+t.translate += forward * kSpeed;</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">struct Matrix4x4 {
+    float m[4][4];
+    Matrix4x4 operator+(const Matrix4x4&amp; rhs) const;
+    Matrix4x4 operator-(const Matrix4x4&amp; rhs) const;
+    Matrix4x4 operator*(const Matrix4x4&amp; rhs) const;
+    Matrix4x4&amp; operator*=(const Matrix4x4&amp; rhs);
+};</code>
+        <div class="d">平行移動の成分は 4 行目（<code>m[3][0]</code>〜<code>m[3][2]</code>）にあります。</div>
+      </div>
+    </div>
+    <p class="sub">行列の基本</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">Matrix4x4 Add(const Matrix4x4&amp; m1, const Matrix4x4&amp; m2);
+Matrix4x4 Subtract(const Matrix4x4&amp; m1, const Matrix4x4&amp; m2);</code><div class="d">成分ごとの和・差。</div></div>
+      <div class="fn"><code class="sig">Matrix4x4 Multiply(const Matrix4x4&amp; m1, const Matrix4x4&amp; m2);</code><div class="d">行列の積 <code>m1 * m2</code>（<code>m1</code> の変換が先にかかる）。</div></div>
+      <div class="fn"><code class="sig">Matrix4x4 Inverse(const Matrix4x4&amp; m);</code><div class="d">逆行列。逆行列が無い（特異）ときは単位行列を返します。</div></div>
+      <div class="fn"><code class="sig">Matrix4x4 Transpose(const Matrix4x4&amp; m);</code><div class="d">転置（行と列の入れ替え）。</div></div>
+      <div class="fn"><code class="sig">Matrix4x4 MakeIdentity4x4();</code><div class="d">単位行列。</div></div>
+    </div>
+    <p class="sub">変換行列</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">Matrix4x4 MakeTranslateMatrix(const Vector3&amp; translate);</code><div class="d">平行移動行列。</div></div>
+      <div class="fn"><code class="sig">Matrix4x4 MakeScaleMatrix(const Vector3&amp; scale);</code><div class="d">拡大縮小行列。</div></div>
+      <div class="fn"><code class="sig">Matrix4x4 MakeRotateXMatrix(float radian);
+Matrix4x4 MakeRotateYMatrix(float radian);
+Matrix4x4 MakeRotateZMatrix(float radian);</code><div class="d">各軸まわりの回転行列（ラジアン）。</div></div>
+      <div class="fn">
+        <code class="sig">Matrix4x4 MakeAffineMatrix(const Vector3&amp; scale, const Vector3&amp; rotate, const Vector3&amp; translate);</code>
+        <div class="d">拡大 → 回転（X → Y → Z）→ 移動をまとめた行列（<code>S * R * T</code>）。Object3D のワールド行列と同じ作り方です。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Vector3 Transform(const Vector3&amp; vector, const Matrix4x4&amp; matrix);</code>
+        <div class="d">点を行列で変換します（w = 1 として掛け、w で割るところまで行う）。w が 0 になると assert で止まります。</div>
+      </div>
+    </div>
+    <p class="sub">射影・ビューポート</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip);</code>
+        <div class="d">透視投影行列（左手系、深度 0〜1）。</div>
+        <dl class="pr">
+          <dt>fovY</dt><dd>縦の画角（ラジアン）</dd>
+          <dt>aspectRatio</dt><dd>幅 ÷ 高さ</dd>
+          <dt>nearClip, farClip</dt><dd>描画する距離の範囲</dd>
+        </dl>
+      </div>
+      <div class="fn">
+        <code class="sig">Matrix4x4 MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip);</code>
+        <div class="d">正射影行列（深度 0〜1）。スプライトは <code>(0, 0, 画面幅, 画面高さ, 0, 100)</code> で作っています。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth);</code>
+        <div class="d">NDC（-1〜1）をスクリーン座標（ピクセル、Y 下向き）へ変換する行列。3D の位置を画面上の位置に直すときに <code>view * proj * viewport</code> の形で使います。</div>
+      </div>
+    </div>
+    <p class="sub">ベクトル（Vector3）</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">float Dot(const Vector3&amp; v1, const Vector3&amp; v2);</code><div class="d">内積。向きがそろっているほど大きく、直角で 0、逆向きで負。</div></div>
+      <div class="fn"><code class="sig">Vector3 Cross(const Vector3&amp; v1, const Vector3&amp; v2);</code><div class="d">外積。v1 と v2 の両方に垂直なベクトル。</div></div>
+      <div class="fn"><code class="sig">float Length(const Vector3&amp; v);</code><div class="d">長さ。</div></div>
+      <div class="fn"><code class="sig">Vector3 Normalize(const Vector3&amp; v);</code><div class="d">長さ 1 にしたベクトル。ゼロベクトルならゼロベクトルを返します。</div></div>
+      <div class="fn"><code class="sig">Vector3 Add(const Vector3&amp; v1, const Vector3&amp; v2);
+Vector3 Subtract(const Vector3&amp; v1, const Vector3&amp; v2);
+Vector3 Multiply(const Vector3&amp; v, float s);
+Vector3 Multiply(float s, const Vector3&amp; v);</code><div class="d">和・差・スカラー倍（演算子 <code>+ - *</code> と同じ）。</div></div>
+      <div class="fn"><code class="sig">Vector3 Project(const Vector3&amp; v1, const Vector3&amp; v2);</code><div class="d">v1 を v2 の方向へ射影したベクトル。v2 がゼロならゼロベクトル。</div></div>
+      <div class="fn"><code class="sig">Vector3 Reflect(const Vector3&amp; input, const Vector3&amp; normal);</code><div class="d">反射ベクトル（<code>input - 2 * dot(input, normal) * normal</code>）。<code>normal</code> は長さ 1 にしておきます。ボールの跳ね返りなどに。</div></div>
+    </div>
+    <p class="sub">補間</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">float Lerp(float start, float end, float t);
+Vector3 Lerp(const Vector3&amp; start, const Vector3&amp; end, float t);</code><div class="d">線形補間。t = 0 で start、t = 1 で end。0〜1 の外は直線上をはみ出します。カメラを少しずつ追従させる例: <code>pos = Lerp(pos, target, 0.1f);</code></div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Shapes -->
+  <section class="cls" id="Shapes">
+    <div class="cls-head"><h3>Shapes</h3><span class="path">Engine/Math/Shapes.h</span><span class="tags"><span class="tag">struct</span></span></div>
+    <p class="lead">当たり判定・デバッグ表示・視錐台カリングで共通に使う形状です。</p>
+    <div class="tbl"><table>
+      <thead><tr><th class="m">形状</th><th>メンバー</th><th>メモ</th></tr></thead>
+      <tbody>
+        <tr><td class="m">Sphere</td><td class="m">Vector3 center; float radius;</td><td>球</td></tr>
+        <tr><td class="m">AABB3D</td><td class="m">Vector3 min; Vector3 max;</td><td>軸に平行な箱。中心と半分の大きさからは <code>MakeAABB</code></td></tr>
+        <tr><td class="m">OBB3D</td><td class="m">Vector3 center; Vector3 orientations[3]; Vector3 size;</td><td>回転した箱。<code>orientations</code> は直交する3軸、<code>size</code> は各軸の半分の幅。回転からは <code>MakeOBB</code></td></tr>
+        <tr><td class="m">Segment3D</td><td class="m">Vector3 start; Vector3 end;</td><td>線分</td></tr>
+        <tr><td class="m">Triangle3D</td><td class="m">Vector3 v0, v1, v2;</td><td>三角形</td></tr>
+        <tr><td class="m">Capsule3D</td><td class="m">Segment3D segment; float radius;</td><td>線分を半径ぶん太らせた形（動く球の通り道など）</td></tr>
+        <tr><td class="m">Plane3D</td><td class="m">Vector3 normal; float distance;</td><td><code>dot(normal, p) + distance = 0</code> の点の集まり。<code>normal</code> は長さ 1。法線と1点からは <code>MakePlane</code></td></tr>
+        <tr><td class="m">Circle</td><td class="m">Vector2 center; float radius;</td><td>円（2D）</td></tr>
+        <tr><td class="m">AABB2D</td><td class="m">Vector2 min; Vector2 max;</td><td>軸に平行な矩形（2D）</td></tr>
+        <tr><td class="m">OBB2D</td><td class="m">Vector2 center; Vector2 orientations[2]; Vector2 size;</td><td>回転した矩形（2D）</td></tr>
+        <tr><td class="m">Segment2D</td><td class="m">Vector2 start; Vector2 end;</td><td>線分（2D）</td></tr>
+        <tr><td class="m">Triangle2D</td><td class="m">Vector2 v0, v1, v2;</td><td>三角形（2D）</td></tr>
+        <tr><td class="m">Plane2D</td><td class="m">Vector2 normal; float distance;</td><td>直線（2D）。<code>dot(normal, p) + distance &gt;= 0</code> が内側</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note info"><span class="note-label">My_Math との違い</span>My_Math の <code>Plane(normal, d)</code>（<code>dot(normal, p) = d</code>）は、<code>Plane3D{ normal, -d }</code> にあたります。</div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Collision -->
+  <section class="cls" id="Collision">
+    <div class="cls-head"><h3>Collision</h3><span class="path">Engine/Math/Collision.h</span><span class="tags"><span class="tag">関数</span></span></div>
+    <p class="lead">3D の形状同士の当たり判定です。どの判定も、接しているだけでも当たり（true）になります。引数の順番はどちらでもかまいません（逆の組み合わせも用意されています）。2D の形状同士の判定はまだありません。</p>
+    <div class="ex">
+      <p class="ex-label">例: プレイヤー（球）と壁（箱）</p>
+<pre class="code">#include "Engine/Math/Collision.h"
+
+Sphere body = player_.CalcWorldBoundingSphere();
+AABB3D wall = MakeAABB({ 5.0f, 1.0f, 0.0f }, { 0.5f, 1.0f, 3.0f });   // 中心, 半分の大きさ
+if (IsCollision(body, wall)) {
+    // 当たった
+}
+#ifndef NDEBUG
+DebugDraw::DrawAABB(wall, { 1.0f, 0.3f, 0.3f, 1.0f });
+#endif</pre>
+    </div>
+    <p class="sub">形状を作る補助関数</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">AABB3D MakeAABB(const Vector3&amp; center, const Vector3&amp; halfSize);</code>
+        <div class="d">中心と、各軸の半分の大きさから AABB を作ります。<code>Primitive::kCube</code> を scale <code>s</code> で置いたなら、<code>MakeAABB(translate, s * 0.5f)</code> が同じ大きさです。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">OBB3D MakeOBB(const Vector3&amp; center, const Vector3&amp; rotate, const Vector3&amp; halfSize);</code>
+        <div class="d">中心・回転（ラジアン。Object3D と同じ X → Y → Z）・半分の大きさから OBB を作ります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Plane3D MakePlane(const Vector3&amp; normal, const Vector3&amp; point);</code>
+        <div class="d">法線と、平面上の1点から平面を作ります（法線は正規化されます）。例: 床 <code>MakePlane({0, 1, 0}, {0, 0, 0})</code></div>
+      </div>
+      <div class="fn">
+        <code class="sig">float SignedDistance(const Vector3&amp; point, const Plane3D&amp; plane);</code>
+        <div class="d">点から平面までの符号付きの距離。法線が向いている側が正です。床にめり込んだ量を求めるのに使えます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Vector3 ClosestPoint(const Vector3&amp; point, const Segment3D&amp; segment);</code>
+        <div class="d">線分の上で、点に一番近い位置。</div>
+      </div>
+    </div>
+    <p class="sub">当たり判定 <code>bool IsCollision(a, b)</code> の組み合わせ</p>
+    <div class="tbl"><table>
+      <thead><tr><th>a</th><th>b</th><th>メモ</th></tr></thead>
+      <tbody>
+        <tr><td class="m">Sphere</td><td class="m">Sphere</td><td>中心間の距離 ≤ 半径の和</td></tr>
+        <tr><td class="m">Sphere</td><td class="m">Plane3D</td><td></td></tr>
+        <tr><td class="m">Capsule3D</td><td class="m">Plane3D</td><td>速く動く球が平面をすり抜けたかの判定に</td></tr>
+        <tr><td class="m">Segment3D</td><td class="m">Plane3D</td><td></td></tr>
+        <tr><td class="m">Triangle3D</td><td class="m">Segment3D</td><td></td></tr>
+        <tr><td class="m">AABB3D</td><td class="m">AABB3D</td><td></td></tr>
+        <tr><td class="m">AABB3D</td><td class="m">Sphere</td><td></td></tr>
+        <tr><td class="m">AABB3D</td><td class="m">Segment3D</td><td></td></tr>
+        <tr><td class="m">OBB3D</td><td class="m">Sphere</td><td></td></tr>
+        <tr><td class="m">OBB3D</td><td class="m">Segment3D</td><td></td></tr>
+        <tr><td class="m">OBB3D</td><td class="m">OBB3D</td><td>分離軸判定（15 軸）</td></tr>
+        <tr><td class="m">OBB3D</td><td class="m">AABB3D</td><td></td></tr>
+      </tbody>
+    </table></div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">bool IsCollision(const Sphere&amp; a, const Sphere&amp; b);
+bool IsCollision(const Sphere&amp; sphere, const Plane3D&amp; plane);
+bool IsCollision(const Capsule3D&amp; capsule, const Plane3D&amp; plane);
+bool IsCollision(const Segment3D&amp; segment, const Plane3D&amp; plane);
+bool IsCollision(const Triangle3D&amp; triangle, const Segment3D&amp; segment);
+bool IsCollision(const AABB3D&amp; a, const AABB3D&amp; b);
+bool IsCollision(const AABB3D&amp; aabb, const Sphere&amp; sphere);
+bool IsCollision(const AABB3D&amp; aabb, const Segment3D&amp; segment);
+bool IsCollision(const OBB3D&amp; obb, const Sphere&amp; sphere);
+bool IsCollision(const OBB3D&amp; obb, const Segment3D&amp; segment);
+bool IsCollision(const OBB3D&amp; a, const OBB3D&amp; b);
+bool IsCollision(const OBB3D&amp; obb, const AABB3D&amp; aabb);
+// ＋ 上の組み合わせの引数を逆にした版（inline）</code>
+        <div class="d">重なっていれば（接していても）true を返します。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Curve -->
+  <section class="cls" id="Curve">
+    <div class="cls-head"><h3>Curve / Bezier</h3><span class="path">Engine/Math/Curve.h</span></div>
+    <p class="lead">2 次ベジェ曲線（制御点 3 つ）です。<code>GetPoint(t)</code> で曲線上の位置を取り、オブジェクトを曲線に沿って動かすのに使います。形は <code>DebugDraw::DrawCurve</code> で見られ、制御点は <code>DrawImGui</code> で調整できます。</p>
+    <div class="ex">
+<pre class="code">// メンバー: Engine::Curve path_{ { -5.0f, 0.0f, 0.0f }, { 0.0f, 4.0f, 0.0f }, { 5.0f, 0.0f, 0.0f } };  float t_ = 0.0f;
+t_ += 0.01f;
+if (t_ &gt; 1.0f) { t_ = 0.0f; }
+enemy_.GetTransform().translate = path_.GetPoint(t_);
+#ifndef NDEBUG
+DebugDraw::DrawCurve(path_, { 1.0f, 0.9f, 0.2f, 1.0f });
+#endif</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">Vector3 Bezier(const Vector3&amp; p0, const Vector3&amp; p1, const Vector3&amp; p2, float t);</code>
+        <div class="d">2 次ベジェ曲線上の点。t = 0 で p0、t = 1 で p2 を通り、途中は p1 の方へ引っぱられます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Curve();
+Curve(const Vector3&amp; p0, const Vector3&amp; p1, const Vector3&amp; p2);</code>
+        <div class="d">制御点を指定して作ります。引数なしだと、動作確認用の決まった3点で作られます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Vector3 GetPoint(float t) const;</code>
+        <div class="d">曲線上の点（t: 0.0 で始点、1.0 で終点）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">const std::array&lt;Vector3, 3&gt;&amp; GetControlPoints() const;
+void SetControlPoint(int index, const Vector3&amp; point);</code>
+        <div class="d">制御点の取得と設定（index: 0 = 始点、1 = 中間、2 = 終点。範囲外は assert）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void DrawImGui(const char* label);<span class="tag t-debug">Debug のみ</span></code>
+        <div class="d">制御点を編集する UI を、呼び出し側の ImGui ウィンドウの中に <code>label</code> の名前のツリーとして差し込みます。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- FrustumCulling -->
+  <section class="cls" id="FrustumCulling">
+    <div class="cls-head"><h3>FrustumCulling</h3><span class="path">Engine/Culling/FrustumCulling.h</span><span class="tags"><span class="tag">関数</span></span></div>
+    <p class="lead">カメラに映る範囲（視錐台）と形状の重なりを調べます。<code>Object3D</code> と <code>Sprite</code> は自動で使っているので、自分で呼ぶのは「画面外の敵の処理を省く」といったときだけです。結果は内側・またがる・外側の 3 通りで、描くかどうかだけなら <code>IsVisible()</code> を使います。</p>
+    <div class="ex">
+<pre class="code">// OnUpdate の中（カメラは前のフレームの値。1フレームの遅れはふつう問題にならない）
+Frustum3D frustum = MakeFrustumFromViewProjection(GetViewMatrix() * GetProjectionMatrix());
+if (IsVisible(ClassifyFrustum(frustum, enemy_.CalcWorldBoundingSphere()))) {
+    // 画面に入っている
+}</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">enum class FrustumVisibility { Outside, Intersect, Inside };</code>
+        <div class="d">完全に外（描かなくてよい）／境界にまたがる／完全に内側。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">struct Frustum3D { Plane3D planes[6]; };
+struct Frustum2D { Plane2D planes[4]; };</code>
+        <div class="d">3D の視錐台（左・右・下・上・手前・奥）と、2D の可視矩形（左・右・下・上）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Frustum3D MakeFrustumFromViewProjection(const Matrix4x4&amp; viewProjection);</code>
+        <div class="d"><code>view * projection</code> の行列から 6 平面を取り出します（Gribb–Hartmann 法）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Frustum2D MakeFrustumFromRect(const Vector2&amp; min, const Vector2&amp; max);</code>
+        <div class="d">見える矩形から 2D の視錐台を作ります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">FrustumVisibility ClassifyFrustum(const Frustum3D&amp; frustum, const Sphere&amp; sphere);
+FrustumVisibility ClassifyFrustum(const Frustum3D&amp; frustum, const AABB3D&amp; aabb);
+FrustumVisibility ClassifyFrustum(const Frustum3D&amp; frustum, const OBB3D&amp; obb);
+FrustumVisibility ClassifyFrustum(const Frustum3D&amp; frustum, const Segment3D&amp; segment);
+FrustumVisibility ClassifyFrustum(const Frustum3D&amp; frustum, const Triangle3D&amp; triangle);</code>
+        <div class="d">3D の判定。球は厳密に、それ以外は頂点で判定します。視錐台の角の近くでは外にある物を内側と判定することがありますが、見えている物を外と判定することはありません。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">FrustumVisibility ClassifyFrustum(const Frustum2D&amp; frustum, const Circle&amp; circle);
+FrustumVisibility ClassifyFrustum(const Frustum2D&amp; frustum, const AABB2D&amp; aabb);
+FrustumVisibility ClassifyFrustum(const Frustum2D&amp; frustum, const OBB2D&amp; obb);
+FrustumVisibility ClassifyFrustum(const Frustum2D&amp; frustum, const Segment2D&amp; segment);
+FrustumVisibility ClassifyFrustum(const Frustum2D&amp; frustum, const Triangle2D&amp; triangle);</code>
+        <div class="d">2D の判定。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">inline bool IsVisible(FrustumVisibility visibility);</code>
+        <div class="d"><code>Outside</code> 以外なら true。</div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ ユーティリティ -->
+<section class="group" id="g-util">
+  <h2>ユーティリティ</h2>
+  <p class="group-lead">ログ・文字コード変換・クラッシュダンプです。</p>
+
+  <!-- ---------------------------------------------------------- Log -->
+  <section class="cls" id="Log">
+    <div class="cls-head"><h3>Log</h3><span class="path">Engine/Diagnostics/Log.h</span><span class="tags"><span class="tag">関数</span></span></div>
+    <p class="lead">Visual Studio の出力ウィンドウと、ログファイル（<code>Game/logs/日時.log</code>）の両方に文字列を出します。ログファイルは起動のたびに新しく作られます。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Log(const std::string&amp; message);</code>
+        <div class="d">1 行出力します（末尾に改行が付きます）。数値を混ぜるときは <code>std::format</code> を使います。</div>
+        <div class="ex">
+<pre class="code">#include &lt;format&gt;
+#include "Engine/Diagnostics/Log.h"
+
+Log(std::format("score = {}, pos = ({:.2f}, {:.2f})", score_, pos.x, pos.y));</pre>
+        </div>
+      </div>
+      <div class="fn">
+        <code class="sig">void InitializeLogFile();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d"><code>logs</code> フォルダに日時の名前のログファイルを作ります（Framework の初期化で1回）。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- ConvertString -->
+  <section class="cls" id="ConvertString">
+    <div class="cls-head"><h3>ConvertString</h3><span class="path">Engine/String/ConvertString.h</span><span class="tags"><span class="tag">関数</span></span></div>
+    <p class="lead"><code>std::string</code>（UTF-8）と <code>std::wstring</code>（UTF-16）を変換します。このヘッダーは <code>&lt;string&gt;</code> を含まないので、先に <code>#include &lt;string&gt;</code> を書きます。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">std::wstring ConvertString(const std::string&amp; str);</code>
+        <div class="d">UTF-8 → UTF-16。<code>SetWindowTitle</code> に <code>std::string</code> を渡したいときなどに使います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">std::string ConvertString(const std::wstring&amp; str);</code>
+        <div class="d">UTF-16 → UTF-8。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- CrashHandler -->
+  <section class="cls" id="CrashHandler">
+    <div class="cls-head"><h3>CrashHandler</h3><span class="path">Engine/Diagnostics/CrashHandler.h</span><span class="tags"><span class="tag t-engine">エンジンが呼ぶ</span></span></div>
+    <p class="lead">アプリが例外で落ちたとき、ダンプファイルを <code>Game/Dumps/</code> に書き出します。Framework が起動時に登録します。ダンプファイルを Visual Studio で開くと、落ちた場所のコールスタックが見られます。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);</code>
+        <div class="d"><code>SetUnhandledExceptionFilter</code> に登録する関数。<code>Dumps/年-月日-時分.dmp</code> を作ります。</div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ 立体視・視線追跡 -->
+<section class="group" id="g-special">
+  <h2>立体視・視線追跡</h2>
+  <p class="group-lead">3DS 風の立体視と、顔の位置でカメラを動かす機能です。どれも既定では OFF で、使わなければ処理の負担はほぼありません。Sandbox の <code>SandboxApp</code> と <code>StereoDemoScene</code> が使い方の見本です。</p>
+
+  <!-- ---------------------------------------------------------- StereoRenderer -->
+  <section class="cls" id="StereoRenderer">
+    <div class="cls-head"><h3>StereoRenderer</h3><span class="path">Engine/Graphics/StereoRenderer.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">立体視の描画方式を切り替えます。ON のときは、シーンを視点の数だけ別々の画像に描き、最後に1枚に合成して画面に出します。方式はコードから設定する関数が無く、<code>DrawImGui()</code> の UI で切り替えます。ゲームで使うなら、アプリクラスの <code>DrawImGui</code> で <code>StereoRenderer::GetInstance()-&gt;DrawImGui();</code> を呼びます。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static constexpr uint32_t kMaxViewCount = 8;</code>
+        <div class="d">レンチキュラーで使う最大の視点数。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">enum class DisplayMode : int32_t {
+    kOff = -1,             // 立体視なし（既定。通常の描画）
+    kAnaglyph = 0,         // 赤青メガネ（左目→赤 / 右目→緑青）
+    kLeftEyeOnly = 1,      // 左目の画像だけ（確認用）
+    kRightEyeOnly = 2,     // 右目の画像だけ（確認用）
+    kParallaxBarrier = 3,  // パララックスバリア（物理シートが必要）
+    kLenticular = 4,       // レンチキュラー（物理シートが必要）
+};</code>
+        <div class="d">合成の方式。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">static StereoRenderer* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">bool IsEnabled() const;</code>
+        <div class="d"><code>kOff</code> 以外なら true。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t GetActiveViewCount() const;</code>
+        <div class="d">今の方式で描く視点の数（OFF: 1、レンチキュラー: 8、それ以外: 2）。<code>OnDraw</code> はこの回数呼ばれます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void DrawImGui();<span class="tag t-debug">Debug のみ</span></code>
+        <div class="d">方式の切り替えと、バリアの間隔・レンズの傾き・左右の入れ替え・アナグリフのゴースト軽減などの調整 UI。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize(ID3D12Device* device, int32_t width, int32_t height);
+void Finalize();
+void Resize(int32_t width, int32_t height);
+void BeginView(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex);
+void Composite(ID3D12GraphicsCommandList* commandList, D3D12_CPU_DESCRIPTOR_HANDLE backBufferRTV, const D3D12_VIEWPORT&amp; viewport, const D3D12_RECT&amp; scissorRect);<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">合成用パイプラインの準備、解放、画面サイズの反映、視点ごとの描画先の設定とクリア（描画先は初めて ON にしたときに確保し、OFF に戻すと解放）、画面への合成。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- StereoCamera -->
+  <section class="cls" id="StereoCamera">
+    <div class="cls-head"><h3>StereoCamera</h3><span class="path">Engine/Camera/StereoCamera.h</span></div>
+    <p class="lead">中心のカメラから、左右の目（視点）ごとのビュー射影を作ります。シーンの <code>stereoCamera_</code> として BaseScene が管理します。目の位置は右方向へ平行にずらし、収束距離のところで左右のずれが 0 になるように射影を傾けます。視線追跡が ON のときは、頭の位置に合わせた視点のずれも同じ仕組みで加えます（立体視 OFF でも効きます）。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void DrawImGuiSection();<span class="tag t-debug">Debug のみ</span></code>
+        <div class="d">眼間距離（既定 0.1）・収束距離（既定 10）・頭の動きの効き具合の調整 UI を、呼び出し側のウィンドウの中に差し込みます（Begin / End はしません）。例: シーンの <code>OnDrawImGui</code> で <code>stereoCamera_.DrawImGuiSection();</code></div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetEyeTracking(bool enabled, float gazeX, float gazeY, float headZ);</code>
+        <div class="d">視線追跡の値を設定します（<code>BaseScene::SetEyeTracking</code> から呼ばれます）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">D3D12_GPU_VIRTUAL_ADDRESS GetViewProjectionAddress(uint32_t frameIndex, uint32_t viewIndex) const;</code>
+        <div class="d">指定したフレームスロット・視点のビュー射影の定数バッファのアドレス（頂点シェーダーの b1 に設定するもの）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize(ID3D12Device* device);
+void Update(const Matrix4x4&amp; view, const Matrix4x4&amp; projection);<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">視点ごとの定数バッファを作る／中心カメラの行列から各視点の行列を計算して書き込む（BaseScene の Update の最後）。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- EyeTracker -->
+  <section class="cls" id="EyeTracker">
+    <div class="cls-head"><h3>EyeTracker</h3><span class="path">Engine/Input/EyeTracker.h</span></div>
+    <p class="lead">別のプログラム（<code>tools/gaze_sender.py</code> など）が共有ファイルに書き込んだ視線の位置を読み取り、なめらかにして返します。受信が途絶えると中央 (0, 0) に戻り、<code>IsConnected()</code> が false になります。使い方: <code>Initialize()</code> → 毎フレーム <code>Update()</code> → <code>GetGazeX/Y()</code> → 終了時 <code>Finalize()</code>。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">void Initialize();</code><div class="d">共有ファイルを開いて（無ければ作って）読めるようにします。</div></div>
+      <div class="fn"><code class="sig">void Finalize();</code><div class="d">共有ファイルの割り当てを解放します。</div></div>
+      <div class="fn"><code class="sig">void Update();</code><div class="d">最新のデータを読んでなめらかにします。毎フレーム呼びます。</div></div>
+      <div class="fn"><code class="sig">bool IsConnected() const;</code><div class="d">送信側から更新が届いているか。</div></div>
+      <div class="fn"><code class="sig">float GetGazeX() const;
+float GetGazeY() const;
+float GetHeadZ() const;</code><div class="d">なめらかにした視線の位置。X は -1（左）〜+1（右）、Y は -1（下）〜+1（上）、Z は -1（後ろ）〜+1（前）。</div></div>
+      <div class="fn"><code class="sig">void SetSmoothing(float alpha);
+float GetSmoothing() const;</code><div class="d">なめらかさ（0〜1、既定 0.25）。大きいほど素早く追従し、小さいほどなめらか。</div></div>
+      <div class="fn"><code class="sig">bool IsMapped() const;
+bool IsMagicValid() const;
+bool IsValidFlag() const;
+uint64_t GetRawFrameId() const;
+const std::string&amp; GetSharedPath() const;</code><div class="d">つながらないときの確認用。共有ファイルを開けたか／データの形式が合っているか／顔を検出中か／受信した通し番号（増えていれば受信中）／開いたファイルのパス。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- FaceTracker -->
+  <section class="cls" id="FaceTracker">
+    <div class="cls-head"><h3>FaceTracker</h3><span class="path">Engine/Input/FaceTracker.h</span></div>
+    <p class="lead">Web カメラの映像に Windows 標準の顔検出をかけ、顔（頭）の位置を <code>EyeTracker</code> と同じ形の値で返します。外部プログラムなしで「顔の動き → カメラ」を実現します。映像は <code>CameraCapture</code> から受け取るので、<code>camera.SetFaceTracker(&amp;faceTracker)</code> でつなぎます。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">void Initialize();</code><div class="d">軽い初期化。顔検出の本体は最初のフレームを受け取ったときに作ります。</div></div>
+      <div class="fn"><code class="sig">void Finalize();</code><div class="d">顔検出を解放します。必ず <code>CameraCapture::Finalize()</code> の後に呼びます。</div></div>
+      <div class="fn"><code class="sig">void ProcessFrameBGRA(const uint8_t* bgra, int w, int h);</code><div class="d">カメラのワーカースレッドから毎フレーム呼ばれます（CameraCapture が呼ぶので、ゲーム側では呼びません）。</div></div>
+      <div class="fn"><code class="sig">void Update();</code><div class="d">検出結果をなめらかにします。メインスレッドで毎フレーム呼びます。顔が見つからない状態が続くと中央へ戻ります。</div></div>
+      <div class="fn"><code class="sig">bool IsConnected() const;
+float GetGazeX() const;
+float GetGazeY() const;
+float GetHeadZ() const;
+void SetSmoothing(float alpha);
+float GetSmoothing() const;</code><div class="d">EyeTracker と同じ意味です。</div></div>
+      <div class="fn"><code class="sig">bool IsReady() const;
+bool IsFaceValid() const;
+int GetFaceCount() const;</code><div class="d">確認用。顔検出を作れたか／直近のフレームで顔が見つかったか／見つかった顔の数。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- CameraCapture -->
+  <section class="cls" id="CameraCapture">
+    <div class="cls-head"><h3>CameraCapture</h3><span class="path">Engine/Graphics/CameraCapture.h</span></div>
+    <p class="lead">ノート PC の内蔵カメラ（Web カメラ）の映像を取り込み、テクスチャとして使えるようにします（ImGui::Image でそのまま表示できます）。映像の取得は別スレッドで行うので、カメラのフレームレートがゲームの速さに影響しません。カメラが無い・開けないときは <code>IsAvailable()</code> が false のままで、落ちることはありません。</p>
+    <div class="ex">
+      <p class="ex-label">つなぎ方（SandboxApp より）</p>
+<pre class="code">// Initialize（Framework::Initialize の後）
+camera_.Initialize(DirectXCore::GetInstance()-&gt;GetDevice());
+faceTracker_.Initialize();
+camera_.SetFaceTracker(&amp;faceTracker_);
+
+// Update（毎フレーム）
+faceTracker_.Update();
+if (useCamera) { camera_.StartCapture(); } else { camera_.StopCapture(); }
+
+// PreDraw（映像を表示するときだけ）
+camera_.UpdateTexture(commandList);
+
+// Finalize（この順番で、Framework::Finalize の前）
+camera_.Finalize();
+faceTracker_.Finalize();</pre>
+    </div>
+    <div class="fns">
+      <div class="fn"><code class="sig">void Initialize(ID3D12Device* device);</code><div class="d">デバイスを登録し、SRV の枠を1つ確保します。この時点ではカメラを開きません。</div></div>
+      <div class="fn"><code class="sig">void Finalize();</code><div class="d">取得スレッドを止め、カメラとリソースを解放します。</div></div>
+      <div class="fn"><code class="sig">void StartCapture();
+void StopCapture();</code><div class="d">カメラの取得を始める／止める。使わない間は止めておくと、カメラと CPU を占有しません。止めてもテクスチャは残り、再開すると続きから使えます。</div></div>
+      <div class="fn"><code class="sig">void SetFaceTracker(FaceTracker* tracker);</code><div class="d">取り込んだフレームを渡す顔検出を設定します（nullptr で無効）。<code>StartCapture</code> より前に設定します。</div></div>
+      <div class="fn"><code class="sig">void UpdateTexture(ID3D12GraphicsCommandList* commandList);</code><div class="d">新しいフレームがあればテクスチャへ転送します。描画コマンドを積む前（<code>PreDraw</code>）に毎フレーム呼びます。</div></div>
+      <div class="fn"><code class="sig">bool IsAvailable() const;
+D3D12_GPU_DESCRIPTOR_HANDLE GetSrvGpuHandle() const;
+int GetTextureWidth() const;
+int GetTextureHeight() const;</code><div class="d">テクスチャが使えるか／表示用の SRV ハンドル／映像の解像度（まだ無ければ 0）。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- GazePacket -->
+  <section class="cls" id="GazePacket">
+    <div class="cls-head"><h3>GazePacket</h3><span class="path">Engine/Input/GazePacket.h</span><span class="tags"><span class="tag">namespace Engine::gaze</span></span></div>
+    <p class="lead">視線を送る外部プログラムと EyeTracker の間で受け渡すデータの形です。送る側と受け取る側で必ずそろえます。共有ファイルは既定で <code>%TEMP%\DirectXGameGaze.bin</code>、環境変数 <code>DIRECTXGAME_GAZE_FILE</code> で変えられます。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">inline constexpr char kSharedFileName[] = "DirectXGameGaze.bin";
+inline constexpr char kSharedFileEnvVar[] = "DIRECTXGAME_GAZE_FILE";
+inline constexpr uint32_t kSharedMemorySize = 64;
+inline constexpr uint32_t kMagic = 0x47415A45u;   // 'GAZE'</code><div class="d">共有ファイル名・パスを変える環境変数・確保サイズ・データ確認用の番号。</div></div>
+      <div class="fn"><code class="sig">#pragma pack(push, 1)
+struct GazePacket {
+    uint32_t magic;    // kMagic。違えば無効なデータ
+    uint32_t valid;    // 0:無効（顔が見つからない など）/ 1:有効
+    uint64_t frameId;  // 送る側が更新ごとに +1（止まったことの検出に使う）
+    float gazeX;       // -1:左 〜 +1:右
+    float gazeY;       // -1:下 〜 +1:上
+    float headZ;       // -1:後ろ 〜 +1:前（任意）
+};
+#pragma pack(pop)</code><div class="d">1 回分のデータ。</div></div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ エンジン内部 -->
+<section class="group" id="g-internal">
+  <h2>エンジン内部</h2>
+  <p class="group-lead">ふだんのゲーム作りでは触らない仕組みです。自前のシェーダーや描画方法を足すとき、エンジンを直すときに読みます。</p>
+
+  <!-- ---------------------------------------------------------- DirectXCore -->
+  <section class="cls" id="DirectXCore">
+    <div class="cls-head"><h3>DirectXCore</h3><span class="path">Engine/Core/DirectXCore.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">DirectX 12 のデバイス・コマンドリスト・スワップチェーン・深度バッファ・フェンスを持ちます。CPU は GPU より最大 2 フレーム先まで準備でき、毎フレーム書き換える定数バッファはフレームごとに別の場所（スロット）へ書きます。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">static constexpr uint32_t kFramesInFlight = 2;</code><div class="d">CPU が先に準備できるフレーム数。<code>ConstantBuffer::Create</code> のスロット数に渡します。</div></div>
+      <div class="fn"><code class="sig">static DirectXCore* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
+      <div class="fn"><code class="sig">uint32_t GetFrameIndex() const;</code><div class="d">今のフレームのスロット番号（0〜1）。定数バッファの <code>Write</code> / <code>GetGPUAddress</code> に渡します。</div></div>
+      <div class="fn"><code class="sig">ID3D12Device* GetDevice() const;</code><div class="d">デバイス。<code>Mesh::Create</code> や <code>ConstantBuffer::Create</code> に渡します。</div></div>
+      <div class="fn"><code class="sig">ID3D12GraphicsCommandList* GetCommandList() const;
+ID3D12CommandQueue* GetCommandQueue() const;
+IDXGISwapChain4* GetSwapChain() const;
+static uint32_t GetSwapChainBufferCount();</code><div class="d">コマンドリスト（描画中は <code>RenderContext::GetCommandList()</code> と同じ）・コマンドキュー・スワップチェーン・バックバッファの数（2）。</div></div>
+      <div class="fn"><code class="sig">D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTVHandle() const;
+ID3D12DescriptorHeap* GetSRVDescriptorHeap() const;
+ID3D12DescriptorHeap* GetDSVDescriptorHeap() const;
+D3D12_VIEWPORT GetViewport() const;
+D3D12_RECT GetScissorRect() const;</code><div class="d">今のバックバッファの RTV・SRV ヒープ（128 枠）・DSV ヒープ・ウィンドウ全体のビューポートとシザー矩形。</div></div>
+      <div class="fn"><code class="sig">void Initialize(HWND hwnd, int32_t width, int32_t height);
+void Resize(int32_t width, int32_t height);
+void BeginFrame();
+void WaitForGPU();
+void EndFrame();
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">初期化・サイズ変更への追従・フレームの開始（画面を RGB (0.1, 0.25, 0.5) でクリア）・GPU の完了待ち・フレームの終わり（実行して表示。垂直同期あり）・解放。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- PipelineManager -->
+  <section class="cls" id="PipelineManager">
+    <div class="cls-head"><h3>PipelineManager</h3><span class="path">Engine/Graphics/PipelineManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">ルートシグネチャと用途別の PSO をまとめて作り、持っておきます。描画する側は <code>SetPipeline</code> で切り替えるだけです。PSO を切り替えて描いたら、後の描画のために <code>kStandard</code> に戻します。</p>
+    <div class="ex">
+      <p class="ex-label">例: 内側から見る天球（Sandbox の Skydome）</p>
+<pre class="code">ID3D12GraphicsCommandList* cmd = RenderContext::GetInstance()-&gt;GetCommandList();
+PipelineManager* pm = PipelineManager::GetInstance();
+const uint32_t frame = DirectXCore::GetInstance()-&gt;GetFrameIndex();
+
+pm-&gt;SetPipeline(cmd, PipelineManager::Pipeline::kNoCull);        // 裏面も描く
+cmd-&gt;SetGraphicsRootConstantBufferView(PipelineManager::kRootMaterial, materialCB_.GetGPUAddress(frame));
+cmd-&gt;SetGraphicsRootConstantBufferView(PipelineManager::kRootWorldTransform, transformCB_.GetGPUAddress(frame));
+cmd-&gt;SetGraphicsRootDescriptorTable(PipelineManager::kRootTexture,
+    TextureManager::GetInstance()-&gt;GetSrvHandleGPU(textureHandle_));
+mesh_.Draw(cmd);
+pm-&gt;SetPipeline(cmd, PipelineManager::Pipeline::kStandard);      // 標準に戻す</pre>
+    </div>
+    <p class="sub">標準ルートシグネチャの割り当て（<code>SetGraphicsRoot～</code> の第1引数）</p>
+    <div class="tbl"><table>
+      <thead><tr><th class="m">番号</th><th class="m">名前</th><th class="m">レジスタ</th><th>シェーダー</th><th>中身</th><th>設定する人</th></tr></thead>
+      <tbody>
+        <tr><td class="m num">0</td><td class="m">kRootMaterial</td><td class="m">b0</td><td>PS</td><td><code>Material</code></td><td>各オブジェクト</td></tr>
+        <tr><td class="m num">1</td><td class="m">kRootWorldTransform</td><td class="m">b0</td><td>VS</td><td><code>TransformationMatrix</code>（ワールド行列）</td><td>各オブジェクト</td></tr>
+        <tr><td class="m num">2</td><td class="m">kRootDirectionalLight</td><td class="m">b1</td><td>PS</td><td><code>DirectionalLight</code></td><td>BaseScene</td></tr>
+        <tr><td class="m num">3</td><td class="m">kRootTexture</td><td class="m">t0</td><td>PS</td><td>テクスチャ（ディスクリプタテーブル）</td><td>各オブジェクト</td></tr>
+        <tr><td class="m num">4</td><td class="m">kRootViewProjection</td><td class="m">b1</td><td>VS</td><td>視点ごとのビュー射影行列</td><td>BaseScene（スプライトは一時的に差し替え）</td></tr>
+        <tr><td class="m num">5</td><td class="m">kRootPointLights</td><td class="m">b2</td><td>PS</td><td><code>PointLightGroup</code></td><td>BaseScene</td></tr>
+        <tr><td class="m">—</td><td class="m">static sampler</td><td class="m">s0</td><td>PS</td><td>バイリニア、範囲外は繰り返し（WRAP）</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">enum class Pipeline {
+    kStandard,  // 裏面カリングあり（通常の 3D・スプライト）
+    kNoCull,    // カリングなし（内側から見る天球など）
+    kLine,      // 線分・深度テストなし（常に手前に出る補助線）
+    kCount,
+};</code>
+        <div class="d">用途別の PSO。どれもアルファブレンドが有効です（<code>kLine</code> を除く）。<code>kStandard</code> と <code>kNoCull</code> は深度テスト（手前か同じ深さなら描く）と深度の書き込みが有効です。</div>
+      </div>
+      <div class="fn"><code class="sig">static PipelineManager* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
+      <div class="fn"><code class="sig">void SetPipeline(ID3D12GraphicsCommandList* commandList, Pipeline pipeline) const;</code><div class="d">PSO と、それに合うトポロジ（<code>kLine</code> なら線のリスト、それ以外は三角形のリスト）をまとめて設定します。</div></div>
+      <div class="fn"><code class="sig">ID3D12PipelineState* Get(Pipeline pipeline) const;
+ID3D12RootSignature* GetRootSignature() const;</code><div class="d">PSO とルートシグネチャ。</div></div>
+      <div class="fn"><code class="sig">struct PipelineConfig {
+    ID3D12Device* device; ID3D12RootSignature* rootSignature;
+    D3D12_INPUT_LAYOUT_DESC inputLayout; D3D12_BLEND_DESC blendDesc;
+    D3D12_RASTERIZER_DESC rasterizerDesc; D3D12_DEPTH_STENCIL_DESC depthStencilDesc;
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    DXGI_FORMAT dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    ComPtr&lt;IDxcBlob&gt; vertexShader; ComPtr&lt;IDxcBlob&gt; pixelShader;
+};
+static ComPtr&lt;ID3D12PipelineState&gt; CreateGraphicsPipeline(const PipelineConfig&amp; config);</code><div class="d">設定をまとめて渡して PSO を作ります。自前のシェーダーで PSO を作るときの入口です。</div></div>
+      <div class="fn"><code class="sig">static ComPtr&lt;ID3D12RootSignature&gt; CreateRootSignature(ID3D12Device* device);
+static ComPtr&lt;ID3D12PipelineState&gt; CreateStandardPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, IDxcBlob* vertexShader, IDxcBlob* pixelShader, D3D12_CULL_MODE cullMode = D3D12_CULL_MODE_BACK);
+static ComPtr&lt;ID3D12PipelineState&gt; CreateLinePipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, IDxcBlob* vertexShader, IDxcBlob* pixelShader);</code><div class="d">標準のルートシグネチャ・標準の入力レイアウトと各種設定の PSO・線分用の PSO を作ります。</div></div>
+      <div class="fn"><code class="sig">void Initialize(ID3D12Device* device);
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">標準シェーダー（<code>Object3d.VS/PS.hlsl</code>）をコンパイルして全 PSO を作る／解放。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- ShaderCompiler -->
+  <section class="cls" id="ShaderCompiler">
+    <div class="cls-head"><h3>ShaderCompiler</h3><span class="path">Engine/Graphics/ShaderCompiler.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">DXC で HLSL をコンパイルします。シェーダーは起動時にコンパイルされるので、<code>.hlsl</code> を直したらアプリを起動し直すだけで反映されます。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">static ShaderCompiler* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
+      <div class="fn">
+        <code class="sig">Microsoft::WRL::ComPtr&lt;IDxcBlob&gt; Compile(const std::wstring&amp; fileName, const wchar_t* profile);</code>
+        <div class="d">エンジンの Shaders フォルダにあるシェーダーをコンパイルします。エラーは出力ウィンドウに出ます。</div>
+        <dl class="pr">
+          <dt>fileName</dt><dd>Shaders フォルダからの相対パス。例 <code>L"Object3d.VS.hlsl"</code></dd>
+          <dt>profile</dt><dd>例 <code>L"vs_6_0"</code>、<code>L"ps_6_0"</code></dd>
+        </dl>
+      </div>
+      <div class="fn"><code class="sig">const std::wstring&amp; GetShaderDirectory() const;</code><div class="d">見つかった Shaders フォルダ（末尾に <code>/</code> 付き）。</div></div>
+      <div class="fn"><code class="sig">void Initialize();
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">DXC を準備し、<code>Shaders/</code> → <code>../Shaders/</code> の順にフォルダを探します（見つからなければ assert）。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- DescriptorHeapManager -->
+  <section class="cls" id="DescriptorHeapManager">
+    <div class="cls-head"><h3>DescriptorHeapManager</h3><span class="path">Engine/Graphics/DescriptorHeapManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">SRV ヒープ（128 枠）の空き枠を順に払い出します。番号を直接書かずにここで確保するので、ImGui・テクスチャ・立体視・Web カメラの枠がぶつかりません。返却の仕組みはありません。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">static DescriptorHeapManager* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
+      <div class="fn"><code class="sig">uint32_t AllocateSrv();</code><div class="d">空いている枠を1つ確保し、その番号を返します。</div></div>
+      <div class="fn"><code class="sig">D3D12_CPU_DESCRIPTOR_HANDLE GetSrvCPUHandle(uint32_t index) const;
+D3D12_GPU_DESCRIPTOR_HANDLE GetSrvGPUHandle(uint32_t index) const;</code><div class="d">枠の CPU ハンドル（SRV を作るとき）と GPU ハンドル（描画で設定するとき）。</div></div>
+      <div class="fn"><code class="sig">static ID3D12DescriptorHeap* CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
+static D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
+static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);</code><div class="d">ディスクリプタヒープを作る補助関数と、番号からハンドルを求める補助関数。</div></div>
+      <div class="fn"><code class="sig">void Initialize(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap);<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">払い出し対象の SRV ヒープを登録します。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- ConstantBuffer -->
+  <section class="cls" id="ConstantBuffer">
+    <div class="cls-head"><h3>ConstantBuffer&lt;T&gt;</h3><span class="path">Engine/Rendering/ConstantBuffer.h</span><span class="tags"><span class="tag">テンプレート</span></span></div>
+    <p class="lead">型付きの定数バッファです。フレームの数だけ場所（スロット）を持ち、GPU が読んでいる途中のデータを CPU が上書きしないようにしています。毎フレーム <code>Write(frameIndex, data)</code> で書き、<code>GetGPUAddress(frameIndex)</code> をシェーダーに設定します。</p>
+    <div class="ex">
+<pre class="code">// 作る（Initialize で1回）
+ConstantBuffer&lt;Material&gt; materialCB_;
+materialCB_.Create(DirectXCore::GetInstance()-&gt;GetDevice(), DirectXCore::kFramesInFlight);
+
+// 書く（Update）と使う（Draw）
+const uint32_t frame = DirectXCore::GetInstance()-&gt;GetFrameIndex();
+materialCB_.Write(frame, material_);
+cmd-&gt;SetGraphicsRootConstantBufferView(PipelineManager::kRootMaterial, materialCB_.GetGPUAddress(frame));</pre>
+    </div>
+    <div class="fns">
+      <div class="fn"><code class="sig">void Create(ID3D12Device* device, uint32_t slotCount);</code><div class="d">バッファを作って Map しておきます。1スロットは 256 バイト単位に切り上げられます。<code>slotCount</code> にはふつう <code>DirectXCore::kFramesInFlight</code> を渡します。</div></div>
+      <div class="fn"><code class="sig">void Write(uint32_t slot, const T&amp; data);</code><div class="d">指定したスロットへデータを書き込みます。</div></div>
+      <div class="fn"><code class="sig">D3D12_GPU_VIRTUAL_ADDRESS GetGPUAddress(uint32_t slot) const;</code><div class="d">スロットの GPU アドレス（<code>SetGraphicsRootConstantBufferView</code> に渡す）。</div></div>
+      <div class="fn"><code class="sig">void Reset();</code><div class="d">リソースを明示的に解放します（シングルトンのメンバーとして持つとき、リークの確認より前に解放するため）。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- RenderContext -->
+  <section class="cls" id="RenderContext">
+    <div class="cls-head"><h3>RenderContext</h3><span class="path">Engine/Rendering/RenderContext.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
+    <p class="lead">今のフレームの描画情報（視錐台・描画先の大きさ・描画中の視点のビュー射影）を持ちます。BaseScene が毎フレーム設定し、Object3D や Sprite が読みます。おかげでゲーム側はコマンドリストや視錐台を持ち回らずに <code>Update()</code> / <code>Draw()</code> と書けます。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">static RenderContext* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
+      <div class="fn"><code class="sig">ID3D12GraphicsCommandList* GetCommandList() const;</code><div class="d">描画コマンドを積むコマンドリスト。自前の <code>Draw</code> を書くときの入口です。</div></div>
+      <div class="fn"><code class="sig">void SetFrustum(const Frustum3D&amp; frustum);
+void ClearFrustum();
+bool HasFrustum() const;
+const Frustum3D&amp; GetFrustum() const;</code><div class="d">中心カメラの視錐台（BaseScene が Update の最後に設定）。設定されていない間はカリングしません。</div></div>
+      <div class="fn"><code class="sig">void SetScreenSize(float width, float height);
+float GetScreenWidth() const;
+float GetScreenHeight() const;</code><div class="d">ゲームの描画先の大きさ（ピクセル）。スプライトの正射影と画面外の判定に使われます。</div></div>
+      <div class="fn"><code class="sig">void SetViewProjectionAddress(D3D12_GPU_VIRTUAL_ADDRESS address);
+D3D12_GPU_VIRTUAL_ADDRESS GetViewProjectionAddress() const;</code><div class="d">描画中の視点のビュー射影の定数バッファ。ビュー射影を一時的に差し替えて描いたとき（スプライトなど）に、元へ戻すために使います。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- GpuResource -->
+  <section class="cls" id="GpuResource">
+    <div class="cls-head"><h3>GpuResource</h3><span class="path">Engine/Graphics/GpuResource.h</span><span class="tags"><span class="tag">関数</span></span></div>
+    <div class="fns">
+      <div class="fn"><code class="sig">Microsoft::WRL::ComPtr&lt;ID3D12Resource&gt; CreateBufferResource(ID3D12Device* device, size_t sizeInBytes);</code><div class="d">アップロードヒープにバッファを作ります（頂点バッファや定数バッファ用）。</div></div>
+      <div class="fn"><code class="sig">Microsoft::WRL::ComPtr&lt;ID3D12Resource&gt; CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height);</code><div class="d">深度バッファ用のテクスチャを作ります。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- GeometryGenerator -->
+  <section class="cls" id="GeometryGenerator">
+    <div class="cls-head"><h3>GeometryGenerator</h3><span class="path">Engine/Geometry/GeometryGenerator.h</span><span class="tags"><span class="tag">関数</span></span></div>
+    <p class="lead">組み込み形状の頂点とインデックスの配列を作ります。<code>Mesh::Create</code> に渡して使います。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">std::vector&lt;VertexData&gt; GenerateSphereVertices(uint32_t subdivision);</code><div class="d">緯度・経度を <code>subdivision</code> 分割した球（半径 1・原点中心）の頂点（インデックスなし）。</div></div>
+      <div class="fn"><code class="sig">std::vector&lt;VertexData&gt; GenerateCubeVertices();
+std::vector&lt;uint32_t&gt; GenerateCubeIndices();</code><div class="d">1辺 1・原点中心の立方体（4 頂点 × 6 面 = 24 頂点、インデックス 36 個）。</div></div>
+      <div class="fn"><code class="sig">std::vector&lt;VertexData&gt; GeneratePlaneVertices();
+std::vector&lt;uint32_t&gt; GeneratePlaneIndices();</code><div class="d">XZ 平面上の 1×1・原点中心で上（+Y）向きの平面（4 頂点、インデックス 6 個）。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- LoadObjFile -->
+  <section class="cls" id="LoadObjFile">
+    <div class="cls-head"><h3>LoadObjFile</h3><span class="path">Engine/Geometry/LoadObjFile.h</span><span class="tags"><span class="tag">関数</span></span></div>
+    <p class="lead">OBJ と mtl の読み込みです。<code>Mesh::CreateFromObj</code> が使います。読み込むときに、右手系から左手系へ直すため Z を反転し、三角形の頂点の順番も逆にします。画像の上下の違いに合わせて UV の V も反転します。</p>
+    <ul>
+      <li>面は三角形だけ（四角形以上は assert）。頂点は「位置」「位置/UV」「位置//法線」「位置/UV/法線」のどの書き方でもよく、UV が無ければ (0, 0)、法線が無ければ (0, 0, -1) で補います。</li>
+      <li><code>o</code> / <code>g</code> / <code>usemtl</code> ごとにサブメッシュに分けます。</li>
+      <li>mtl は OBJ と同じフォルダから読み、使うのは <code>map_Kd</code>（テクスチャ）だけです。</li>
+    </ul>
+    <div class="fns">
+      <div class="fn"><code class="sig">struct MaterialData { std::string textureFilePath; };
+struct SubMeshData { std::string name; std::string materialName; uint32_t vertexStart; uint32_t vertexCount; };
+struct ModelData {
+    std::vector&lt;VertexData&gt; vertices;                            // 全サブメッシュをつなげた頂点
+    std::vector&lt;SubMeshData&gt; subMeshes;                          // 描画範囲
+    std::unordered_map&lt;std::string, MaterialData&gt; materials;     // newmtl 名 → マテリアル
+};</code><div class="d">読み込み結果。</div></div>
+      <div class="fn"><code class="sig">ModelData LoadObjFile(const std::string&amp; directoryPath, const std::string&amp; filename);</code><div class="d">OBJ を読み込みます。例: <code>LoadObjFile("resources", "player.obj")</code></div></div>
+      <div class="fn"><code class="sig">std::unordered_map&lt;std::string, MaterialData&gt; LoadMaterialTemplateFile(const std::string&amp; directoryPath, const std::string&amp; filename);</code><div class="d">mtl を読み込み、マテリアル名ごとの情報を返します。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- ImGuiManager -->
+  <section class="cls" id="ImGuiManager">
+    <div class="cls-head"><h3>ImGuiManager</h3><span class="path">Engine/Core/ImGuiManager.h</span><span class="tags"><span class="tag">シングルトン</span><span class="tag t-debug">Debug のみ</span></span></div>
+    <p class="lead">ImGui の初期化・フレーム処理・描画・終了をまとめたものです。画面全体をドッキングできる領域にして、ウィンドウを画面の端へ寄せて整理できるようにします。どのウィンドウにも覆われていない中央の領域が、ゲームの描画先になります。ヘッダーごと <code>#ifdef USE_IMGUI</code> の中にあります。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">struct GameArea { float x, y, width, height; };
+GameArea GetGameArea() const;</code><div class="d">ゲームの描画先（クライアント座標・ピクセル）。<code>BeginFrame</code> の後で有効です。</div></div>
+      <div class="fn">
+        <code class="sig">void SetDefaultDockLayout(std::vector&lt;std::string&gt; topRight, std::vector&lt;std::string&gt; bottomRight);</code>
+        <div class="d">初めて起動したとき（<code>imgui.ini</code> にレイアウトが無いとき）のドッキングの配置を登録します。左がゲーム画面、右上と右下にウィンドウ名で指定したウィンドウが並びます。<code>Framework::Initialize()</code> の後、最初のフレームより前に呼びます。</div>
+        <div class="ex">
+<pre class="code">#ifdef USE_IMGUI
+ImGuiManager::GetInstance()-&gt;SetDefaultDockLayout({ "Game", "Player" }, { "Log" });
+#endif</pre>
+        </div>
+      </div>
+      <div class="fn"><code class="sig">static ImGuiManager* GetInstance();
+void Initialize();
+void BeginFrame();
+void Render();
+void Draw(ID3D12GraphicsCommandList* commandList);
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">初期化・フレームの開始・UI の確定・描画コマンドの発行・終了。</div></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- VertexData -->
+  <section class="cls" id="VertexData">
+    <div class="cls-head"><h3>VertexData ほか</h3><span class="path">Engine/Rendering/VertexData.h ・ TransformationMatrix.h</span><span class="tags"><span class="tag">struct</span></span></div>
+    <p class="lead">シェーダーに渡すデータの形です。HLSL 側と同じ並びにしておく必要があります。</p>
+    <div class="fns">
+      <div class="fn"><code class="sig">struct VertexData {
+    Vector4 position;   // 位置（w = 1）
+    Vector2 texcoord;   // UV（左上が 0,0）
+    Vector3 normal;     // 法線
+};</code><div class="d">1 頂点のデータ（標準の入力レイアウト）。</div></div>
+      <div class="fn"><code class="sig">struct TransformationMatrix { Matrix4x4 World; };</code><div class="d">オブジェクトごとのワールド行列（頂点シェーダーの b0）。ビュー射影は視点ごとに別の定数バッファ（b1）で渡します。</div></div>
+    </div>
+  </section>
+</section>
+
+<footer class="foot">
+  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作りました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたら、このファイルも同じコミットで直してください。</p>
+</footer>
+
+</main>
+</div>
+</div>
+<script>
+(function () {
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // コード例のコメント（//）とプリプロセッサ行（#）に色を付ける
+  function paint(el) {
+    el.innerHTML = el.textContent.split('\n').map(function (line) {
+      if (/^\s*#/.test(line)) { return '<span class="p">' + esc(line) + '</span>'; }
+      var i = line.indexOf('//');
+      if (i >= 0) { return esc(line.slice(0, i)) + '<span class="c">' + esc(line.slice(i)) + '</span>'; }
+      return esc(line);
+    }).join('\n');
+  }
+  document.querySelectorAll('pre.code').forEach(paint);
+  document.querySelectorAll('code.sig').forEach(function (el) {
+    if (!el.querySelector('*') && el.textContent.indexOf('//') >= 0) {
+      paint(el);
+    }
+  });
+
+  // 検索（関数単位で絞り込む。クラス名や説明に当たったらクラスごと表示）
+  var q = document.getElementById('q');
+  var status = document.getElementById('q-status');
+  var toc = document.getElementById('toc');
+  var groups = [].slice.call(document.querySelectorAll('.group'));
+  var guides = [].slice.call(document.querySelectorAll('.guide'));
+  var links = [].slice.call(document.querySelectorAll('.toc a'));
+  var classes = [].slice.call(document.querySelectorAll('.cls')).map(function (c) {
+    var lead = c.querySelector('.lead');
+    return {
+      el: c,
+      head: (c.querySelector('.cls-head').textContent + ' ' + (lead ? lead.textContent : '')).toLowerCase(),
+      fns: [].slice.call(c.querySelectorAll('.fn')).map(function (f) {
+        return { el: f, text: f.textContent.toLowerCase() };
+      })
+    };
+  });
+
+  function apply() {
+    var t = q.value.trim().toLowerCase();
+    var hits = 0;
+    classes.forEach(function (c) {
+      if (!t) {
+        c.el.hidden = false;
+        c.el.classList.remove('filtering');
+        c.fns.forEach(function (f) { f.el.hidden = false; });
+        return;
+      }
+      var headHit = c.head.indexOf(t) >= 0;
+      var any = false;
+      c.fns.forEach(function (f) {
+        var hit = headHit || f.text.indexOf(t) >= 0;
+        f.el.hidden = !hit;
+        if (hit) { any = true; hits++; }
+      });
+      c.el.classList.toggle('filtering', !headHit);
+      c.el.hidden = !(any || headHit);
+    });
+    groups.forEach(function (g) { g.hidden = !!t && !g.querySelector('.cls:not([hidden])'); });
+    guides.forEach(function (g) { g.hidden = !!t; });
+    links.forEach(function (a) {
+      var target = document.getElementById(a.getAttribute('href').slice(1));
+      a.parentElement.hidden = !!t && (!target || target.hidden);
+    });
+    status.textContent = t ? (hits ? hits + ' 件の関数・項目が見つかりました（Enter で先頭へ）' : '見つかりませんでした') : '';
+  }
+  q.addEventListener('input', apply);
+  q.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      var first = document.querySelector('.cls:not([hidden])');
+      if (first) { first.scrollIntoView(); }
+    } else if (e.key === 'Escape') {
+      q.value = '';
+      apply();
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      e.preventDefault();
+      q.focus();
+    }
+  });
+
+  // 狭い画面では目次を閉じておき、項目を選んだら閉じる
+  var narrow = window.matchMedia('(max-width: 900px)');
+  if (narrow.matches) { toc.removeAttribute('open'); }
+  links.forEach(function (a) {
+    a.addEventListener('click', function () { if (narrow.matches) { toc.removeAttribute('open'); } });
+  });
+})();
+</script>
+</body>
+</html>

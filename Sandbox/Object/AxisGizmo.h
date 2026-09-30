@@ -18,7 +18,7 @@
 class AxisGizmo {
 public:
     // 3本線のメッシュ・マテリアル等を初期化する（PipelineManager・TextureManagerの初期化後に呼ぶ）
-    void Initialize(ID3D12Device* device);
+    void Initialize();
 
     /// <summary>
     /// 対象オブジェクトのTransformからワールド行列を計算し、定数バッファへ書き込む。
@@ -28,12 +28,10 @@ public:
     void Update(const Engine::Object3D* target);
 
     /// <summary>
-    /// ラインPSOに切り替えて3本の軸線を描画する（シーン内オブジェクトの最後に呼ぶ）。
-    /// RootSignature・DescriptorHeap・光源CBVは呼び出し側で設定済みの前提。
+    /// ラインPSOに切り替えて3本の軸線を描画し、標準PSOへ戻す（シーン内オブジェクトの最後に呼ぶ）。
+    /// RootSignature・DescriptorHeap・光源・ビュー射影のCBVはシーン（BaseScene）で設定済みの前提。
     /// </summary>
-    /// <param name="viewProjectionAddress">この視点のビュー射影CBVアドレス
-    /// （スプライトが正射影へ差し替えている場合があるため、ここで再バインドする）</param>
-    void Draw(ID3D12GraphicsCommandList* commandList, D3D12_GPU_VIRTUAL_ADDRESS viewProjectionAddress);
+    void Draw();
 
 #ifdef USE_IMGUI
     // 表示ON/OFFのチェックボックス

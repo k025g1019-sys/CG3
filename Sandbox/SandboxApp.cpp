@@ -29,10 +29,9 @@ void SandboxApp::Initialize() {
 		{ "Webcam" });
 #endif
 
-	// シーン初期化（テクスチャ・モデル等の読み込みもここで行われる）。
+	// 最初のシーンを予約する（生成・初期化はメインループの最初に行われる）。
 	// 起動時のシーンはSceneFactory.hのkInitialSceneIdで指定する。
-	scene_ = CreateScene(sceneId_);
-	scene_->Initialize();
+	SceneManager::GetInstance()->ChangeScene(CreateScene(sceneId_));
 
 	// --- 視線追跡（別プロセスのOpenGaze等から共有メモリ経由で受信）---
 	eyeTracker_.Initialize();
@@ -53,9 +52,7 @@ void SandboxApp::Finalize() {
 	// 視線追跡の共有メモリを解放する。
 	eyeTracker_.Finalize();
 
-	// シーンのGPUリソースをエンジン終了処理（リークチェック）より先に解放する
-	scene_.reset();
-
+	// シーンの解放を含むエンジンの終了処理
 	Framework::Finalize();
 }
 
@@ -77,16 +74,11 @@ void SandboxApp::Update() {
 		nextSceneId = (sceneId_ == SceneId::kGame) ? SceneId::kAxis : SceneId::kGame;
 	}
 
-	// アクティブなシーンだけを保持する方針のため、旧シーンを破棄して新シーンを作り直す。
+	// アクティブなシーンだけを保持する方針のため、新しいシーンを作って切り替えを予約する
+	// （旧シーンの破棄と新シーンの初期化は、次のフレームの頭でSceneManagerが行う）。
 	if (nextSceneId != sceneId_) {
-		// 実行中のフレームが旧シーンの定数バッファ等を参照し終えるのを待ってから破棄する
-		DirectXCore::GetInstance()->WaitForGPU();
-		scene_.reset();
-
 		sceneId_ = nextSceneId;
-		scene_ = CreateScene(sceneId_);
-		// テクスチャの転送コマンドは記録中のコマンドリストに積まれ、このフレームの描画より先に実行される
-		scene_->Initialize();
+		SceneManager::GetInstance()->ChangeScene(CreateScene(sceneId_));
 	}
 
 	// 視線追跡を更新し、ゲーム内カメラ（頭連動オフアクシス）へ反映する。
@@ -108,29 +100,16 @@ void SandboxApp::Update() {
 
 	const bool gazeActive =
 		useEyeTracking_ && (faceSource ? faceTracker_.IsConnected() : eyeTracker_.IsConnected());
-	scene_->SetEyeTracking(
-		gazeActive,
-		faceSource ? faceTracker_.GetGazeX() : eyeTracker_.GetGazeX(),
-		faceSource ? faceTracker_.GetGazeY() : eyeTracker_.GetGazeY(),
-		faceSource ? faceTracker_.GetHeadZ() : eyeTracker_.GetHeadZ());
+	if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
+		scene->SetEyeTracking(
+			gazeActive,
+			faceSource ? faceTracker_.GetGazeX() : eyeTracker_.GetGazeX(),
+			faceSource ? faceTracker_.GetGazeY() : eyeTracker_.GetGazeY(),
+			faceSource ? faceTracker_.GetHeadZ() : eyeTracker_.GetHeadZ());
+	}
 
-	// ゲームの描画先矩形をシーンへ伝える（投影アスペクト・ピッキングの基準になる）。
-	// ImGuiビルドではドッキングで空いた中央領域、Releaseではウィンドウ全体。
-#ifdef USE_IMGUI
-	const ImGuiManager::GameArea area = ImGuiManager::GetInstance()->GetGameArea();
-	scene_->SetRenderArea(area.x, area.y, area.width, area.height);
-#else
-	scene_->SetRenderArea(
-		0.0f, 0.0f,
-		float(WinApp::GetInstance()->GetClientWidth()),
-		float(WinApp::GetInstance()->GetClientHeight()));
-#endif
-
-	scene_->Update();
-}
-
-void SandboxApp::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) {
-	scene_->Draw(commandList, viewIndex);
+	// 現在のシーンを更新する
+	Framework::Update();
 }
 
 void SandboxApp::PreDraw(ID3D12GraphicsCommandList* commandList) {
@@ -142,7 +121,8 @@ void SandboxApp::PreDraw(ID3D12GraphicsCommandList* commandList) {
 
 #ifdef USE_IMGUI
 void SandboxApp::DrawImGui() {
-	scene_->DrawImGui();
+	// 現在のシーンのImGui
+	Framework::DrawImGui();
 
 	// 立体視の方式切り替え・キャリブレーション
 	StereoRenderer::GetInstance()->DrawImGui();

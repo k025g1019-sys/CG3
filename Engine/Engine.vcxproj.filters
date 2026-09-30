@@ -34,6 +34,9 @@
     <Filter Include="Rendering">
       <UniqueIdentifier>{d49a6b12-c745-52f3-9b8f-c678a5784b29}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{f8b65250-ed86-5b08-9f9e-d420bb8ce5c3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{49e8e1c0-4647-5f8b-b0cc-8e4cb4c10fc1}</UniqueIdentifier>
     </Filter>
@@ -120,11 +123,23 @@
     <ClCompile Include="Rendering\Mesh.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\MeshManager.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Rendering\Object3D.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\RenderContext.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\Sprite.cpp">
       <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\BaseScene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SceneManager.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="String\ConvertString.cpp">
       <Filter>String</Filter>
@@ -251,7 +266,16 @@
     <ClInclude Include="Rendering\Mesh.h">
       <Filter>Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\MeshManager.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
     <ClInclude Include="Rendering\Object3D.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Primitive.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\RenderContext.h">
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\Sprite.h">
@@ -265,6 +289,12 @@
     </ClInclude>
     <ClInclude Include="Rendering\VertexData.h">
       <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\BaseScene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SceneManager.h">
+      <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="String\ConvertString.h">
       <Filter>String</Filter>

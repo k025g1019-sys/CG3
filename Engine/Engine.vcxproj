@@ -86,8 +86,12 @@
     <ClCompile Include="Input\Input.cpp" />
     <ClCompile Include="Math\Matrix4x4.cpp" />
     <ClCompile Include="Rendering\Mesh.cpp" />
+    <ClCompile Include="Rendering\MeshManager.cpp" />
     <ClCompile Include="Rendering\Object3D.cpp" />
+    <ClCompile Include="Rendering\RenderContext.cpp" />
     <ClCompile Include="Rendering\Sprite.cpp" />
+    <ClCompile Include="Scene\BaseScene.cpp" />
+    <ClCompile Include="Scene\SceneManager.cpp" />
     <ClCompile Include="String\ConvertString.cpp" />
     <ClCompile Include="..\externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
@@ -152,11 +156,16 @@
     <ClInclude Include="Rendering\ConstantBuffer.h" />
     <ClInclude Include="Rendering\Material.h" />
     <ClInclude Include="Rendering\Mesh.h" />
+    <ClInclude Include="Rendering\MeshManager.h" />
     <ClInclude Include="Rendering\Object3D.h" />
+    <ClInclude Include="Rendering\Primitive.h" />
+    <ClInclude Include="Rendering\RenderContext.h" />
     <ClInclude Include="Rendering\Sprite.h" />
     <ClInclude Include="Rendering\TransformData3D.h" />
     <ClInclude Include="Rendering\TransformationMatrix.h" />
     <ClInclude Include="Rendering\VertexData.h" />
+    <ClInclude Include="Scene\BaseScene.h" />
+    <ClInclude Include="Scene\SceneManager.h" />
     <ClInclude Include="String\ConvertString.h" />
     <ClInclude Include="..\externals\imgui\imconfig.h" />
     <ClInclude Include="..\externals\imgui\imgui.h" />

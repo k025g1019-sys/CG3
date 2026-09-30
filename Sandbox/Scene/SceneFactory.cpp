@@ -4,7 +4,7 @@
 #include "Sandbox/Scene/GameScene.h"
 #include "Sandbox/Scene/StereoDemoScene.h"
 
-std::unique_ptr<BaseScene> CreateScene(SceneId id) {
+std::unique_ptr<Engine::BaseScene> CreateScene(SceneId id) {
 	switch (id) {
 	case SceneId::kStereoDemo:
 		return std::make_unique<StereoDemoScene>();

@@ -17,6 +17,8 @@
 #include "Engine/Input/Input.h"
 #include "Engine/Diagnostics/CrashHandler.h"
 #include "Engine/Diagnostics/Log.h"
+#include "Engine/Rendering/MeshManager.h"
+#include "Engine/Scene/SceneManager.h"
 
 #ifdef USE_IMGUI
 #include "Engine/Core/ImGuiManager.h"
@@ -35,6 +37,7 @@ void Framework::Run() {
 	ID3D12GraphicsCommandList* commandList = dxCore->GetCommandList();
 
 	StereoRenderer* stereo = StereoRenderer::GetInstance();
+	SceneManager* sceneManager = SceneManager::GetInstance();
 
 	// --- メインループ（ウィンドウの×ボタンが押されるまで）---
 	while (winApp->ProcessMessage()) {
@@ -46,6 +49,9 @@ void Framework::Run() {
 			stereo->Resize(winApp->GetClientWidth(), winApp->GetClientHeight());
 			winApp->ClearSizeChangedFlag();
 		}
+
+		// 予約されたシーンへ切り替える（最初のシーンもここで生成される）
+		sceneManager->ApplySceneChange();
 
 #ifdef USE_IMGUI
 		ImGuiManager::GetInstance()->BeginFrame();
@@ -60,6 +66,18 @@ void Framework::Run() {
 		if (Input::GetInstance()->IsTrigger(DIK_F11)) {
 			winApp->ToggleFullscreen();
 		}
+
+		// ゲームの描画先矩形をシーンへ伝える（投影のアスペクト比・スプライト・ピッキングの基準になる）。
+		// ImGuiビルドではドッキングで空いた中央領域、それ以外ではウィンドウ全体。
+#ifdef USE_IMGUI
+		{
+			const ImGuiManager::GameArea area = ImGuiManager::GetInstance()->GetGameArea();
+			sceneManager->SetRenderArea(area.x, area.y, area.width, area.height);
+		}
+#else
+		sceneManager->SetRenderArea(
+			0.0f, 0.0f, float(winApp->GetClientWidth()), float(winApp->GetClientHeight()));
+#endif
 
 		Update();
 
@@ -169,12 +187,16 @@ void Framework::Initialize() {
 
 void Framework::Finalize() {
 
+	// シーンのGPUリソースを、エンジンの終了処理（リークチェック）より先に解放する
+	SceneManager::GetInstance()->Finalize();
+
 #ifdef USE_IMGUI
 	// ImGui終了処理（SRVヒープ解放より前に行う）
 	ImGuiManager::GetInstance()->Finalize();
 #endif
 
 	// --- 終了処理（生成と逆順で解放する）---
+	MeshManager::GetInstance()->Finalize();
 	Audio::GetInstance()->Finalize();
 	Input::GetInstance()->Finalize();
 	StereoRenderer::GetInstance()->Finalize();
@@ -195,6 +217,20 @@ void Framework::Finalize() {
 
 	CoUninitialize();
 }
+
+void Framework::Update() {
+	SceneManager::GetInstance()->Update();
+}
+
+void Framework::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) {
+	SceneManager::GetInstance()->Draw(commandList, viewIndex);
+}
+
+#ifdef USE_IMGUI
+void Framework::DrawImGui() {
+	SceneManager::GetInstance()->DrawImGui();
+}
+#endif
 
 void Framework::SetWindowTitle(const std::wstring& title) {
 	WinApp::GetInstance()->SetTitle(title);

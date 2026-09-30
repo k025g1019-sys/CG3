@@ -1,63 +1,61 @@
 #pragma once
 
 #include <cstdint>
-#include <d3d12.h>
 #include <vector>
 
-#include "Engine/Camera/Camera.h"
 #include "Engine/Culling/FrustumCulling.h"
-#include "Engine/Light/DirectionalLight.h"
-#include "Engine/Light/PointLight.h"
-#include "Engine/Rendering/ConstantBuffer.h"
 #include "Engine/Rendering/Material.h"
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
+#include "Engine/Scene/BaseScene.h"
 #include "Sandbox/Object/AxisGizmo.h"
 #include "Sandbox/Object/PadObjectController.h"
 #include "Sandbox/Object/Skydome.h"
-#include "Sandbox/Scene/BaseScene.h"
-// デバッグカメラはDebugビルド限定。このプロジェクトはReleaseでも_DEBUGが定義される
+// デバッグカメラはRelease以外。このプロジェクトはReleaseでも_DEBUGが定義される
 // （RuntimeLibrary=MultiThreadedDebug）ため、Release判定にはNDEBUGを使う。
 #ifndef NDEBUG
 #include "Engine/Camera/DebugCamera.h"
 #endif
 
 /// <summary>
-/// 通常デモシーン共通の基底クラス。どのデモシーンでも使える「標準機能」
-/// （カメラ・天球・平行光源・点光源・サウンド・デバッグカメラ・共通ImGui・立体視カメラ）を持ち、
-/// Initialize/Update/Draw/DrawImGuiの共通の流れを提供する。
-/// 派生シーンはOn～のフックをオーバーライドし、シーン固有のオブジェクトだけを扱う。
+/// 通常デモシーン共通の基底クラス。エンジンの BaseScene（カメラ・光源・描画設定）の上に、
+/// デモ共通の機能（天球・サウンド・パッド操作・軸ギズモ・デバッグカメラ・共通ImGui）を載せる。
+/// 派生シーンは On～Objects などのフックをオーバーライドし、シーン固有のオブジェクトだけを扱う。
 /// </summary>
-class DemoSceneBase : public BaseScene {
-public:
-    // 共通リソースを生成し、最後に派生のOnInitializeを呼ぶ
-    void Initialize() override;
+class DemoSceneBase : public Engine::BaseScene {
+protected:
+    // --- BaseScene のフック（デモ共通の処理を行い、下の On～Objects を呼ぶ）---
 
-    // サウンド入力→カメラ・デバッグカメラ→派生オブジェクト更新（OnUpdate）
-    // →天球・光源・立体視カメラの順で毎フレーム更新する
-    void Update() override;
+    // 共通リソースを生成し、最後に OnInitializeObjects を呼ぶ
+    void OnInitialize() override;
 
-    // 共通CBV・天球の描画後、標準PSOへ切り替えて派生のOnDrawを呼ぶ
-    void Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) override;
+    // サウンド入力 → パッド操作 → OnUpdateObjects → デバッグカメラ → 天球 の順で更新する
+    void OnUpdate() override;
+
+    // 天球 → OnDrawObjects → 軸ギズモ の順で描画する
+    void OnDraw() override;
 
 #ifdef USE_IMGUI
     // 共通ウィンドウ（3D Objects/Camera/光源/Sound/Frustum Culling等）を構築し、
     // シーン固有部分は各On～ImGuiフックへ委譲する
-    void DrawImGui() override;
+    void OnDrawImGui() override;
 #endif
 
-protected:
+#ifndef NDEBUG
+    // デバッグカメラが有効なときは、そのビュー行列で描画する
+    Engine::Matrix4x4 CalcViewMatrix() const override;
+#endif
+
     // --- 派生シーンが実装するフック ---
 
     // シーン固有のリソース生成（共通リソースの生成後に呼ばれる）
-    virtual void OnInitialize(ID3D12Device* device) = 0;
+    virtual void OnInitializeObjects() = 0;
 
-    // シーン固有オブジェクトの更新（ワールド行列・定数バッファ書き込み・カリング判定）。
-    // viewWidth/viewHeight: ゲーム描画先矩形の大きさ（スプライトの正射影などに使う）
-    virtual void OnUpdate(const Engine::Frustum3D& frustum, float viewWidth, float viewHeight) = 0;
+    // シーン固有オブジェクトの更新（各オブジェクトの Update）
+    virtual void OnUpdateObjects() = 0;
 
-    // シーン固有オブジェクトの描画（標準PSO・共通CBV設定済みの状態で呼ばれる）
-    virtual void OnDraw(ID3D12GraphicsCommandList* commandList) = 0;
+    // シーン固有オブジェクトの描画（各オブジェクトの Draw。標準PSO・共通CBV設定済みの状態で呼ばれる）
+    virtual void OnDrawObjects() = 0;
 
 #ifdef USE_IMGUI
     // "3D Objects"ウィンドウ内のシーン固有UI（天球ノードの前に呼ばれる）
@@ -98,6 +96,7 @@ protected:
     virtual void AppendPadTargets(std::vector<PadObjectController::Target>& targets) = 0;
 
     // --- 全デモシーン共通の「標準機能」（派生シーンから直接使える）---
+    // （カメラ camera_・平行光源 directionalLight_・点光源 pointLights_ は BaseScene が持つ）
 
     // シーン共通のテクスチャ（TextureManagerのハンドル。ImGuiのComboに対応）
     static constexpr int kTextureCount = 2;
@@ -106,18 +105,6 @@ protected:
 
     // 背景（最初に描画）
     Skydome skydome_;
-
-    // カメラ
-    // （立体視の視点別ビュー射影・視線追跡はBaseSceneのstereoCamera_が担当する）
-    Engine::Camera camera_;
-
-    // 平行光源（CPU側の値をImGuiで編集し、Updateで定数バッファへ書き込む）
-    Engine::DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, 1.0f, 1, {} };
-    Engine::ConstantBuffer<Engine::DirectionalLight> lightCB_;
-
-    // 点光源（最大kMaxPointLightCount個。ImGuiで個別編集し、Updateで定数バッファへ書き込む）
-    Engine::PointLightGroup pointLights_;
-    Engine::ConstantBuffer<Engine::PointLightGroup> pointLightCB_;
 
     // サウンド（Spaceキーまたは ImGuiのボタンで再生）
     size_t soundHandle_ = 0;     // Alarm01.wavのハンドル
@@ -130,7 +117,7 @@ protected:
     AxisGizmo axisGizmo_;
 
 #ifndef NDEBUG
-    // デバッグカメラ（Debugビルドのみ。Releaseでは無効）
+    // デバッグカメラ（Release以外。Enterで有効・無効を切り替える）
     Engine::DebugCamera debugCamera_;
 #endif
 };

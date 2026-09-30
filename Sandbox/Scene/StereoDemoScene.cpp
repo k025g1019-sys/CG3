@@ -4,9 +4,7 @@
 #include <vector>
 
 #include "Engine/Core/DirectXCore.h"
-#include "Engine/Core/WinApp.h"
 #include "Engine/Culling/FrustumCulling.h"
-#include "Engine/Graphics/PipelineManager.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Math/Matrix4x4.h"
 
@@ -16,7 +14,7 @@
 
 using namespace Engine;
 
-void StereoDemoScene::Initialize() {
+void StereoDemoScene::OnInitialize() {
 	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
 
 	// --- テクスチャ ---
@@ -55,40 +53,22 @@ void StereoDemoScene::Initialize() {
 	AddCube({ 2.0f, 0.0f, -2.0f }, -0.0f);
 
 	// --- 天球（背景。ライティング無効・カリング無効PSO）---
-	skydome_.Initialize(device);
+	skydome_.Initialize();
 
 	// --- 選択立方体の回転軸ギズモ ---
-	axisGizmo_.Initialize(device);
+	axisGizmo_.Initialize();
 
-	// --- 平行光源 ---
-	lightCB_.Create(device, DirectXCore::kFramesInFlight);
-
-	// --- 点光源（全灯無効のまま。共通ルートシグネチャが要求するためCBufferだけ用意する）---
-	pointLightCB_.Create(device, DirectXCore::kFramesInFlight);
-
-	// --- 立体視：視点ごとのビュー射影CBuffer ---
-	stereoCamera_.Initialize(device);
+	// --- 平行光源（立方体の面の向きが分かるよう、斜め下向きにする。点光源は使わない）---
+	directionalLight_.direction = { 0.4f, -1.0f, 0.6f };
 
 	// --- カメラ初期位置（被写体までの距離を収束距離の既定10に合わせる）---
 	camera_.GetTransform().rotate = { 0.4f, -0.78f, 0.0f };
 	camera_.GetTransform().translate = { 12.8f, 10.0f, -12.8f };
 }
 
-void StereoDemoScene::Update() {
-	// ゲームの描画先矩形に合わせて投影アスペクトを決める（リサイズやドッキングの
-	// レイアウト変更に追従し、物体が伸び縮みして見えるのを防ぐ）。
-	// 未設定（サイズ0）の間はウィンドウ全体を使う。
-	const float width = float(WinApp::GetInstance()->GetClientWidth());
-	const float height = float(WinApp::GetInstance()->GetClientHeight());
-	const bool hasRenderArea = (renderAreaWidth_ > 0.0f && renderAreaHeight_ > 0.0f);
-	const float viewWidth = hasRenderArea ? renderAreaWidth_ : width;
-	const float viewHeight = hasRenderArea ? renderAreaHeight_ : height;
-
-	Matrix4x4 projection = camera_.GetProjectionMatrix(viewWidth / viewHeight);
-	Matrix4x4 view = camera_.GetViewMatrix();
-
+void StereoDemoScene::OnUpdate() {
 #ifndef NDEBUG
-	// --- デバッグカメラ更新（Debugビルドのみ。Releaseでは丸ごと除外される）---
+	// --- デバッグカメラ更新（Release以外）---
 	// ピッキング対象（ワールド空間のバウンディング球）を毎フレーム組み立てる
 	std::vector<DebugCamera::PickTarget> pickTargets;
 	for (const std::unique_ptr<Object3D>& cube : cubes_) {
@@ -101,14 +81,10 @@ void StereoDemoScene::Update() {
 #ifdef USE_IMGUI
 	blockMouse = ImGui::GetIO().WantCaptureMouse;
 #endif
-	const float viewX = hasRenderArea ? renderAreaX_ : 0.0f;
-	const float viewY = hasRenderArea ? renderAreaY_ : 0.0f;
-	debugCamera_.Update(pickTargets, viewX, viewY, viewWidth, viewHeight, projection, blockMouse);
-
-	// デバッグカメラ有効時は通常カメラのビューを上書きする
-	if (debugCamera_.IsEnabled()) {
-		view = debugCamera_.GetViewMatrix();
-	}
+	debugCamera_.Update(
+		pickTargets,
+		GetRenderAreaX(), GetRenderAreaY(), GetRenderAreaWidth(), GetRenderAreaHeight(),
+		camera_.GetProjectionMatrix(GetAspectRatio()), blockMouse);
 #endif  // !NDEBUG
 
 	// --- パッドで選択立方体を操作（対象リストは毎フレーム組み立て、追加・削除に追従する）---
@@ -123,35 +99,32 @@ void StereoDemoScene::Update() {
 	// 選択立方体の回転軸ギズモを追従させる（定数バッファ書き込みは毎フレームここだけ）
 	axisGizmo_.Update(padController_.GetSelectedObject());
 
-	// --- 各立方体の更新（ワールド行列・定数バッファ書き込み・視錐台カリング）---
-	// カリングは中心カメラの視錐台で判定する（視点間のずれは眼間距離程度で無視できる）。
-	Frustum3D frustum = MakeFrustumFromViewProjection(view * projection);
+	// --- 各立方体の更新（ワールド行列・定数バッファ書き込み）---
 	for (std::unique_ptr<Object3D>& cube : cubes_) {
-		cube->Update(frustum);
+		cube->Update();
 	}
 
 	// 天球（カメラ追従ON時は中心がカメラ位置へ追従する）
-	skydome_.Update(view);
-
-	// 平行光源・点光源
-	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	lightCB_.Write(frameIndex, light_);
-	pointLightCB_.Write(frameIndex, pointLights_);
-
-	// --- 立体視：中心カメラから各視点（眼）のビュー射影を更新する ---
-	stereoCamera_.Update(view, projection);
+	skydome_.Update(CalcViewMatrix());
 }
+
+#ifndef NDEBUG
+Matrix4x4 StereoDemoScene::CalcViewMatrix() const {
+	// デバッグカメラ有効時は通常カメラのビューを上書きする
+	return debugCamera_.IsEnabled() ? debugCamera_.GetViewMatrix() : camera_.GetViewMatrix();
+}
+#endif
 
 void StereoDemoScene::AddCube(const Vector3& position, float rotateY) {
 	std::unique_ptr<Object3D> cube = std::make_unique<Object3D>();
-	cube->Initialize(DirectXCore::GetInstance()->GetDevice(), &cubeMesh_, cubeTextureHandle_);
+	cube->Initialize(&cubeMesh_, cubeTextureHandle_);
 	cube->GetTransform().translate = position;
 	cube->GetTransform().rotate.y = rotateY;
 	cubes_.push_back(std::move(cube));
 }
 
 #ifdef USE_IMGUI
-void StereoDemoScene::DrawImGui() {
+void StereoDemoScene::OnDrawImGui() {
 	ImGui::Begin("3D Objects");
 
 	padController_.DrawImGui();
@@ -230,50 +203,31 @@ void StereoDemoScene::DrawImGui() {
 	// --- 平行光源 ---
 	ImGui::Begin("Directional Light");
 
-	bool directionalEnabled = light_.enabled != 0;
+	bool directionalEnabled = directionalLight_.enabled != 0;
 	if (ImGui::Checkbox("Enable", &directionalEnabled)) {
-		light_.enabled = directionalEnabled ? 1 : 0;
+		directionalLight_.enabled = directionalEnabled ? 1 : 0;
 	}
-	ImGui::ColorEdit4("Color", &light_.color.x);
-	ImGui::DragFloat3("Direction", &light_.direction.x, 0.01f);
-	ImGui::DragFloat("Intensity", &light_.intensity, 0.01f, 0.0f, 10.0f);
+	ImGui::ColorEdit4("Color", &directionalLight_.color.x);
+	ImGui::DragFloat3("Direction", &directionalLight_.direction.x, 0.01f);
+	ImGui::DragFloat("Intensity", &directionalLight_.intensity, 0.01f, 0.0f, 10.0f);
 
 	ImGui::End();
 
 #ifndef NDEBUG
-	// デバッグカメラの状態表示・調整（Debugビルドのみ）
+	// デバッグカメラの状態表示・調整（Release以外）
 	debugCamera_.DrawImGui();
 #endif
 }
 #endif
 
-void StereoDemoScene::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) {
-	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-
-	// --- 共通設定（Viewport/Scissor/RenderTarget/DescriptorHeapは
-	//     DirectXCore::BeginFrameまたはStereoRenderer::BeginViewで設定済み）---
-	commandList->SetGraphicsRootSignature(PipelineManager::GetInstance()->GetRootSignature());
-
-	// この視点のビュー射影をVS(b1)へバインド（以降の3D描画で共有する）
-	commandList->SetGraphicsRootConstantBufferView(
-		4, stereoCamera_.GetViewProjectionAddress(frameIndex, viewIndex));
-
-	// 点光源のCBufferはシーン共通（PS b2。全灯無効だがルートシグネチャが要求する）
-	commandList->SetGraphicsRootConstantBufferView(5, pointLightCB_.GetGPUAddress(frameIndex));
-
-	// --- 天球を最初に描画（背景。カリング無効PSOに切り替わる）---
-	skydome_.Draw(commandList, lightCB_.GetGPUAddress(frameIndex));
-
-	// --- 以降は標準PSO（裏面カリング）で描画 ---
-	commandList->SetPipelineState(PipelineManager::GetInstance()->Get(PipelineManager::Pipeline::kStandard));
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	// 平行光源のCBufferはシーン共通（各立方体のマテリアル・Transformは各自が設定する）
-	commandList->SetGraphicsRootConstantBufferView(2, lightCB_.GetGPUAddress(frameIndex));
+void StereoDemoScene::OnDraw() {
+	// --- 天球を最初に描画（背景。カリング無効PSOで描き、標準PSOへ戻る）---
+	skydome_.Draw();
 
 	for (const std::unique_ptr<Object3D>& cube : cubes_) {
-		cube->Draw(commandList);
+		cube->Draw();
 	}
 
 	// --- 選択立方体の回転軸ギズモ（最後に描画。深度無効で他オブジェクトに隠れない）---
-	axisGizmo_.Draw(commandList, stereoCamera_.GetViewProjectionAddress(frameIndex, viewIndex));
+	axisGizmo_.Draw();
 }

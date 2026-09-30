@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Sandbox/Scene/BaseScene.h"
+#include "Engine/Scene/BaseScene.h"
 
 // アプリ内のシーンの識別子
 enum class SceneId {
@@ -14,5 +14,5 @@ enum class SceneId {
 // 起動直後に表示するシーン（ここを変えるだけで最初のシーンを差し替えられる）
 inline constexpr SceneId kInitialSceneId = SceneId::kGame;
 
-// 指定IDのシーンを生成する（Initializeは呼び出し側で行う）
-std::unique_ptr<BaseScene> CreateScene(SceneId id);
+// 指定IDのシーンを生成する（SceneManager::ChangeSceneに渡すと次のフレームで初期化される）
+std::unique_ptr<Engine::BaseScene> CreateScene(SceneId id);

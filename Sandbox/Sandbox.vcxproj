@@ -77,7 +77,6 @@
     <ClInclude Include="Object\PadObjectController.h" />
     <ClInclude Include="Object\Skydome.h" />
     <ClInclude Include="Scene\AxisScene.h" />
-    <ClInclude Include="Scene\BaseScene.h" />
     <ClInclude Include="Scene\DemoSceneBase.h" />
     <ClInclude Include="Scene\GameScene.h" />
     <ClInclude Include="Scene\SceneFactory.h" />

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <d3d12.h>
+#include <string>
 
 #include "Engine/Culling/FrustumCulling.h"
 #include "Engine/Math/Vector2.h"
@@ -25,17 +26,20 @@ public:
 
     /// <param name="textureHandle">TextureManagerのテクスチャハンドル</param>
     /// <param name="size">スプライトのサイズ（基準解像度のピクセル）</param>
-    void Initialize(ID3D12Device* device, uint32_t textureHandle, const Vector2& size);
+    void Initialize(uint32_t textureHandle, const Vector2& size);
+
+    /// <param name="textureFilePath">テクスチャのパス（例: "resources/title.png"）</param>
+    /// <param name="size">スプライトのサイズ（基準解像度のピクセル）</param>
+    void Initialize(const std::string& textureFilePath, const Vector2& size);
 
     // ワールド行列・正射影・マテリアルの定数バッファ更新と、画面矩形との2Dカリング判定（毎フレーム呼ぶ）。
-    // screenWidth/screenHeight: 実際の描画先矩形の大きさ（基準解像度との比でスプライトをスケールする）
-    void Update(float screenWidth, float screenHeight);
+    // 実際の描画先矩形の大きさ（基準解像度との比でスプライトをスケールする）はシーンから自動で渡される。
+    void Update();
 
-    // カリング結果がOutsideでなければ描画する。
-    // 2Dオーバーレイなので、ビュー射影（VSのb1）は自前の正射影へ差し替えて描く
+    // カリング結果がOutsideでなければ描画する（シーンのOnDrawの中で呼ぶ）。
+    // 2Dオーバーレイなので、ビュー射影（VSのb1）は自前の正射影へ差し替えて描き、描いた後に元へ戻す
     // （立体視でも両眼で同一＝視差ゼロで表示される）。
-    // （RootSignature・PSO・トポロジは呼び出し側で設定済みの前提）
-    void Draw(ID3D12GraphicsCommandList* commandList) const;
+    void Draw() const;
 
     Transform3D& GetTransform() { return transform_; }
 

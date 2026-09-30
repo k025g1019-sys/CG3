@@ -4,14 +4,34 @@
 #include <cmath>
 
 #include "Engine/Core/DirectXCore.h"
+#include "Engine/Graphics/PipelineManager.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Rendering/Mesh.h"
+#include "Engine/Rendering/MeshManager.h"
+#include "Engine/Rendering/RenderContext.h"
 
 namespace Engine {
 
-void Object3D::Initialize(
-	ID3D12Device* device, Mesh* mesh, uint32_t textureHandle, LightingMode lightingMode) {
+void Object3D::Initialize(Primitive primitive, LightingMode lightingMode) {
+	// 組み込みの形状は白テクスチャ（マテリアルの色がそのまま出る）
+	Initialize(
+		MeshManager::GetInstance()->GetPrimitive(primitive),
+		TextureManager::GetInstance()->GetWhiteTexture(),
+		lightingMode);
+}
+
+void Object3D::Initialize(const std::string& objFilePath, LightingMode lightingMode) {
+	// テクスチャはmtl由来（map_Kdが無いマテリアルは白）。白は一括上書き用の初期値
+	Initialize(
+		MeshManager::GetInstance()->Load(objFilePath),
+		TextureManager::GetInstance()->GetWhiteTexture(),
+		lightingMode);
+}
+
+void Object3D::Initialize(Mesh* mesh, uint32_t textureHandle, LightingMode lightingMode) {
 	assert(mesh != nullptr);
+
+	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
 
 	mesh_ = mesh;
 	textureHandle_ = textureHandle;
@@ -49,12 +69,12 @@ void Object3D::Initialize(
 	for (ConstantBuffer<Material>& materialCB : materialCBs_) {
 		materialCB.Create(device, DirectXCore::kFramesInFlight);
 	}
+
+	// Updateより前に描かれても正しくカリングできるよう、初期状態の範囲を入れておく
+	worldBoundingSphere_ = CalcWorldBoundingSphere();
 }
 
-void Object3D::Update(const Frustum3D& frustum) {
-	// 視錐台カリング判定（Outsideの場合はDrawで描画をスキップする）
-	visibility_ = ClassifyFrustum(frustum, CalcWorldBoundingSphere());
-
+void Object3D::Update() {
 	// ワールド行列を計算して定数バッファへ書き込む
 	Matrix4x4 world = MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
 	TransformationMatrix transformData{ world };
@@ -71,34 +91,57 @@ void Object3D::Update(const Frustum3D& frustum) {
 
 		materialCBs_[i].Write(frameIndex, materials_[i]);
 	}
+
+	// 視錐台カリング用の範囲（判定はカメラが確定した後のDrawで行う）
+	worldBoundingSphere_ = CalcWorldBoundingSphere();
 }
 
-void Object3D::Draw(ID3D12GraphicsCommandList* commandList) const {
+void Object3D::Draw() const {
+	RenderContext* context = RenderContext::GetInstance();
+
+	// 視錐台カリング（シーンのカメラの視錐台の外なら描画しない）
+	visibility_ = context->HasFrustum()
+		? ClassifyFrustum(context->GetFrustum(), worldBoundingSphere_)
+		: FrustumVisibility::Inside;
 	if (!IsVisible(visibility_)) {
 		return;
 	}
 
+	ID3D12GraphicsCommandList* commandList = context->GetCommandList();
 	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	commandList->SetGraphicsRootConstantBufferView(1, transformCB_.GetGPUAddress(frameIndex));
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootWorldTransform, transformCB_.GetGPUAddress(frameIndex));
 
 	TextureManager* textureManager = TextureManager::GetInstance();
 	if (subMeshTextureHandles_.empty()) {
 		// サブメッシュを持たないメッシュ（三角形・球など）は1回で描く
-		commandList->SetGraphicsRootConstantBufferView(0, materialCBs_[0].GetGPUAddress(frameIndex));
-		commandList->SetGraphicsRootDescriptorTable(3, textureManager->GetSrvHandleGPU(textureHandle_));
+		commandList->SetGraphicsRootConstantBufferView(
+			PipelineManager::kRootMaterial, materialCBs_[0].GetGPUAddress(frameIndex));
+		commandList->SetGraphicsRootDescriptorTable(
+			PipelineManager::kRootTexture, textureManager->GetSrvHandleGPU(textureHandle_));
 		mesh_->Draw(commandList);
 	} else {
 		// サブメッシュごとにマテリアルCBVとテクスチャを切り替えて描く
 		// （テクスチャ一括上書き中もマテリアルはサブメッシュごとの値を使う）
 		for (uint32_t i = 0; i < uint32_t(subMeshTextureHandles_.size()); ++i) {
 			commandList->SetGraphicsRootConstantBufferView(
-				0, materialCBs_[i].GetGPUAddress(frameIndex));
+				PipelineManager::kRootMaterial, materialCBs_[i].GetGPUAddress(frameIndex));
 			commandList->SetGraphicsRootDescriptorTable(
-				3, textureManager->GetSrvHandleGPU(
+				PipelineManager::kRootTexture, textureManager->GetSrvHandleGPU(
 					textureOverridden_ ? textureHandle_ : subMeshTextureHandles_[i]));
 			mesh_->DrawSubMesh(commandList, i);
 		}
 	}
+}
+
+void Object3D::SetColor(const Vector4& color) {
+	for (Material& material : materials_) {
+		material.color = color;
+	}
+}
+
+void Object3D::SetTexture(const std::string& textureFilePath) {
+	SetTextureHandle(TextureManager::GetInstance()->Load(textureFilePath));
 }
 
 Sphere Object3D::CalcWorldBoundingSphere() const {

@@ -9,7 +9,9 @@
 
 using namespace Engine;
 
-void AxisScene::OnInitialize(ID3D12Device* device) {
+void AxisScene::OnInitializeObjects() {
+	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
+
 	// --- 三角形（2枚。2枚目は1枚目を貫通する）---
 	VertexData triangleVertices[6]{};
 	triangleVertices[0].position = { -0.5f, -0.5f, 0.0f, 1.0f }; // 左下
@@ -28,42 +30,35 @@ void AxisScene::OnInitialize(ID3D12Device* device) {
 		vertex.normal = { 0.0f, 0.0f, -1.0f };
 	}
 	triangleMesh_.Create(device, triangleVertices, 6);
-	triangle_.Initialize(device, &triangleMesh_, textureHandles_[triangleTextureIndex_]);
+	triangle_.Initialize(&triangleMesh_, textureHandles_[triangleTextureIndex_]);
 	triangle_.GetTransform().translate = { 2.6f, 3.0f, 6.0f };
 
 	// --- axis.obj ---
-	axisMesh_.CreateFromObj(device, "resources", "axis.obj");
-	axis_.Initialize(device, &axisMesh_, textureHandles_[0]);
+	axis_.Initialize("resources/axis.obj");
 	axis_.GetTransform().translate = { 1.4f, 2.4f, 6.0f };
 	axis_.GetTransform().rotate.y = 3.1415f;
 
 	// --- teapot.obj（ユタ・ティーポット。mtl由来のcheckerBoardで描かれる）---
-	teapotMesh_.CreateFromObj(device, "resources", "teapot.obj");
-	teapot_.Initialize(device, &teapotMesh_, textureHandles_[0]);
+	teapot_.Initialize("resources/teapot.obj");
 	teapot_.GetTransform().translate = { -1.6f, 1.1f, 6.0f };
 
 	// --- multiMesh.obj（2サブメッシュ・1マテリアル）---
-	multiMeshMesh_.CreateFromObj(device, "resources", "multiMesh.obj");
-	multiMesh_.Initialize(device, &multiMeshMesh_, textureHandles_[0]);
+	multiMesh_.Initialize("resources/multiMesh.obj");
 	multiMesh_.GetTransform().translate = { -1.2f, -1.7f, 9.0f };
 
 	// --- 球 ---
 	sphereMesh_.CreateSphere(device, subdivision_);
-	sphere_.Initialize(device, &sphereMesh_, textureHandles_[sphereTextureIndex_]);
+	sphere_.Initialize(&sphereMesh_, textureHandles_[sphereTextureIndex_]);
 	sphere_.GetTransform().translate = { 2.2f, 0.7f, 6.0f };
 	sphere_.GetTransform().rotate.y = 4.9f;
 }
 
-void AxisScene::OnUpdate(const Frustum3D& frustum, float viewWidth, float viewHeight) {
-	// このシーンに2Dオブジェクトはない（描画先矩形の大きさは使わない）
-	(void)viewWidth;
-	(void)viewHeight;
-
-	triangle_.Update(frustum);
-	axis_.Update(frustum);
-	teapot_.Update(frustum);
-	multiMesh_.Update(frustum);
-	sphere_.Update(frustum);
+void AxisScene::OnUpdateObjects() {
+	triangle_.Update();
+	axis_.Update();
+	teapot_.Update();
+	multiMesh_.Update();
+	sphere_.Update();
 }
 
 #ifndef NDEBUG
@@ -115,13 +110,12 @@ void AxisScene::OnDrawObjectsImGui() {
 	struct ModelEntry {
 		const char* label;
 		Engine::Object3D* object;
-		Engine::Mesh* mesh;
 		int* textureIndex;
 	};
 	const ModelEntry entries[] = {
-		{ "Axis",      &axis_,      &axisMesh_,      &axisTextureIndex_ },
-		{ "Teapot",    &teapot_,    &teapotMesh_,    &teapotTextureIndex_ },
-		{ "MultiMesh", &multiMesh_, &multiMeshMesh_, &multiMeshTextureIndex_ },
+		{ "Axis",      &axis_,      &axisTextureIndex_ },
+		{ "Teapot",    &teapot_,    &teapotTextureIndex_ },
+		{ "MultiMesh", &multiMesh_, &multiMeshTextureIndex_ },
 	};
 
 	for (const ModelEntry& entry : entries) {
@@ -139,7 +133,7 @@ void AxisScene::OnDrawObjectsImGui() {
 			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
 
 			ImGui::Separator();
-			DrawSubMeshInfo(*entry.mesh);
+			DrawSubMeshInfo(*entry.object->GetMesh());
 
 			ImGui::PopID();
 			ImGui::TreePop();
@@ -189,10 +183,10 @@ void AxisScene::OnDrawCullingImGui() {
 }
 #endif
 
-void AxisScene::OnDraw(ID3D12GraphicsCommandList* commandList) {
-	triangle_.Draw(commandList);
-	axis_.Draw(commandList);
-	teapot_.Draw(commandList);
-	multiMesh_.Draw(commandList);
-	sphere_.Draw(commandList);
+void AxisScene::OnDrawObjects() {
+	triangle_.Draw();
+	axis_.Draw();
+	teapot_.Draw();
+	multiMesh_.Draw();
+	sphere_.Draw();
 }

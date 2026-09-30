@@ -1,25 +1,22 @@
 #pragma once
 
-#include <d3d12.h>
-
-#include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
 #include "Engine/Rendering/Sprite.h"
 #include "Sandbox/Scene/DemoSceneBase.h"
 
-// 最初のデモシーン。2Dスプライトと4つのOBJモデル
-// （plane・bunny・multiMaterial・suzanne）を描画する。
-// カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBaseが提供する。
+// 最初のデモシーン。2Dスプライトと5つのOBJモデル
+// （plane・bunny・multiMaterial・suzanne・fence）を描画する。
+// カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBase（とエンジンのBaseScene）が提供する。
 class GameScene : public DemoSceneBase {
 protected:
     // OBJモデル・スプライトの生成
-    void OnInitialize(ID3D12Device* device) override;
+    void OnInitializeObjects() override;
 
-    // 各オブジェクトの行列計算・定数バッファ更新・カリング判定
-    void OnUpdate(const Engine::Frustum3D& frustum, float viewWidth, float viewHeight) override;
+    // 各オブジェクトの行列計算・定数バッファ更新
+    void OnUpdateObjects() override;
 
     // 各オブジェクトの描画コマンドを積む
-    void OnDraw(ID3D12GraphicsCommandList* commandList) override;
+    void OnDrawObjects() override;
 
 #ifdef USE_IMGUI
     // "3D Objects"ウィンドウ内の各OBJモデルの編集UI
@@ -41,19 +38,12 @@ protected:
     void AppendPadTargets(std::vector<PadObjectController::Target>& targets) override;
 
 private:
-    // --- メッシュ（形状データ）---
-    Engine::Mesh planeMesh_;          // plane.obj
-    Engine::Mesh bunnyMesh_;          // bunny.obj（スタンフォードバニー）
-    Engine::Mesh multiMaterialMesh_;  // multiMaterial.obj（2サブメッシュ・2マテリアル）
-    Engine::Mesh suzanneMesh_;        // suzanne.obj（UVなし・テクスチャなし）
-    Engine::Mesh fenceMesh_;
-
-    // --- 描画オブジェクト ---
-    Engine::Object3D plane_;
-    Engine::Object3D bunny_;
-    Engine::Object3D multiMaterial_;
-    Engine::Object3D suzanne_;
-    Engine::Object3D fence_;
+    // --- 描画オブジェクト（OBJのメッシュはMeshManagerが読み込み・共有する）---
+    Engine::Object3D plane_;          // plane.obj
+    Engine::Object3D bunny_;          // bunny.obj（スタンフォードバニー）
+    Engine::Object3D multiMaterial_;  // multiMaterial.obj（2サブメッシュ・2マテリアル）
+    Engine::Object3D suzanne_;        // suzanne.obj（UVなし・テクスチャなし）
+    Engine::Object3D fence_;          // fence.obj（透明部分をdiscardで抜く）
     Engine::Sprite sprite_;
 
     // --- テクスチャ選択（ImGuiのComboに対応）---

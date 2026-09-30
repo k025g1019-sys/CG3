@@ -4,6 +4,7 @@
 #include "Engine/Graphics/PipelineManager.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Math/Matrix4x4.h"
+#include "Engine/Rendering/RenderContext.h"
 #include "Engine/Rendering/VertexData.h"
 
 #ifdef USE_IMGUI
@@ -21,7 +22,9 @@ constexpr float kLengthScale = 1.5f;
 
 }  // namespace
 
-void AxisGizmo::Initialize(ID3D12Device* device) {
+void AxisGizmo::Initialize() {
+	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
+
 	// --- 軸線メッシュとマテリアル（原点から各軸の+方向へ長さ1の線分。X=赤/Y=緑/Z=青）---
 	const Vector3 kDirections[kAxisCount] = {
 		{ 1.0f, 0.0f, 0.0f },  // X
@@ -78,28 +81,32 @@ void AxisGizmo::Update(const Object3D* target) {
 	}
 }
 
-void AxisGizmo::Draw(ID3D12GraphicsCommandList* commandList, D3D12_GPU_VIRTUAL_ADDRESS viewProjectionAddress) {
+void AxisGizmo::Draw() {
 	if (!hasTarget_) {
 		return;
 	}
 
-	// 深度無効のラインPSOへ切り替える（RootSignature・DescriptorHeap・光源CBVは設定済みの前提）
-	commandList->SetPipelineState(PipelineManager::GetInstance()->Get(PipelineManager::Pipeline::kLine));
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	ID3D12GraphicsCommandList* commandList = RenderContext::GetInstance()->GetCommandList();
+	PipelineManager* pipelineManager = PipelineManager::GetInstance();
 
-	// スプライト描画が正射影へ差し替えている場合があるため、この視点のビュー射影を再バインドする
-	commandList->SetGraphicsRootConstantBufferView(4, viewProjectionAddress);
+	// 深度無効のラインPSOへ切り替える（RootSignature・ビュー射影・光源はシーンで設定済み）
+	pipelineManager->SetPipeline(commandList, PipelineManager::Pipeline::kLine);
 
 	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	commandList->SetGraphicsRootConstantBufferView(1, transformCB_.GetGPUAddress(frameIndex));
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootWorldTransform, transformCB_.GetGPUAddress(frameIndex));
 	commandList->SetGraphicsRootDescriptorTable(
-		3, TextureManager::GetInstance()->GetSrvHandleGPU(whiteTextureHandle_));
+		PipelineManager::kRootTexture, TextureManager::GetInstance()->GetSrvHandleGPU(whiteTextureHandle_));
 
 	// 軸ごとにマテリアル（色）を差し替えて1本ずつ描く
 	for (int i = 0; i < kAxisCount; ++i) {
-		commandList->SetGraphicsRootConstantBufferView(0, materialCBs_[i].GetGPUAddress(frameIndex));
+		commandList->SetGraphicsRootConstantBufferView(
+			PipelineManager::kRootMaterial, materialCBs_[i].GetGPUAddress(frameIndex));
 		axisMeshes_[i].Draw(commandList);
 	}
+
+	// 後に続く描画のために標準PSOへ戻す
+	pipelineManager->SetPipeline(commandList, PipelineManager::Pipeline::kStandard);
 }
 
 #ifdef USE_IMGUI

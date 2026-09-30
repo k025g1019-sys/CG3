@@ -22,8 +22,7 @@ public:
     /// モデル・テクスチャ・マテリアル等を初期化する。
     /// （PipelineManager・TextureManagerの初期化後に呼ぶ）
     /// </summary>
-    /// <param name="device">リソース生成に使うデバイス</param>
-    void Initialize(ID3D12Device* device);
+    void Initialize();
 
     /// <summary>
     /// カメラのビュー行列から追従位置を決め、ワールド行列を更新する。毎フレーム1回呼ぶ。
@@ -33,13 +32,10 @@ public:
     void Update(const Engine::Matrix4x4& centerView);
 
     /// <summary>
-    /// カリング無効PSOに切り替えて天球を描画する（背景なので他オブジェクトより先に呼ぶ）。
-    /// ビュー射影CBV（b1[VS]）は呼び出し側で設定済みの前提。
+    /// カリング無効PSOに切り替えて天球を描画し、標準PSOへ戻す（背景なので他オブジェクトより先に呼ぶ）。
+    /// ビュー射影・光源のCBVはシーン（BaseScene）で設定済みの前提。
     /// </summary>
-    /// <param name="lightAddress">共通ルートシグネチャが要求するため設定する平行光源のCBVアドレス（ライティングは無効）</param>
-    void Draw(
-        ID3D12GraphicsCommandList* commandList,
-        D3D12_GPU_VIRTUAL_ADDRESS lightAddress);
+    void Draw();
 
 #ifdef USE_IMGUI
     // カメラ追従・スケール・原点固定時の位置を調整するUI

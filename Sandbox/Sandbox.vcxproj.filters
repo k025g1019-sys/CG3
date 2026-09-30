@@ -50,9 +50,6 @@
     <ClInclude Include="Scene\AxisScene.h">
       <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\BaseScene.h">
-      <Filter>Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Scene\DemoSceneBase.h">
       <Filter>Scene</Filter>
     </ClInclude>

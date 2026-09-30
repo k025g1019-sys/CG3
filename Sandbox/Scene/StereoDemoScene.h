@@ -1,22 +1,17 @@
 #pragma once
 
 #include <cstdint>
-#include <d3d12.h>
 #include <memory>
 #include <vector>
 
-#include "Engine/Camera/Camera.h"
-#include "Engine/Light/DirectionalLight.h"
-#include "Engine/Light/PointLight.h"
 #include "Engine/Math/Vector3.h"
-#include "Engine/Rendering/ConstantBuffer.h"
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
+#include "Engine/Scene/BaseScene.h"
 #include "Sandbox/Object/AxisGizmo.h"
 #include "Sandbox/Object/PadObjectController.h"
 #include "Sandbox/Object/Skydome.h"
-#include "Sandbox/Scene/BaseScene.h"
-// デバッグカメラはDebugビルド限定。このプロジェクトはReleaseでも_DEBUGが定義される
+// デバッグカメラはRelease以外。このプロジェクトはReleaseでも_DEBUGが定義される
 // （RuntimeLibrary=MultiThreadedDebug）ため、Release判定にはNDEBUGを使う。
 #ifndef NDEBUG
 #include "Engine/Camera/DebugCamera.h"
@@ -25,23 +20,27 @@
 /// <summary>
 /// 立体視デモシーン。テクスチャ付きの立方体を奥行き違いに並べ、飛び出し・引っ込みを確認する。
 /// 立方体はImGuiで追加・削除でき、Transform（中心基準）・色も個別に編集できる。
+/// カメラ・光源・立体視の視点別ビュー射影などの定型処理はエンジンのBaseSceneが行う。
 /// </summary>
-class StereoDemoScene : public BaseScene {
-public:
-    // 各リソースを生成する（DirectXCore・PipelineManager・TextureManagerの初期化後に呼ぶ）
-    void Initialize() override;
+class StereoDemoScene : public Engine::BaseScene {
+protected:
+    // 立方体・天球・ギズモの生成とカメラ・光源の初期設定
+    void OnInitialize() override;
 
-    // UI操作を反映した行列計算・定数バッファ更新・カリング判定。
-    // 視点ごとのビュー射影（平行配置＋オフアクシス射影）もここで更新する。
-    void Update() override;
+    // デバッグカメラ・パッド操作・各立方体・天球の更新
+    void OnUpdate() override;
 
-    // 描画コマンドを積む。
-    // viewIndex:描画する視点（この視点のビュー射影CBufferをVS[b1]へバインドする）。
-    void Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) override;
+    // 天球 → 立方体 → 軸ギズモ の順で描画する
+    void OnDraw() override;
 
 #ifdef USE_IMGUI
     // 開発用ImGuiウィンドウの構築
-    void DrawImGui() override;
+    void OnDrawImGui() override;
+#endif
+
+#ifndef NDEBUG
+    // デバッグカメラが有効なときは、そのビュー行列で描画する
+    Engine::Matrix4x4 CalcViewMatrix() const override;
 #endif
 
 private:
@@ -66,20 +65,8 @@ private:
     // --- 選択立方体のローカル回転軸ギズモ（X=赤/Y=緑/Z=青）---
     AxisGizmo axisGizmo_;
 
-    // --- カメラ ---
-    Engine::Camera camera_;
-
-    // --- 平行光源（CPU側の値をImGuiで編集し、Updateで定数バッファへ書き込む）---
-    // 立方体の面の向きが分かるよう、初期方向は斜め下向きにする。
-    Engine::DirectionalLight light_{ { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.4f, -1.0f, 0.6f }, 1.0f, 1, {} };
-    Engine::ConstantBuffer<Engine::DirectionalLight> lightCB_;
-
-    // --- 点光源（このシーンでは未使用。共通ルートシグネチャ（PS b2）が要求するため全灯無効で置く）---
-    Engine::PointLightGroup pointLights_;
-    Engine::ConstantBuffer<Engine::PointLightGroup> pointLightCB_;
-
 #ifndef NDEBUG
-    // --- デバッグカメラ（Debugビルドのみ。Releaseでは無効）---
+    // --- デバッグカメラ（Release以外）---
     Engine::DebugCamera debugCamera_;
 #endif
 };

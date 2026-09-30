@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "Engine/Core/Framework.h"
 #include "Engine/Graphics/CameraCapture.h"
 #include "Engine/Input/EyeTracker.h"
@@ -9,9 +7,9 @@
 #include "Sandbox/Scene/SceneFactory.h"
 
 /// <summary>
-/// このゲームのアプリケーションクラス。
-/// Frameworkのメインループから呼ばれる更新・描画を現在のシーンへ委譲し、
-/// 視線追跡（アプリ内顔検出／共有メモリ）とWebカメラ表示をシーンへ配線する。
+/// エンジン動作確認用アプリ（Sandbox）のアプリケーションクラス。
+/// シーンの更新・描画はエンジン（SceneManager）が行い、ここでは
+/// 視線追跡（アプリ内顔検出／共有メモリ）とWebカメラ表示を現在のシーンへ配線する。
 /// Tキーで立体視デモシーンと通常デモシーン（直前にいた方）を、
 /// Tabキーで通常デモシーン同士（kGame ⇔ kAxis）を切り替える。
 /// </summary>
@@ -24,8 +22,6 @@ protected:
 
     void Update() override;
 
-    void Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) override;
-
     // Webカメラ表示ON時、最新フレームをGPUテクスチャへ転送する
     void PreDraw(ID3D12GraphicsCommandList* commandList) override;
 
@@ -34,9 +30,6 @@ protected:
 #endif
 
 private:
-
-    // 現在のシーン（T/Tabキーで切り替え。Finalizeでエンジン終了処理より先に解放する）
-    std::unique_ptr<BaseScene> scene_;
 
     // 現在のシーンID（起動時のシーンはSceneFactory.hのkInitialSceneIdで指定する）
     SceneId sceneId_ = kInitialSceneId;

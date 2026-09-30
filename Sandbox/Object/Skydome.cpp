@@ -3,6 +3,7 @@
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Graphics/PipelineManager.h"
 #include "Engine/Graphics/TextureManager.h"
+#include "Engine/Rendering/RenderContext.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -10,7 +11,8 @@
 
 using namespace Engine;
 
-void Skydome::Initialize(ID3D12Device* device) {
+void Skydome::Initialize() {
+	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
 
 	// --- モデル読み込み（半径1のユニット球）---
 	mesh_.CreateFromObj(device, "resources", "skydome.obj");
@@ -46,22 +48,25 @@ void Skydome::Update(const Matrix4x4& centerView) {
 	materialCB_.Write(frameIndex, material_);
 }
 
-void Skydome::Draw(
-	ID3D12GraphicsCommandList* commandList,
-	D3D12_GPU_VIRTUAL_ADDRESS lightAddress) {
+void Skydome::Draw() {
+	ID3D12GraphicsCommandList* commandList = RenderContext::GetInstance()->GetCommandList();
+	PipelineManager* pipelineManager = PipelineManager::GetInstance();
 
-	// カリング無効PSOに切り替える。RootSignature・DescriptorHeapは呼び出し側で設定済みの前提。
-	commandList->SetPipelineState(PipelineManager::GetInstance()->Get(PipelineManager::Pipeline::kNoCull));
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	// カリング無効PSOに切り替える（RootSignature・ビュー射影・光源はシーンで設定済み）
+	pipelineManager->SetPipeline(commandList, PipelineManager::Pipeline::kNoCull);
 
-	// 共通ルートシグネチャの各スロットを設定（0:Material[PS] / 1:Transform[VS] / 2:Light[PS] / 3:Texture[PS]）
 	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	commandList->SetGraphicsRootConstantBufferView(0, materialCB_.GetGPUAddress(frameIndex));
-	commandList->SetGraphicsRootConstantBufferView(1, transformCB_.GetGPUAddress(frameIndex));
-	commandList->SetGraphicsRootConstantBufferView(2, lightAddress);
-	commandList->SetGraphicsRootDescriptorTable(3, TextureManager::GetInstance()->GetSrvHandleGPU(textureHandle_));
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootMaterial, materialCB_.GetGPUAddress(frameIndex));
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootWorldTransform, transformCB_.GetGPUAddress(frameIndex));
+	commandList->SetGraphicsRootDescriptorTable(
+		PipelineManager::kRootTexture, TextureManager::GetInstance()->GetSrvHandleGPU(textureHandle_));
 
 	mesh_.Draw(commandList);
+
+	// 後に続くオブジェクトのために標準PSO（裏面カリング）へ戻す
+	pipelineManager->SetPipeline(commandList, PipelineManager::Pipeline::kStandard);
 }
 
 #ifdef USE_IMGUI

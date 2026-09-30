@@ -1,50 +1,47 @@
 #include "Sandbox/Scene/GameScene.h"
 
+#include "Engine/Rendering/Mesh.h"
+
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
 #endif
 
 using namespace Engine;
 
-void GameScene::OnInitialize(ID3D12Device* device) {
+void GameScene::OnInitializeObjects() {
 	// --- plane.obj（左下。左上はスプライトに隠れるため下段に置く）---
-	planeMesh_.CreateFromObj(device, "resources", "plane.obj");
-	plane_.Initialize(device, &planeMesh_, textureHandles_[0]);
+	plane_.Initialize("resources/plane.obj");
 	plane_.GetTransform().translate = { -2.25f, -1.45f, 6.0f };
 
 	// --- bunny.obj（スタンフォードバニー。mtl由来のuvCheckerで描かれる）---
-	bunnyMesh_.CreateFromObj(device, "resources", "bunny.obj");
-	bunny_.Initialize(device, &bunnyMesh_, textureHandles_[0]);
+	bunny_.Initialize("resources/bunny.obj");
 	bunny_.GetTransform().translate = { -0.1f, -0.4f, 6.0f };
 
 	// --- multiMaterial.obj（2サブメッシュ・2マテリアル。monsterBallとuvCheckerの2色になる）---
-	multiMaterialMesh_.CreateFromObj(device, "resources", "multiMaterial.obj");
-	multiMaterial_.Initialize(device, &multiMaterialMesh_, textureHandles_[0]);
+	multiMaterial_.Initialize("resources/multiMaterial.obj");
 	multiMaterial_.GetTransform().translate = { -0.2f, -1.5f, 6.0f };
 
 	// --- suzanne.obj（UVなし。mtlにmap_Kdも無いので白テクスチャ＋ライティングの単色で描かれる）---
-	suzanneMesh_.CreateFromObj(device, "resources", "suzanne.obj");
-	suzanne_.Initialize(device, &suzanneMesh_, textureHandles_[0]);
+	suzanne_.Initialize("resources/suzanne.obj");
 	suzanne_.GetTransform().translate = { 1.7f, 3.0f, 6.0f };
 
 	// --- fence ---
-	fenceMesh_.CreateFromObj(device, "resources", "fence.obj");
-	fence_.Initialize(device, &fenceMesh_, textureHandles_[0]);
+	fence_.Initialize("resources/fence.obj");
 	fence_.GetTransform().translate = { 0.0f, 0.0f, 0.0f };
 
 	// --- スプライト ---
-	sprite_.Initialize(device, textureHandles_[spriteTextureIndex_], { 640.0f, 360.0f });
+	sprite_.Initialize(textureHandles_[spriteTextureIndex_], { 640.0f, 360.0f });
 }
 
-void GameScene::OnUpdate(const Frustum3D& frustum, float viewWidth, float viewHeight) {
-	plane_.Update(frustum);
-	bunny_.Update(frustum);
-	multiMaterial_.Update(frustum);
-	suzanne_.Update(frustum);
-	fence_.Update(frustum);
+void GameScene::OnUpdateObjects() {
+	plane_.Update();
+	bunny_.Update();
+	multiMaterial_.Update();
+	suzanne_.Update();
+	fence_.Update();
 
 	// スプライト（正射影・2Dカリング。基準解像度との比に応じて等比スケールされる）
-	sprite_.Update(viewWidth, viewHeight);
+	sprite_.Update();
 }
 
 #ifndef NDEBUG
@@ -70,15 +67,14 @@ void GameScene::OnDrawObjectsImGui() {
 	struct ModelEntry {
 		const char* label;
 		Engine::Object3D* object;
-		Engine::Mesh* mesh;
 		int* textureIndex;
 	};
 	const ModelEntry entries[] = {
-		{ "Plane",         &plane_,         &planeMesh_,         &planeTextureIndex_ },
-		{ "Bunny",         &bunny_,         &bunnyMesh_,         &bunnyTextureIndex_ },
-		{ "MultiMaterial", &multiMaterial_, &multiMaterialMesh_, &multiMaterialTextureIndex_ },
-		{ "Suzanne",       &suzanne_,       &suzanneMesh_,       &suzanneTextureIndex_ },
-		{ "Fence",       &fence_,       &fenceMesh_,       &fenceTextureIndex_ },
+		{ "Plane",         &plane_,         &planeTextureIndex_ },
+		{ "Bunny",         &bunny_,         &bunnyTextureIndex_ },
+		{ "MultiMaterial", &multiMaterial_, &multiMaterialTextureIndex_ },
+		{ "Suzanne",       &suzanne_,       &suzanneTextureIndex_ },
+		{ "Fence",         &fence_,         &fenceTextureIndex_ },
 	};
 
 	for (const ModelEntry& entry : entries) {
@@ -95,7 +91,7 @@ void GameScene::OnDrawObjectsImGui() {
 			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
 
 			ImGui::Separator();
-			DrawSubMeshInfo(*entry.mesh);
+			DrawSubMeshInfo(*entry.object->GetMesh());
 
 			ImGui::PopID();
 			ImGui::TreePop();
@@ -158,15 +154,15 @@ void GameScene::OnDrawCullingImGui() {
 }
 #endif
 
-void GameScene::OnDraw(ID3D12GraphicsCommandList* commandList) {
-	plane_.Draw(commandList);
-	bunny_.Draw(commandList);
-	multiMaterial_.Draw(commandList);
-	suzanne_.Draw(commandList);
-	fence_.Draw(commandList);
+void GameScene::OnDrawObjects() {
+	plane_.Draw();
+	bunny_.Draw();
+	multiMaterial_.Draw();
+	suzanne_.Draw();
+	fence_.Draw();
 
 	// スプライト（drawSprite_がfalse、または画面外なら描かれない）
 	if (drawSprite_) {
-		sprite_.Draw(commandList);
+		sprite_.Draw();
 	}
 }

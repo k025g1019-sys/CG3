@@ -133,4 +133,39 @@ std::vector<uint32_t> GenerateCubeIndices() {
 	return indices;
 }
 
+std::vector<VertexData> GeneratePlaneVertices() {
+	// 立方体の上面と同じ向き（外＝上(+Y)から見て右が+X、上が+Z）で、高さ0に置く
+	const Vector3 normal = { 0.0f, 1.0f, 0.0f };
+	const Vector3 right = { 1.0f, 0.0f, 0.0f };
+	const Vector3 up = { 0.0f, 0.0f, 1.0f };
+
+	// 4頂点：0=左下 / 1=左上 / 2=右下 / 3=右上（テクスチャ座標は左上原点）
+	const Vector3 corners[4] = {
+		-right * 0.5f - up * 0.5f,
+		-right * 0.5f + up * 0.5f,
+		right * 0.5f - up * 0.5f,
+		right * 0.5f + up * 0.5f,
+	};
+	const Vector2 texcoords[4] = {
+		{ 0.0f, 1.0f },
+		{ 0.0f, 0.0f },
+		{ 1.0f, 1.0f },
+		{ 1.0f, 0.0f },
+	};
+
+	std::vector<VertexData> vertices(4);
+	for (uint32_t i = 0; i < 4; ++i) {
+		vertices[i].position = { corners[i].x, corners[i].y, corners[i].z, 1.0f };
+		vertices[i].texcoord = texcoords[i];
+		vertices[i].normal = normal;
+	}
+
+	return vertices;
+}
+
+std::vector<uint32_t> GeneratePlaneIndices() {
+	// 左下→左上→右下 / 右下→左上→右上（上から見て時計回り＝表）
+	return { 0, 1, 2, 2, 1, 3 };
+}
+
 } // namespace Engine

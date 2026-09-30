@@ -196,4 +196,8 @@ void Framework::Finalize() {
 	CoUninitialize();
 }
 
+void Framework::SetWindowTitle(const std::wstring& title) {
+	WinApp::GetInstance()->SetTitle(title);
+}
+
 } // namespace Engine

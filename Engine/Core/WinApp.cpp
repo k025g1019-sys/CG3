@@ -70,7 +70,7 @@ void WinApp::Initialize() {
 
     hwnd_ = CreateWindow(
         wc_.lpszClassName,
-        L"Window",
+        title_.c_str(),
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -83,6 +83,15 @@ void WinApp::Initialize() {
     );
 
     ShowWindow(hwnd_, SW_SHOW);
+}
+
+void WinApp::SetTitle(const std::wstring& title) {
+    title_ = title;
+
+    // ウィンドウ生成後ならその場でタイトルバーを書き換える
+    if (hwnd_ != nullptr) {
+        SetWindowTextW(hwnd_, title_.c_str());
+    }
 }
 
 void WinApp::SetFullscreen(bool enable) {

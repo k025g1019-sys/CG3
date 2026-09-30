@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <d3d12.h>
+#include <string>
 
 namespace Engine {
 
@@ -44,6 +45,9 @@ protected:
     // 開発用ImGuiウィンドウの構築（Debugビルドのみ呼ばれる）
     virtual void DrawImGui() = 0;
 #endif
+
+    // ウィンドウのタイトルを設定する（Initializeより前に呼べば最初からそのタイトルで開く）
+    void SetWindowTitle(const std::wstring& title);
 };
 
 } // namespace Engine

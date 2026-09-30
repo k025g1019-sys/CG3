@@ -13,6 +13,9 @@
 using namespace Engine;
 
 void SandboxApp::Initialize() {
+	// ウィンドウのタイトル（エンジン初期化より前に設定すると、最初からこのタイトルで開く）
+	SetWindowTitle(L"Engine Sandbox");
+
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();
 

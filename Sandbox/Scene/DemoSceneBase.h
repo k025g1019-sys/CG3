@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Engine/Culling/FrustumCulling.h"
+#include "Engine/Math/Curve.h"
 #include "Engine/Rendering/Material.h"
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
@@ -95,6 +96,9 @@ protected:
     // パッド（XBoxコントローラー）で操作できるオブジェクトを追加する
     virtual void AppendPadTargets(std::vector<PadObjectController::Target>& targets) = 0;
 
+    // デバッグ線描画・当たり判定・曲線の確認（ImGuiの"Debug Draw"でON/OFF）
+    void DrawDebugShapes();
+
     // --- 全デモシーン共通の「標準機能」（派生シーンから直接使える）---
     // （カメラ camera_・平行光源 directionalLight_・点光源 pointLights_ は BaseScene が持つ）
 
@@ -115,6 +119,13 @@ protected:
 
     // 選択オブジェクトのローカル回転軸ギズモ（X=赤/Y=緑/Z=青）
     AxisGizmo axisGizmo_;
+
+    // --- デバッグ線描画のデモ（ImGuiの"Debug Draw"で切り替え）---
+    bool showColliders_ = false;  // 各オブジェクトのバウンディング球（他と重なっていれば赤、それ以外は緑）
+    bool showGrid_ = false;       // XZ平面のグリッド
+    bool showCurve_ = false;      // ベジェ曲線と、その上を往復するマーカー
+    Engine::Curve curve_{ { -3.0f, 0.0f, 3.0f }, { 0.0f, 4.0f, 3.0f }, { 3.0f, 0.0f, 3.0f } };
+    float curveMarkerSpeed_ = 1.0f;  // マーカーの往復の速さ
 
 #ifndef NDEBUG
     // デバッグカメラ（Release以外。Enterで有効・無効を切り替える）

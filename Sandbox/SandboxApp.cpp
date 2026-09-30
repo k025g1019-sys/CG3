@@ -26,7 +26,7 @@ void SandboxApp::Initialize() {
 	ImGuiManager::GetInstance()->SetDefaultDockLayout(
 		{ "Display", "Eye Tracking & Camera", "Stereoscopic", "Debug Camera",
 		  "3D Objects", "2D Objects", "Camera", "Directional Light",
-		  "Point Lights", "Sound", "Frustum Culling" },
+		  "Point Lights", "Sound", "Frustum Culling", "Debug Draw" },
 		{ "Webcam" });
 #endif
 

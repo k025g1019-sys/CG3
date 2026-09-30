@@ -1,9 +1,14 @@
 #include "Sandbox/Scene/DemoSceneBase.h"
 
+#include <cmath>
+
 #include "Engine/Audio/Audio.h"
+#include "Engine/Core/Time.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Input/Input.h"
+#include "Engine/Math/Collision.h"
 #include "Engine/Math/Matrix4x4.h"
+#include "Engine/Rendering/DebugDraw.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -77,6 +82,42 @@ void DemoSceneBase::OnUpdate() {
 
 	// 天球（カメラ追従ON時は中心がカメラ位置へ追従する）
 	skydome_.Update(CalcViewMatrix());
+
+	// デバッグ線（当たり判定・曲線・グリッド）
+	DrawDebugShapes();
+}
+
+void DemoSceneBase::DrawDebugShapes() {
+	if (showGrid_) {
+		DebugDraw::DrawGrid();
+	}
+
+	if (showColliders_) {
+		// パッド操作の対象（シーンの主なオブジェクト）のバウンディング球で当たり判定をとり、
+		// 他のどれかと重なっていれば赤、それ以外は緑で描く
+		std::vector<PadObjectController::Target> targets;
+		AppendPadTargets(targets);
+		std::vector<Sphere> spheres;
+		spheres.reserve(targets.size());
+		for (const PadObjectController::Target& target : targets) {
+			spheres.push_back(target.object->CalcWorldBoundingSphere());
+		}
+		for (size_t i = 0; i < spheres.size(); ++i) {
+			bool hit = false;
+			for (size_t j = 0; j < spheres.size() && !hit; ++j) {
+				hit = (i != j) && IsCollision(spheres[i], spheres[j]);
+			}
+			DebugDraw::DrawSphere(spheres[i], hit ? Vector4{ 1.0f, 0.2f, 0.2f, 1.0f } : Vector4{ 0.2f, 1.0f, 0.2f, 1.0f });
+		}
+	}
+
+	if (showCurve_) {
+		DebugDraw::DrawCurve(curve_, { 1.0f, 0.9f, 0.2f, 1.0f });
+
+		// 曲線上を往復するマーカー（t を 0～1 で行き来させる）
+		const float t = 0.5f - 0.5f * std::cos(Time::GetTotalTime() * curveMarkerSpeed_);
+		DebugDraw::DrawSphere({ curve_.GetPoint(t), 0.15f }, { 0.2f, 0.9f, 1.0f, 1.0f });
+	}
 }
 
 #ifndef NDEBUG
@@ -202,6 +243,18 @@ void DemoSceneBase::OnDrawImGui() {
 	// --- 視錐台カリングの判定結果表示 ---
 	ImGui::Begin("Frustum Culling");
 	OnDrawCullingImGui();
+	ImGui::End();
+
+	// --- デバッグ線描画（当たり判定・曲線・グリッド）---
+	ImGui::Begin("Debug Draw");
+	ImGui::Checkbox("Colliders (bounding spheres)", &showColliders_);
+	ImGui::TextDisabled("red = overlapping another object");
+	ImGui::Checkbox("Grid", &showGrid_);
+	ImGui::Checkbox("Bezier Curve", &showCurve_);
+	if (showCurve_) {
+		curve_.DrawImGui("Control Points");
+		ImGui::DragFloat("Marker Speed", &curveMarkerSpeed_, 0.01f, 0.0f, 10.0f);
+	}
 	ImGui::End();
 }
 

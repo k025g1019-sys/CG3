@@ -18,6 +18,7 @@
 #include "Engine/Input/Input.h"
 #include "Engine/Diagnostics/CrashHandler.h"
 #include "Engine/Diagnostics/Log.h"
+#include "Engine/Rendering/DebugDraw.h"
 #include "Engine/Rendering/MeshManager.h"
 #include "Engine/Scene/SceneManager.h"
 
@@ -139,6 +140,9 @@ void Framework::Run() {
 
 		dxCore->EndFrame();
 
+		// このフレームに積まれたデバッグ線を消す（表示したい線は毎フレーム積み直す）
+		DebugDraw::GetInstance()->EndFrame();
+
 		// 毎秒60回に固定する（1フレームの時間が経つまで待ち、次のフレームの経過時間を確定する）
 		Time::WaitForNextFrame();
 	}
@@ -181,6 +185,7 @@ void Framework::Initialize() {
 	ShaderCompiler::GetInstance()->Initialize();
 	DescriptorHeapManager::GetInstance()->Initialize(dxCore->GetDevice(), dxCore->GetSRVDescriptorHeap());
 	PipelineManager::GetInstance()->Initialize(dxCore->GetDevice());
+	DebugDraw::GetInstance()->Initialize(dxCore->GetDevice());
 	TextureManager::GetInstance()->Initialize(dxCore->GetDevice(), dxCore->GetCommandList());
 	StereoRenderer::GetInstance()->Initialize(
 		dxCore->GetDevice(), winApp->GetClientWidth(), winApp->GetClientHeight());
@@ -208,6 +213,7 @@ void Framework::Finalize() {
 	Input::GetInstance()->Finalize();
 	StereoRenderer::GetInstance()->Finalize();
 	TextureManager::GetInstance()->Finalize();
+	DebugDraw::GetInstance()->Finalize();
 	PipelineManager::GetInstance()->Finalize();
 	ShaderCompiler::GetInstance()->Finalize();
 	DirectXCore::GetInstance()->Finalize();

@@ -18,7 +18,7 @@ Vector3 Bezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, float t)
 /// <summary>
 /// 2次ベジェ曲線（制御点3つ）。My_Math の Curve を移植。
 /// GetPoint(t) で曲線上の位置を取り、オブジェクトを曲線に沿って動かすのに使う。
-/// 制御点の調整は DrawImGui で行える。
+/// 形の確認は DebugDraw::DrawCurve、制御点の調整は DrawImGui で行える。
 /// </summary>
 class Curve {
 public:

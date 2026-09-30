@@ -4,6 +4,7 @@
 #include "Engine/Core/WinApp.h"
 #include "Engine/Culling/FrustumCulling.h"
 #include "Engine/Graphics/PipelineManager.h"
+#include "Engine/Rendering/DebugDraw.h"
 #include "Engine/Rendering/RenderContext.h"
 
 namespace Engine {
@@ -71,6 +72,9 @@ void BaseScene::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex)
 
 	// --- 派生シーンのオブジェクト描画 ---
 	OnDraw();
+
+	// --- デバッグ線（当たり判定の形・曲線など。他の物体に隠れないよう最後に描く）---
+	DebugDraw::GetInstance()->Render(commandList, viewProjection);
 }
 
 float BaseScene::GetRenderAreaX() const {

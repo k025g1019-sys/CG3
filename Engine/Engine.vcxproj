@@ -88,6 +88,7 @@
     <ClCompile Include="Math\Collision.cpp" />
     <ClCompile Include="Math\Curve.cpp" />
     <ClCompile Include="Math\Matrix4x4.cpp" />
+    <ClCompile Include="Rendering\DebugDraw.cpp" />
     <ClCompile Include="Rendering\Mesh.cpp" />
     <ClCompile Include="Rendering\MeshManager.cpp" />
     <ClCompile Include="Rendering\Object3D.cpp" />
@@ -161,6 +162,7 @@
     <ClInclude Include="Math\Vector3.h" />
     <ClInclude Include="Math\Vector4.h" />
     <ClInclude Include="Rendering\ConstantBuffer.h" />
+    <ClInclude Include="Rendering\DebugDraw.h" />
     <ClInclude Include="Rendering\Material.h" />
     <ClInclude Include="Rendering\Mesh.h" />
     <ClInclude Include="Rendering\MeshManager.h" />
@@ -186,6 +188,9 @@
   <ItemGroup>
     <None Include="..\Shaders\Composite.PS.hlsl" />
     <None Include="..\Shaders\Fullscreen.VS.hlsl" />
+    <None Include="..\Shaders\Line.PS.hlsl" />
+    <None Include="..\Shaders\Line.VS.hlsl" />
+    <None Include="..\Shaders\Line.hlsli" />
     <None Include="..\Shaders\Object3d.PS.hlsl" />
     <None Include="..\Shaders\Object3d.VS.hlsl" />
     <None Include="..\Shaders\Object3d.hlsli" />

@@ -129,6 +129,9 @@
     <ClCompile Include="Math\Matrix4x4.cpp">
       <Filter>Math</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\DebugDraw.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Rendering\Mesh.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
@@ -281,6 +284,9 @@
     <ClInclude Include="Rendering\ConstantBuffer.h">
       <Filter>Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\DebugDraw.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
     <ClInclude Include="Rendering\Material.h">
       <Filter>Rendering</Filter>
     </ClInclude>
@@ -350,6 +356,15 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\Shaders\Fullscreen.VS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\Shaders\Line.PS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\Shaders\Line.VS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\Shaders\Line.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\Shaders\Object3d.PS.hlsl">

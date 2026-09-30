@@ -3,6 +3,8 @@
   <!--
     エンジンの動作確認用アプリ（エンジン制作ブランチにだけ存在する）。
     F5実行時のカレントディレクトリはこのフォルダ（resources/ を相対パスで読む）。
+    ProjectGuid は Game.vcxproj と同じ値にしてある（両者は同じソリューションに並ばない）。
+    ブランチを切り替えても Visual Studio のスタートアップ プロジェクトが引き継がれる。
   -->
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">

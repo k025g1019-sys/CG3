@@ -46,6 +46,11 @@ powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1
 エンジンのブランチをマージし、ゲームに不要な `Sandbox/` は自動で取り除きます。
 コンフリクトが残ったときは表示されたファイルを直して `git add` → `git commit` してください。
 
+> Visual Studio のマージ機能や `git merge` を直接使わず、このスクリプトを使ってください。
+> git は `Game/Game.vcxproj` や `Game/main.cpp` を「Sandbox のファイルを名前変更したもの」とみなすことがあり、
+> 普通にマージするとエンジン側での Sandbox の変更がゲームのプロジェクトに混ざってしまいます
+> （スクリプトは名前変更の検出を切ってマージします）。
+
 ## ゲーム制作中にエンジンの修正が必要になったら
 
 1. ゲーム側の作業をコミット（または `git stash`）する

@@ -232,10 +232,10 @@ void StereoRenderer::CreatePipeline() {
 
     // --- シェーダー（実行時DXCコンパイル。フルスクリーン三角形VS＋合成PS）---
     ComPtr<IDxcBlob> vertexShaderBlob =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/Fullscreen.VS.hlsl", L"vs_6_0");
+        ShaderCompiler::GetInstance()->Compile(L"Fullscreen.VS.hlsl", L"vs_6_0");
     assert(vertexShaderBlob != nullptr);
     ComPtr<IDxcBlob> pixelShaderBlob =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/Composite.PS.hlsl", L"ps_6_0");
+        ShaderCompiler::GetInstance()->Compile(L"Composite.PS.hlsl", L"ps_6_0");
     assert(pixelShaderBlob != nullptr);
 
     // --- PSO（入力レイアウト無し・カリング無し・深度無し）---

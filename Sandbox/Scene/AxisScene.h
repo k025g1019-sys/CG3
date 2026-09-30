@@ -5,7 +5,7 @@
 
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
-#include "Game/Scene/DemoSceneBase.h"
+#include "Sandbox/Scene/DemoSceneBase.h"
 
 // 2つ目のデモシーン。三角形・球・axis.obj・teapot.obj・multiMesh.objを描画する
 // （Tabキーで最初のシーンと切り替え）。

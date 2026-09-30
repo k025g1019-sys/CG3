@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    エンジン本体（静的ライブラリ）。アプリ側は Engine.props を読み込むだけで、
+    このライブラリと DirectXTex がリンクされる。
+  -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Development|x64">
+      <Configuration>Development</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{6f1d4c3a-2b8e-4e57-9a61-0c5d7e3b9f24}</ProjectGuid>
+    <RootNamespace>Engine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Engine.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemGroup>
+    <ClCompile Include="Audio\Audio.cpp" />
+    <ClCompile Include="Camera\Camera.cpp" />
+    <ClCompile Include="Camera\DebugCamera.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Camera\StereoCamera.cpp" />
+    <ClCompile Include="Core\DirectXCore.cpp" />
+    <ClCompile Include="Core\Framework.cpp" />
+    <ClCompile Include="Core\ImGuiManager.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\WinApp.cpp" />
+    <ClCompile Include="Culling\FrustumCulling.cpp" />
+    <ClCompile Include="Diagnostics\CrashHandler.cpp" />
+    <ClCompile Include="Diagnostics\Log.cpp" />
+    <ClCompile Include="Geometry\GeometryGenerator.cpp" />
+    <ClCompile Include="Geometry\LoadObjFile.cpp" />
+    <ClCompile Include="Graphics\CameraCapture.cpp" />
+    <ClCompile Include="Graphics\DescriptorHeapManager.cpp" />
+    <ClCompile Include="Graphics\GpuResource.cpp" />
+    <ClCompile Include="Graphics\PipelineManager.cpp" />
+    <ClCompile Include="Graphics\ShaderCompiler.cpp" />
+    <ClCompile Include="Graphics\StereoRenderer.cpp" />
+    <ClCompile Include="Graphics\TextureManager.cpp" />
+    <ClCompile Include="Input\EyeTracker.cpp" />
+    <ClCompile Include="Input\FaceTracker.cpp" />
+    <ClCompile Include="Input\Input.cpp" />
+    <ClCompile Include="Math\Matrix4x4.cpp" />
+    <ClCompile Include="Rendering\Mesh.cpp" />
+    <ClCompile Include="Rendering\Object3D.cpp" />
+    <ClCompile Include="Rendering\Sprite.cpp" />
+    <ClCompile Include="String\ConvertString.cpp" />
+    <ClCompile Include="..\externals\imgui\imgui.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\externals\imgui\imgui_demo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\externals\imgui\imgui_draw.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\externals\imgui\imgui_impl_dx12.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\externals\imgui\imgui_impl_win32.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\externals\imgui\imgui_tables.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\externals\imgui\imgui_widgets.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Audio\Audio.h" />
+    <ClInclude Include="Camera\Camera.h" />
+    <ClInclude Include="Camera\DebugCamera.h" />
+    <ClInclude Include="Camera\StereoCamera.h" />
+    <ClInclude Include="Core\DirectXCore.h" />
+    <ClInclude Include="Core\Framework.h" />
+    <ClInclude Include="Core\ImGuiManager.h" />
+    <ClInclude Include="Core\WinApp.h" />
+    <ClInclude Include="Culling\FrustumCulling.h" />
+    <ClInclude Include="Diagnostics\CrashHandler.h" />
+    <ClInclude Include="Diagnostics\Log.h" />
+    <ClInclude Include="Geometry\GeometryGenerator.h" />
+    <ClInclude Include="Geometry\LoadObjFile.h" />
+    <ClInclude Include="Graphics\CameraCapture.h" />
+    <ClInclude Include="Graphics\DescriptorHeapManager.h" />
+    <ClInclude Include="Graphics\GpuResource.h" />
+    <ClInclude Include="Graphics\PipelineManager.h" />
+    <ClInclude Include="Graphics\ShaderCompiler.h" />
+    <ClInclude Include="Graphics\StereoRenderer.h" />
+    <ClInclude Include="Graphics\TextureManager.h" />
+    <ClInclude Include="Input\EyeTracker.h" />
+    <ClInclude Include="Input\FaceTracker.h" />
+    <ClInclude Include="Input\GazePacket.h" />
+    <ClInclude Include="Input\Input.h" />
+    <ClInclude Include="Light\DirectionalLight.h" />
+    <ClInclude Include="Light\PointLight.h" />
+    <ClInclude Include="Math\Matrix4x4.h" />
+    <ClInclude Include="Math\Vector2.h" />
+    <ClInclude Include="Math\Vector3.h" />
+    <ClInclude Include="Math\Vector4.h" />
+    <ClInclude Include="Rendering\ConstantBuffer.h" />
+    <ClInclude Include="Rendering\Material.h" />
+    <ClInclude Include="Rendering\Mesh.h" />
+    <ClInclude Include="Rendering\Object3D.h" />
+    <ClInclude Include="Rendering\Sprite.h" />
+    <ClInclude Include="Rendering\TransformData3D.h" />
+    <ClInclude Include="Rendering\TransformationMatrix.h" />
+    <ClInclude Include="Rendering\VertexData.h" />
+    <ClInclude Include="String\ConvertString.h" />
+    <ClInclude Include="..\externals\imgui\imconfig.h" />
+    <ClInclude Include="..\externals\imgui\imgui.h" />
+    <ClInclude Include="..\externals\imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="..\externals\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="..\externals\imgui\imgui_internal.h" />
+    <ClInclude Include="..\externals\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\externals\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\externals\imgui\imstb_truetype.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Shaders\Composite.PS.hlsl" />
+    <None Include="..\Shaders\Fullscreen.VS.hlsl" />
+    <None Include="..\Shaders\Object3d.PS.hlsl" />
+    <None Include="..\Shaders\Object3d.VS.hlsl" />
+    <None Include="..\Shaders\Object3d.hlsli" />
+    <None Include="Engine.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\externals\imgui\LICENSE.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

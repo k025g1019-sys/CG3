@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Game/Scene/BaseScene.h"
+#include "Sandbox/Scene/BaseScene.h"
 
 // アプリ内のシーンの識別子
 enum class SceneId {

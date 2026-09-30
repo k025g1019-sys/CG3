@@ -6,7 +6,7 @@
 #include "Engine/Camera/StereoCamera.h"
 
 /// <summary>
-/// シーンの基底クラス。MyGameがこのインターフェース越しに現在のシーンを駆動する。
+/// シーンの基底クラス。SandboxAppがこのインターフェース越しに現在のシーンを駆動する。
 /// 全シーン共通の立体視カメラ（視点別ビュー射影＋頭連動）とゲーム描画先の矩形を持つ。
 /// </summary>
 class BaseScene {

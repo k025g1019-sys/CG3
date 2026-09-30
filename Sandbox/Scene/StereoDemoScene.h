@@ -12,10 +12,10 @@
 #include "Engine/Rendering/ConstantBuffer.h"
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
-#include "Game/Object/AxisGizmo.h"
-#include "Game/Object/PadObjectController.h"
-#include "Game/Object/Skydome.h"
-#include "Game/Scene/BaseScene.h"
+#include "Sandbox/Object/AxisGizmo.h"
+#include "Sandbox/Object/PadObjectController.h"
+#include "Sandbox/Object/Skydome.h"
+#include "Sandbox/Scene/BaseScene.h"
 // デバッグカメラはDebugビルド限定。このプロジェクトはReleaseでも_DEBUGが定義される
 // （RuntimeLibrary=MultiThreadedDebug）ため、Release判定にはNDEBUGを使う。
 #ifndef NDEBUG

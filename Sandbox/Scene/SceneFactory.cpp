@@ -1,8 +1,8 @@
-#include "Game/Scene/SceneFactory.h"
+#include "Sandbox/Scene/SceneFactory.h"
 
-#include "Game/Scene/AxisScene.h"
-#include "Game/Scene/GameScene.h"
-#include "Game/Scene/StereoDemoScene.h"
+#include "Sandbox/Scene/AxisScene.h"
+#include "Sandbox/Scene/GameScene.h"
+#include "Sandbox/Scene/StereoDemoScene.h"
 
 std::unique_ptr<BaseScene> CreateScene(SceneId id) {
 	switch (id) {

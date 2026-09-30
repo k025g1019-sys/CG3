@@ -1,4 +1,4 @@
-#include "Game/Scene/GameScene.h"
+#include "Sandbox/Scene/GameScene.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"

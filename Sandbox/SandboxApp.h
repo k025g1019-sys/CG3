@@ -6,7 +6,7 @@
 #include "Engine/Graphics/CameraCapture.h"
 #include "Engine/Input/EyeTracker.h"
 #include "Engine/Input/FaceTracker.h"
-#include "Game/Scene/SceneFactory.h"
+#include "Sandbox/Scene/SceneFactory.h"
 
 /// <summary>
 /// このゲームのアプリケーションクラス。
@@ -15,7 +15,7 @@
 /// Tキーで立体視デモシーンと通常デモシーン（直前にいた方）を、
 /// Tabキーで通常デモシーン同士（kGame ⇔ kAxis）を切り替える。
 /// </summary>
-class MyGame : public Engine::Framework {
+class SandboxApp : public Engine::Framework {
 protected:
 
     void Initialize() override;

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  エンジン（Engine.vcxproj）と、エンジンを使うアプリ（Sandbox.vcxproj / Game.vcxproj）の共通ビルド設定。
+  各プロジェクトの PropertySheets からこのファイルを読み込む。
+
+  ・出力先はリポジトリ直下の x64\<構成>\（exe・lib）、中間ファイルはその下の Intermediate\<プロジェクト名>\
+  ・インクルードはリポジトリ直下を基準にする（"Engine/..." "externals/..." のように書ける）
+  ・アプリ（ConfigurationType=Application）では、Engine・DirectXTex への参照、リンク設定、
+    実行に必要なDLL（dxcompiler / dxil）のコピーもここで追加する。
+    エンジン側で依存ライブラリが増えても、ゲーム側のプロジェクトファイルは変更しなくてよい。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <RepoRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</RepoRoot>
+    <OutDir>$(RepoRoot)x64\$(Configuration)\</OutDir>
+    <IntDir>$(RepoRoot)x64\$(Configuration)\Intermediate\$(MSBuildProjectName)\</IntDir>
+  </PropertyGroup>
+
+  <!-- ===== コンパイル設定（全プロジェクト共通）===== -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <!-- 全構成で静的デバッグCRT（Release構成でも _DEBUG が定義される。Release判定には NDEBUG を使う） -->
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(RepoRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Debug：ImGui（USE_IMGUI）とデバッグカメラが有効 -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Development：ImGuiなし・最適化なし・assert有効（ソリューションの Release はこの構成でビルドされる） -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Development'">
+    <ClCompile>
+      <PreprocessorDefinitions>_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Release：ImGui・デバッグカメラなし、NDEBUG定義 -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- ===== アプリ（exe）だけの設定 ===== -->
+  <ItemDefinitionGroup Condition="'$(ConfigurationType)'=='Application'">
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <!-- シェーダーを実行時にコンパイルするDXCのDLLを、exeの隣へコピーする -->
+    <PostBuildEvent>
+      <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(ConfigurationType)'=='Application' and '$(Configuration)'=='Debug'">
+    <Link>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Condition="'$(ConfigurationType)'=='Application'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Engine.vcxproj">
+      <Project>{6f1d4c3a-2b8e-4e57-9a61-0c5d7e3b9f24}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(RepoRoot)externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
+      <Project>{371b9fa9-4c90-4ac6-a123-aced756d6c77}</Project>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

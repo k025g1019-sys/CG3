@@ -1,4 +1,4 @@
-#include "Game/MyGame.h"
+#include "Sandbox/SandboxApp.h"
 
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Core/WinApp.h"
@@ -12,7 +12,7 @@
 
 using namespace Engine;
 
-void MyGame::Initialize() {
+void SandboxApp::Initialize() {
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();
 
@@ -42,7 +42,7 @@ void MyGame::Initialize() {
 	camera_.SetFaceTracker(&faceTracker_);
 }
 
-void MyGame::Finalize() {
+void SandboxApp::Finalize() {
 	// 実カメラのワーカースレッドを停止し、Media Foundation・GPUリソースを解放する。
 	camera_.Finalize();
 	// 顔検出のWinRTを解放する（カメラのワーカー停止後＝もうProcessFrameBGRAが呼ばれない状態で行う）。
@@ -56,7 +56,7 @@ void MyGame::Finalize() {
 	Framework::Finalize();
 }
 
-void MyGame::Update() {
+void SandboxApp::Update() {
 	// シーン切り替え（キーボードとXBoxコントローラーの両対応）。
 	//   T   / Viewボタン（四角2つ）  : 通常デモシーン ⇔ 立体視デモシーン（戻り先は直前にいた通常デモシーン）
 	//   Tab / Menuボタン（横三本線）: 通常デモシーン同士（kGame ⇔ kAxis）を切り替える（立体視デモ中は無効）
@@ -126,11 +126,11 @@ void MyGame::Update() {
 	scene_->Update();
 }
 
-void MyGame::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) {
+void SandboxApp::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) {
 	scene_->Draw(commandList, viewIndex);
 }
 
-void MyGame::PreDraw(ID3D12GraphicsCommandList* commandList) {
+void SandboxApp::PreDraw(ID3D12GraphicsCommandList* commandList) {
 	// 実カメラ表示ONなら、最新カメラフレームをGPUテクスチャへ反映しておく（描画コマンドの前に）。
 	if (showCamera_) {
 		camera_.UpdateTexture(commandList);
@@ -138,7 +138,7 @@ void MyGame::PreDraw(ID3D12GraphicsCommandList* commandList) {
 }
 
 #ifdef USE_IMGUI
-void MyGame::DrawImGui() {
+void SandboxApp::DrawImGui() {
 	scene_->DrawImGui();
 
 	// 立体視の方式切り替え・キャリブレーション

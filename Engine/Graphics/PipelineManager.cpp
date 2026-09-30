@@ -15,10 +15,10 @@ PipelineManager* PipelineManager::GetInstance() {
 void PipelineManager::Initialize(ID3D12Device* device) {
     // 標準シェーダーをコンパイルする
     ComPtr<IDxcBlob> vertexShader =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/Object3d.VS.hlsl", L"vs_6_0");
+        ShaderCompiler::GetInstance()->Compile(L"Object3d.VS.hlsl", L"vs_6_0");
     assert(vertexShader != nullptr);
     ComPtr<IDxcBlob> pixelShader =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/Object3d.PS.hlsl", L"ps_6_0");
+        ShaderCompiler::GetInstance()->Compile(L"Object3d.PS.hlsl", L"ps_6_0");
     assert(pixelShader != nullptr);
 
     // RootSignatureと用途別PSOを生成する

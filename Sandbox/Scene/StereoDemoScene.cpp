@@ -1,4 +1,4 @@
-#include "Game/Scene/StereoDemoScene.h"
+#include "Sandbox/Scene/StereoDemoScene.h"
 
 #include <string>
 #include <vector>

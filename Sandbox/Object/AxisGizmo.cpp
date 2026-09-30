@@ -1,4 +1,4 @@
-#include "Game/Object/AxisGizmo.h"
+#include "Sandbox/Object/AxisGizmo.h"
 
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Graphics/PipelineManager.h"

@@ -1,4 +1,4 @@
-#include "Game/Object/Skydome.h"
+#include "Sandbox/Object/Skydome.h"
 
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Graphics/PipelineManager.h"

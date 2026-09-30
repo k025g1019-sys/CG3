@@ -1,4 +1,4 @@
-#include "Game/Scene/AxisScene.h"
+#include "Sandbox/Scene/AxisScene.h"
 
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Rendering/VertexData.h"

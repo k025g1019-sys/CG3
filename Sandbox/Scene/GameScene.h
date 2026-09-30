@@ -5,7 +5,7 @@
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
 #include "Engine/Rendering/Sprite.h"
-#include "Game/Scene/DemoSceneBase.h"
+#include "Sandbox/Scene/DemoSceneBase.h"
 
 // 最初のデモシーン。2Dスプライトと4つのOBJモデル
 // （plane・bunny・multiMaterial・suzanne）を描画する。

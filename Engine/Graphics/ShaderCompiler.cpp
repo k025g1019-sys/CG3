@@ -43,12 +43,34 @@ void ShaderCompiler::Initialize() {
     );
 
     assert(SUCCEEDED(hr));
+
+    // エンジンのShadersフォルダを探す（実行時のカレントディレクトリ基準）。
+    //   Shaders/    : 配布用フォルダ（exeと同じ場所に Shaders/ と resources/ を置いて起動）
+    //   ../Shaders/ : 開発時（VSから起動するとカレントが Sandbox/ や Game/ になる）
+    const wchar_t* const kCandidates[] = {
+        L"Shaders/",
+        L"../Shaders/",
+    };
+    for (const wchar_t* candidate : kCandidates) {
+        const std::wstring probe = std::wstring(candidate) + L"Object3d.VS.hlsl";
+        if (GetFileAttributesW(probe.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            shaderDirectory_ = candidate;
+            break;
+        }
+    }
+
+    Log(ConvertString(std::format(L"Shader directory: {}\n", shaderDirectory_)));
+
+    // Shadersフォルダが見つからない（カレントディレクトリが想定外）
+    assert(!shaderDirectory_.empty());
 }
 
 ComPtr<IDxcBlob> ShaderCompiler::Compile(
-    const std::wstring& filePath,
+    const std::wstring& fileName,
     const wchar_t* profile
 ) {
+
+    const std::wstring filePath = shaderDirectory_ + fileName;
 
     Log(ConvertString(
         std::format(

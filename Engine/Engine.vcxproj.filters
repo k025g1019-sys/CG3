@@ -69,6 +69,9 @@
     <ClCompile Include="Core\ImGuiManager.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Core\Time.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
     <ClCompile Include="Core\WinApp.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -186,6 +189,9 @@
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Core\ImGuiManager.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Time.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Core\WinApp.h">

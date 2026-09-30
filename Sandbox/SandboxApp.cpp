@@ -1,6 +1,7 @@
 #include "Sandbox/SandboxApp.h"
 
 #include "Engine/Core/DirectXCore.h"
+#include "Engine/Core/Time.h"
 #include "Engine/Core/WinApp.h"
 #include "Engine/Graphics/StereoRenderer.h"
 #include "Engine/Input/Input.h"
@@ -137,6 +138,9 @@ void SandboxApp::DrawImGui() {
 		}
 		ImGui::Text("Resolution: %d x %d", winApp->GetClientWidth(), winApp->GetClientHeight());
 		ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+		// エンジンの時間管理（60FPS固定）の経過時間
+		ImGui::Text("DeltaTime: %.2f ms / Total: %.1f s",
+			Time::GetDeltaTime() * 1000.0f, Time::GetTotalTime());
 	}
 	ImGui::End();
 

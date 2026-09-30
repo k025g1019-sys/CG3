@@ -8,6 +8,7 @@
 
 #include "Engine/Audio/Audio.h"
 #include "Engine/Core/DirectXCore.h"
+#include "Engine/Core/Time.h"
 #include "Engine/Core/WinApp.h"
 #include "Engine/Graphics/DescriptorHeapManager.h"
 #include "Engine/Graphics/PipelineManager.h"
@@ -137,6 +138,9 @@ void Framework::Run() {
 #endif
 
 		dxCore->EndFrame();
+
+		// 毎秒60回に固定する（1フレームの時間が経つまで待ち、次のフレームの経過時間を確定する）
+		Time::WaitForNextFrame();
 	}
 
 	// 実行中のフレームが参照しているリソースを解放する前にGPU完了を待つ
@@ -156,6 +160,9 @@ void Framework::Initialize() {
 
 	// ログファイルを用意（以降のLogは出力ウィンドウとファイルの両方へ出る）
 	InitializeLogFile();
+
+	// フレームの時間管理（60FPS固定・経過時間）
+	Time::Initialize();
 
 	// --- ウィンドウ生成 ---
 	WinApp* winApp = WinApp::GetInstance();
@@ -214,6 +221,8 @@ void Framework::Finalize() {
 		debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
 		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
 	}
+
+	Time::Finalize();
 
 	CoUninitialize();
 }

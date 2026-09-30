@@ -68,6 +68,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Core\Time.cpp" />
     <ClCompile Include="Core\WinApp.cpp" />
     <ClCompile Include="Culling\FrustumCulling.cpp" />
     <ClCompile Include="Diagnostics\CrashHandler.cpp" />
@@ -130,6 +131,7 @@
     <ClInclude Include="Core\DirectXCore.h" />
     <ClInclude Include="Core\Framework.h" />
     <ClInclude Include="Core\ImGuiManager.h" />
+    <ClInclude Include="Core\Time.h" />
     <ClInclude Include="Core\WinApp.h" />
     <ClInclude Include="Culling\FrustumCulling.h" />
     <ClInclude Include="Diagnostics\CrashHandler.h" />

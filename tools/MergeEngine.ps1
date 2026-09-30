@@ -37,8 +37,11 @@ if ($dirty) {
 $gameBranch = git rev-parse --abbrev-ref HEAD
 Write-Host "Merging '$EngineBranch' into '$gameBranch'..."
 
-# Merge without committing yet (conflicts are handled below)
-git merge --no-ff --no-commit $EngineBranch
+# Merge without committing yet (conflicts are handled below).
+# Rename detection is turned off on purpose: Game/Game.vcxproj and Game/main.cpp look like
+# renamed copies of the Sandbox ones, so with renames on, engine-side edits to Sandbox/
+# would be merged into the game project instead of being dropped.
+git merge --no-ff --no-commit -X no-renames $EngineBranch
 
 if (-not (git rev-parse -q --verify MERGE_HEAD)) {
     Write-Host "Nothing to merge."

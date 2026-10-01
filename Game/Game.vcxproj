@@ -64,12 +64,14 @@
   <ItemGroup>
     <ClCompile Include="MyGame.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Object\Enemy.cpp" />
     <ClCompile Include="Object\Player.cpp" />
     <ClCompile Include="Scene\GameScene.cpp" />
     <ClCompile Include="Scene\TitleScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyGame.h" />
+    <ClInclude Include="Object\Enemy.h" />
     <ClInclude Include="Object\Player.h" />
     <ClInclude Include="Scene\GameScene.h" />
     <ClInclude Include="Scene\TitleScene.h" />

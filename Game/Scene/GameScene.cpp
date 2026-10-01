@@ -23,6 +23,7 @@ void GameScene::OnInitialize() {
 	ground_.SetColor({ 0.35f, 0.7f, 0.35f, 1.0f });
 
 	player_.Initialize();
+	enemy_.Initialize();
 }
 
 void GameScene::OnUpdate() {
@@ -32,11 +33,13 @@ void GameScene::OnUpdate() {
 	}
 
 	player_.Update();
+	enemy_.Update();
 	ground_.Update();
 }
 
 void GameScene::OnDraw() {
 	ground_.Draw();
+	enemy_.Draw();
 	player_.Draw();
 }
 
@@ -49,6 +52,7 @@ void GameScene::OnDrawImGui() {
 	ImGui::DragFloat3("Camera translate", &cameraTransform.translate.x, 0.01f);
 	ImGui::Separator();
 
+	enemy_.DrawImGui();
 	player_.DrawImGui();
 
 	ImGui::End();

@@ -263,6 +263,9 @@
     <ClInclude Include="Math\Collision.h">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="Math\Color.h">
+      <Filter>Math</Filter>
+    </ClInclude>
     <ClInclude Include="Math\Curve.h">
       <Filter>Math</Filter>
     </ClInclude>

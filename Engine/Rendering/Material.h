@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "Engine/Math/Color.h"
 #include "Engine/Math/Vector4.h"
 #include "Engine/Math/Matrix4x4.h"
 
@@ -17,6 +18,10 @@ struct Material {
     LightingMode lightingMode;
     float padding[3];
     Matrix4x4 uvTransform;
+
+    // 色を設定する（Vector4 または 0xRRGGBBAA の16進数）
+    void SetColor(const Vector4& value) { color = value; }
+    void SetColor(uint32_t rgba) { color = ColorFromHex(rgba); }
 };
 
 } // namespace Engine

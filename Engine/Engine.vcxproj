@@ -155,6 +155,7 @@
     <ClInclude Include="Light\DirectionalLight.h" />
     <ClInclude Include="Light\PointLight.h" />
     <ClInclude Include="Math\Collision.h" />
+    <ClInclude Include="Math\Color.h" />
     <ClInclude Include="Math\Curve.h" />
     <ClInclude Include="Math\Matrix4x4.h" />
     <ClInclude Include="Math\Shapes.h" />

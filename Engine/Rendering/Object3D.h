@@ -77,6 +77,8 @@ public:
 
     // 全マテリアルの色をまとめて設定する（仮モデルの色分けや、半透明にするときなど）
     void SetColor(const Vector4& color);
+    // 同上（0xRRGGBBAA の16進数で指定する。例: 0xFF6650FF）
+    void SetColor(uint32_t rgba) { SetColor(ColorFromHex(rgba)); }
 
     // マテリアルごとのUV変換（ImGuiで編集し、UpdateでMaterial::uvTransform行列へ変換される）
     Transform3D& GetUVTransform(uint32_t index = 0) { return uvTransforms_[index]; }

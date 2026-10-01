@@ -49,6 +49,10 @@ public:
     // CPU側マテリアル（ImGuiで編集し、Updateで定数バッファへ反映される）
     Material& GetMaterial() { return material_; }
 
+    // 色を設定する（Vector4 または 0xRRGGBBAA の16進数。テクスチャの色に掛け算される）
+    void SetColor(const Vector4& color) { material_.SetColor(color); }
+    void SetColor(uint32_t rgba) { material_.SetColor(rgba); }
+
     // Map済み頂点への書き込みアクセス（ImGuiでの頂点編集用。4頂点）
     VertexData* GetMappedVertices() { return mesh_.GetMappedVertices(); }
 

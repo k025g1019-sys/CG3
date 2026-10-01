@@ -335,6 +335,7 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
         <p class="grp-label">数学・当たり判定</p>
         <ul>
           <li><a class="mono" href="#Vector">Vector2 / 3 / 4</a></li>
+          <li><a class="mono" href="#Color">ColorFromHex</a></li>
           <li><a class="mono" href="#Transform3D">Transform3D</a></li>
           <li><a class="mono" href="#Matrix4x4">Matrix4x4</a></li>
           <li><a class="mono" href="#Shapes">Shapes</a></li>
@@ -489,7 +490,7 @@ void TitleScene::OnDraw() {
       <dt>行列</dt><dd>行優先・行ベクトル（<code>v * M</code>）。合成は左から右：<code>world = S * R * T</code>、<code>WVP = world * view * proj</code>。平行移動は <code>m[3][0..2]</code>。</dd>
       <dt>深度</dt><dd>DirectX の規約で 0（手前）〜 1（奥）。</dd>
       <dt>大きさ</dt><dd>長さの単位は自由。組み込みの形状（<code>Primitive</code>）は1辺・直径が 1。</dd>
-      <dt>色</dt><dd><code>Vector4</code> の RGBA、各 0.0〜1.0。</dd>
+      <dt>色</dt><dd><code>Vector4</code> の RGBA、各 0.0〜1.0。16進数 <code>0xRRGGBBAA</code>（8桁）でも指定できる。色を持つものはどれも <code>SetColor</code> で設定する。→ <a href="#Color">ColorFromHex</a></dd>
       <dt>時間</dt><dd>更新は毎秒 60 回に固定。「1フレームあたりの量」で書いてよい。秒単位なら <code>Time::GetDeltaTime()</code> を掛ける。</dd>
       <dt>2D座標</dt><dd>スプライトとマウスは左上原点・ピクセル・<b>+Y が下</b>。スプライトは 1280×720 を基準に指定する。</dd>
       <dt>画面</dt><dd>最初は 1280×720（<code>WinApp::kClientWidth/Height</code>）。ウィンドウはサイズ変更でき、<kbd>F11</kbd> で全画面。</dd>
@@ -553,6 +554,7 @@ void TitleScene::OnDraw() {
       <tr><td>位置・回転・大きさを変える</td><td><code>obj.GetTransform().translate.x += 0.1f;</code>（<code>rotate</code> はラジアン）</td><td><a href="#Transform3D">Transform3D</a></td></tr>
       <tr><td>テクスチャを差し替える</td><td><code>obj.SetTexture("resources/red.png");</code></td><td><a href="#Object3D">Object3D</a></td></tr>
       <tr><td>陰影を付けない（ベタ塗り）</td><td><code>obj.Initialize(Primitive::kCube, LightingMode::kNone);</code></td><td><a href="#Material">LightingMode</a></td></tr>
+      <tr><td>16進数で色を指定する</td><td><code>obj.SetColor(0xFF6650FF);</code>（<code>0xRRGGBBAA</code> の8桁。Sprite・光源も同じ）</td><td><a href="#Color">ColorFromHex</a></td></tr>
       <tr><td>半透明にする</td><td><code>obj.SetColor({1, 1, 1, 0.5f});</code>（不透明な物の後に描く）</td><td><a href="#pitfalls">つまずきやすい点</a></td></tr>
       <tr><td>2D の画像・UI を出す</td><td><code>sprite.Initialize("resources/title.png", {640, 360});</code></td><td><a href="#Sprite">Sprite</a></td></tr>
       <tr><td>カメラを動かす・見下ろす</td><td><code>camera_.GetTransform().translate = {0, 3, -12};</code> <code>rotate.x = 0.15f;</code></td><td><a href="#Camera">Camera</a></td></tr>
@@ -908,9 +910,13 @@ const Transform3D&amp; GetTransform() const;</code>
         <div class="d">拡大・回転・移動。既定は scale <code>{1, 1, 1}</code>、rotate <code>{0, 0, 0}</code>、translate <code>{0, 0, 0}</code>。回転はラジアンで X → Y → Z の順。→ <a href="#Transform3D">Transform3D</a></div>
       </div>
       <div class="fn">
-        <code class="sig">void SetColor(const Vector4&amp; color);</code>
+        <code class="sig">void SetColor(const Vector4&amp; color);
+void SetColor(uint32_t rgba);</code>
         <div class="d">全マテリアルの色をまとめて設定します。テクスチャの色に掛け算されます。アルファを 1 未満にすると半透明になります（<a href="#pitfalls">描く順番</a>に注意）。</div>
-        <dl class="pr"><dt>color</dt><dd>RGBA（各 0〜1）。例 <code>{1.0f, 0.4f, 0.3f, 1.0f}</code></dd></dl>
+        <dl class="pr">
+          <dt>color</dt><dd>RGBA（各 0〜1）。例 <code>{1.0f, 0.4f, 0.3f, 1.0f}</code></dd>
+          <dt>rgba</dt><dd>16進数 <code>0xRRGGBBAA</code>（必ず8桁）。例 <code>0xFF6650FF</code> → <a href="#Color">ColorFromHex</a></dd>
+        </dl>
       </div>
       <div class="fn">
         <code class="sig">uint32_t GetMaterialCount() const;</code>
@@ -999,8 +1005,11 @@ bool IsTextureOverridden() const;</code>
     LightingMode lightingMode;  // 陰影の付け方
     float padding[3];
     Matrix4x4 uvTransform;      // UV 変換行列（Object3D / Sprite の Update が作るので直接書かない）
+
+    void SetColor(const Vector4&amp; value);
+    void SetColor(uint32_t rgba);   // 0xRRGGBBAA
 };</code>
-        <div class="d">ピクセルシェーダーでは、テクスチャのアルファが 0.8 未満のピクセルを描きません。出力のアルファは <code>color.a × テクスチャの a</code> です。陰影は平行光源1つと点光源4つの拡散反射を足し合わせて計算します。</div>
+        <div class="d">ピクセルシェーダーでは、テクスチャのアルファが 0.8 未満のピクセルを描きません。出力のアルファは <code>color.a × テクスチャの a</code> です。陰影は平行光源1つと点光源4つの拡散反射を足し合わせて計算します。<code>SetColor</code> は <code>color</code> を書き換えるだけです（16進数は <a href="#Color">ColorFromHex</a> で変換）。</div>
       </div>
     </div>
   </section>
@@ -1053,8 +1062,13 @@ void Initialize(uint32_t textureHandle, const Vector2&amp; size);</code>
         <div class="d">テクスチャ座標の変換（<code>scale</code>・<code>rotate.z</code>・<code>translate</code>）。1枚の画像の一部だけを出すとき（連番アニメ）は、<code>scale</code> を <code>{1/列数, 1/行数, 1}</code>、<code>translate</code> をコマの左上の UV にします。</div>
       </div>
       <div class="fn">
+        <code class="sig">void SetColor(const Vector4&amp; color);
+void SetColor(uint32_t rgba);</code>
+        <div class="d">色と不透明度を設定します。テクスチャの色に掛け算されます。例: <code>sprite.SetColor(0xFFFFFF80);</code> で半透明（16進数は <code>0xRRGGBBAA</code> の8桁 → <a href="#Color">ColorFromHex</a>）。</div>
+      </div>
+      <div class="fn">
         <code class="sig">Material&amp; GetMaterial();</code>
-        <div class="d">色と不透明度。例: <code>sprite.GetMaterial().color = {1, 1, 1, 0.5f};</code> で半透明。陰影は常に無効です。</div>
+        <div class="d">マテリアル。色だけなら <code>SetColor</code> が簡単です。不透明度だけ変えるときは <code>sprite.GetMaterial().color.w = 0.5f;</code>。陰影は常に無効です。</div>
       </div>
       <div class="fn">
         <code class="sig">void SetTextureHandle(uint32_t textureHandle);</code>
@@ -1116,7 +1130,7 @@ float GetFarClip() const;</code>
   <!-- ---------------------------------------------------------- Light -->
   <section class="cls" id="Light">
     <div class="cls-head"><h3>DirectionalLight / PointLight</h3><span class="path">Engine/Light/DirectionalLight.h ・ PointLight.h</span><span class="tags"><span class="tag">struct</span></span></div>
-    <p class="lead">光源のデータです。シーンの中の <code>directionalLight_</code> と <code>pointLights_</code> を書き換えると、<code>Update</code> の後で自動的に反映されます。陰影が効くのは、<code>LightingMode</code> が <code>kNone</code> 以外のマテリアルだけです。シェーダーと同じメモリの並びなので、メンバーの順番は変えません。</p>
+    <p class="lead">光源のデータです。シーンの中の <code>directionalLight_</code> と <code>pointLights_</code> を書き換えると、<code>Update</code> の後で自動的に反映されます。陰影が効くのは、<code>LightingMode</code> が <code>kNone</code> 以外のマテリアルだけです。シェーダーと同じメモリの並びなので、メンバーの順番は変えません。色は <code>color</code> を直接書き換えるか、<code>SetColor</code>（<code>Vector4</code> または 16進数 <code>0xRRGGBBAA</code>）で設定します。</p>
     <div class="ex">
       <p class="ex-label">例: オレンジの点光源を1つ点ける</p>
 <pre class="code">void GameScene::OnInitialize() {
@@ -1126,7 +1140,7 @@ float GetFarClip() const;</code>
     PointLight&amp; lamp = pointLights_.lights[0];
     lamp.enabled = 1;
     lamp.position = { 0.0f, 2.0f, 0.0f };
-    lamp.color = { 1.0f, 0.6f, 0.2f, 1.0f };
+    lamp.SetColor(0xFF9933FF);   // { 1.0f, 0.6f, 0.2f, 1.0f } と同じ
     lamp.radius = 8.0f;
 }</pre>
     </div>
@@ -1138,6 +1152,9 @@ float GetFarClip() const;</code>
     float intensity;     // 強さ（既定 1）
     int32_t enabled;     // 0:無効 / 0以外:有効（既定 1）
     float padding[3];
+
+    void SetColor(const Vector4&amp; value);
+    void SetColor(uint32_t rgba);   // 0xRRGGBBAA
 };</code>
         <div class="d">平行光源（太陽の光のように、どこでも同じ向きから当たる光）。</div>
       </div>
@@ -1150,6 +1167,9 @@ float GetFarClip() const;</code>
     float decay = 1.0f;               // 減衰の強さ（大きいほど光源の近くで急に暗くなる）
     int32_t enabled = 0;              // 0:無効 / 0以外:有効
     float padding = 0.0f;
+
+    void SetColor(const Vector4&amp; value);
+    void SetColor(uint32_t rgba);   // 0xRRGGBBAA
 };</code>
         <div class="d">点光源（電球のように、1点から全方向へ広がる光）。</div>
       </div>
@@ -1177,7 +1197,7 @@ void GameScene::OnUpdate() {
 #endif
 }</pre>
     </div>
-    <p class="sub">color を省略すると白。</p>
+    <p class="sub">color を省略すると白。16進数で指定するときは <code>ColorFromHex(0xFF0000FF)</code> のように変換して渡す（→ <a href="#Color">ColorFromHex</a>）。</p>
     <div class="fns">
       <div class="fn">
         <code class="sig">static void DrawLine(const Vector3&amp; start, const Vector3&amp; end, const Vector4&amp; color = {1, 1, 1, 1});</code>
@@ -1727,6 +1747,29 @@ struct Vector4 { float x, y, z, w; };</code>
         <code class="sig">a + b   a - b   -a   a * s   a / s   s * a
 a += b  a -= b  a *= s</code>
         <div class="d">Vector2 / Vector3 の演算子（<code>s</code> は float）。ベクトル同士の掛け算・<code>==</code>・<code>/=</code> はありません。内積・外積・長さは <a href="#Matrix4x4">Matrix4x4.h の関数</a>（Vector3 用）を使います。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Color -->
+  <section class="cls" id="Color">
+    <div class="cls-head"><h3>ColorFromHex</h3><span class="path">Engine/Math/Color.h</span></div>
+    <p class="lead">16進数の色 <code>0xRRGGBBAA</code> を <code>Vector4</code>（各 0〜1）に変換します。<code>Object3D</code>・<code>Sprite</code>・<code>Material</code>・<code>DirectionalLight</code>・<code>PointLight</code> の <code>SetColor</code> は 16進数をそのまま受け取れるので、この関数を直接使うのは <code>DebugDraw</code> の引数など <code>Vector4</code> が必要な場所だけです。</p>
+    <div class="ex">
+      <p class="ex-label">例: 16進数で色を付ける</p>
+<pre class="code">player_.SetColor(0xFF6650FF);                      // 赤 FF・緑 66・青 50・不透明度 FF
+title_.SetColor(0xFFFFFF80);                       // 白で半透明（Sprite）
+directionalLight_.SetColor(0xFFF0D0FF);            // 少し暖かい光
+DebugDraw::DrawLine(a, b, ColorFromHex(0x00FF00FF)); // Vector4 が必要な場所</pre>
+    </div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">constexpr Vector4 ColorFromHex(uint32_t rgba);</code>
+        <div class="d">
+          <p>各成分を 255 で割るだけで、sRGB の補正はしません。ImGui の色編集欄に出る16進数と同じ値なので、ImGui で調整した色をそのままコードに写せます（ペイントツールの色とは少し明るさがずれます）。</p>
+          <p><b>必ず8桁で書きます。</b><code>0xFF6650</code> のように6桁で書くと <code>0x00FF6650</code>（赤 00・緑 FF・青 66・不透明度 50）と解釈されます。</p>
+        </div>
+        <dl class="pr"><dt>rgba</dt><dd>赤・緑・青・不透明度の順に 2 桁ずつ。例 <code>0xFF6650FF</code> → <code>{1.0f, 0.4f, 0.314f, 1.0f}</code></dd></dl>
       </div>
     </div>
   </section>
@@ -2521,7 +2564,7 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><d
 </section>
 
 <footer class="foot">
-  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作りました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたら、このファイルも同じコミットで直してください。</p>
+  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作り、2026-10-01 に色の指定（<code>SetColor</code> / <code>ColorFromHex</code>）を追記しました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたら、このファイルも同じコミットで直してください。</p>
 </footer>
 
 </main>

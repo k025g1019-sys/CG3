@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "Engine/Math/Color.h"
 #include "Engine/Math/Vector4.h"
 #include "Engine/Math/Vector3.h"
 
@@ -17,6 +18,10 @@ struct PointLight {
     float decay = 1.0f;      // 減衰カーブ（大きいほど光源の近くで急激に暗くなる）
     int32_t enabled = 0;     // 0:無効 / 非0:有効
     float padding = 0.0f;
+
+    // 光の色を設定する（Vector4 または 0xRRGGBBAA の16進数）
+    void SetColor(const Vector4& value) { color = value; }
+    void SetColor(uint32_t rgba) { color = ColorFromHex(rgba); }
 };
 
 // シーンに置ける点光源の最大数（Object3d.hlsliの配列サイズと一致させる）

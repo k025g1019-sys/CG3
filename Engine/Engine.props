@@ -41,15 +41,16 @@
   </ItemDefinitionGroup>
 
   <!--
-    Development：ふだんのゲーム開発用。Release をもとに、次の点だけを変えた構成（ImGuiなし）。
+    Development：ふだんのゲーム開発用。Release をもとに、次の点だけを変えた構成。
     ・NDEBUG を定義しない（assert が有効）
+    ・ImGui（USE_IMGUI）が使える。USE_IMGUI はエンジンのクラスの中身を変えるので、エンジンとアプリで必ずそろえる
     ・アプリ（Sandbox / Game）は最適化なし・プログラム全体の最適化なし（デバッガで変数やステップ実行を追える）
     ・エンジン（Engine.lib）は Release と同じく最適化あり（/O2。/GL は Engine.vcxproj の WholeProgramOptimization）
     エンジンの中をデバッグするときは Debug に切り替える。
   -->
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Development'">
     <ClCompile>
-      <PreprocessorDefinitions>_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
     </ClCompile>

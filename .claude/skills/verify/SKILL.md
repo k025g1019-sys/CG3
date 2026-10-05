@@ -13,10 +13,10 @@ Win32/DirectX12のGUIアプリ。サーフェスはゲームウィンドウ（�
 ```
 
 - 構成は Debug / Development / Release の3つで、ソリューションの各構成は同じ名前のプロジェクト構成でビルドされる。
-  Development = ImGuiなし・assert有効（NDEBUGなし）・アプリ（Sandbox/Game）は /Od、Engine.lib は /O2 + /GL（アプリのリンク時に /LTCG で再リンクされる）。
+  Development = ImGuiあり（USE_IMGUI）・assert有効（NDEBUGなし）・アプリ（Sandbox/Game）は /Od、Engine.lib は /O2 + /GL（アプリのリンク時に /LTCG で再リンクされる）。
   Release = NDEBUG・全プロジェクト /O2 + /GL・LTCG。エンジン全体に効く変更は3構成ともビルドして確かめる。
 - 全構成 /W4 警告=エラー。`/t:Rebuild`やCleanは使わない（DirectXTexのシェーダー.incが消えて9009で死ぬ。消えたら `git restore externals/DirectXTex/Shaders/Compiled/`）。
-- ImGui（USE_IMGUI）はDebugのみ。
+- ImGui（USE_IMGUI）は Debug と Development にあり、Release にはない。USE_IMGUI はエンジンのクラスの中身を変えるので、エンジンとアプリで必ずそろえる。
 
 ## Launch & drive
 

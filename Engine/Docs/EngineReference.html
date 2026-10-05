@@ -272,7 +272,7 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
     <span>記号:</span>
     <span class="tag">シングルトン</span><span>GetInstance() で取得</span>
     <span class="tag t-static">static</span><span>インスタンス不要</span>
-    <span class="tag t-debug">Debug のみ</span><span>USE_IMGUI 時だけ存在</span>
+    <span class="tag t-debug">USE_IMGUI のみ</span><span>Debug・Development だけにある（Release にはない）</span>
     <span class="tag t-rel">Release 除外</span><span>#ifndef NDEBUG で囲む</span>
     <span class="tag t-engine">エンジンが呼ぶ</span><span>ゲームからは呼ばない</span>
   </div>
@@ -464,14 +464,14 @@ void TitleScene::OnDraw() {
     <li>ウィンドウのメッセージを処理する（×ボタンでループを抜けて終了処理へ）</li>
     <li>ウィンドウサイズが変わっていれば、スワップチェーンや深度バッファを作り直す</li>
     <li class="hook">予約されたシーンがあれば切り替える（GPUの完了待ち → 前のシーンを破棄 → 次のシーンの <code>OnInitialize</code>）<span class="who">SceneManager</span></li>
-    <li class="hook">[Debug] ImGui のフレームを始め、<code>DrawImGui</code>（シーンの <code>OnDrawImGui</code>）で UI を組み立てる</li>
+    <li class="hook">[Debug・Development] ImGui のフレームを始め、<code>DrawImGui</code>（シーンの <code>OnDrawImGui</code>）で UI を組み立てる</li>
     <li>入力を更新する（キーボード・マウス・パッドの今フレームの状態を取る）<span class="who">Input::Update</span></li>
     <li><kbd>F11</kbd> が押されたらボーダレス全画面を切り替える</li>
-    <li>ゲームの描画先矩形をシーンへ渡す（Debug では ImGui のドッキングで空いた中央領域）</li>
+    <li>ゲームの描画先矩形をシーンへ渡す（Debug・Development では ImGui のドッキングで空いた中央領域）</li>
     <li class="hook"><code>Update</code> → シーンの <code>OnUpdate</code> → カメラの確定（ビュー・射影・視錐台）→ 光源を定数バッファへ</li>
     <li>画面をクリアする（<code>BeginFrame</code>）→ <code>PreDraw</code> フック</li>
     <li class="hook"><code>Draw</code> → ルートシグネチャ・カメラ・光源・標準PSOを設定 → シーンの <code>OnDraw</code> → <code>DebugDraw</code> の線</li>
-    <li>[Debug] ImGui を画面全体へ描く</li>
+    <li>[Debug・Development] ImGui を画面全体へ描く</li>
     <li>画面に表示する（<code>EndFrame</code>。垂直同期あり）→ このフレームの <code>DebugDraw</code> の線を消す</li>
     <li>1/60 秒が経つまで待ち、次のフレームの経過時間を確定する<span class="who">Time::WaitForNextFrame</span></li>
   </ol>
@@ -530,13 +530,13 @@ void TitleScene::OnDraw() {
   <div class="tbl"><table>
     <thead><tr><th>構成</th><th>定義される記号</th><th>ImGui</th><th>DebugCamera</th><th>assert</th><th>最適化</th><th>用途</th></tr></thead>
     <tbody>
-      <tr><td class="m">Debug</td><td class="m">_DEBUG, USE_IMGUI</td><td>あり</td><td>あり</td><td>有効</td><td>なし</td><td>エンジンの中をデバッグするとき・ImGui で値を調整するとき</td></tr>
-      <tr><td class="m">Development</td><td class="m">_DEBUG</td><td>なし</td><td>あり</td><td>有効</td><td>エンジンだけあり</td><td>ふだんのゲーム開発</td></tr>
-      <tr><td class="m">Release</td><td class="m">_DEBUG, NDEBUG</td><td>なし</td><td>なし</td><td>無効</td><td>すべてあり（LTCG）</td><td>提出・配布用</td></tr>
+      <tr><td class="m">Debug</td><td class="m">_DEBUG, USE_IMGUI</td><td>あり</td><td>あり</td><td>有効</td><td>なし</td><td>エンジンの中をデバッグするとき</td></tr>
+      <tr><td class="m">Development</td><td class="m">_DEBUG, USE_IMGUI</td><td>あり</td><td>あり</td><td>有効</td><td>エンジンだけあり</td><td>ふだんのゲーム開発</td></tr>
+      <tr><td class="m">Release</td><td class="m">_DEBUG, NDEBUG</td><td>なし</td><td>なし</td><td>無効</td><td>すべてあり（LTCG）</td><td>提出・配布用。ImGui のない見た目の確認</td></tr>
     </tbody>
   </table></div>
   <ul>
-    <li>Development はゲームのコード（<code>Game/</code>）を最適化せずにビルドするので、デバッガで変数を見たりステップ実行したりできる。エンジン（<code>Engine.lib</code>）は最適化されるので、エンジンの中を追いたいときは Debug に切り替える。</li>
+    <li>Development はゲームのコード（<code>Game/</code>）を最適化せずにビルドするので、ブレークポイントで止めて変数を見たり、ステップ実行したりできる（ImGui も使える）。エンジン（<code>Engine.lib</code>）は最適化されるので、エンジンの中を追いたいときは Debug に切り替える。</li>
     <li><code>_DEBUG</code> は全構成で定義されるので、分岐には使わない。ImGui のコードは <code>#ifdef USE_IMGUI</code>、開発中だけのコードは <code>#ifndef NDEBUG</code> で囲む。</li>
     <li>全構成で警告レベル4・警告はエラー扱い。使っていない変数や引数があるとビルドが止まる（引数名を消す、<code>[[maybe_unused]]</code> を付ける、など）。</li>
     <li><code>Input.h</code>・<code>WinApp.h</code>・<code>Audio.h</code> などは <code>&lt;Windows.h&gt;</code> を含み、<code>min</code>/<code>max</code> マクロが有効なままです。これらを含むファイルで <code>std::min</code>/<code>std::max</code> はコンパイルエラーになるので、比較（<code>a &lt; b ? a : b</code>）で書くか <code>(std::min)(a, b)</code> と括弧で囲む。</li>
@@ -605,7 +605,7 @@ void TitleScene::OnDraw() {
     <li><b>スティックは上が +Y、マウスは下が +Y。</b></li>
     <li><b>ウィンドウが後ろにあるとキーボードとマウスは取れない</b>（DirectInput の前面モード）。パッドは取れます。</li>
     <li><b><code>OnUpdate</code> の中の <code>GetViewMatrix()</code> は前のフレームの値。</b>カメラはOnUpdate の後に確定します。</li>
-    <li><b>ImGui のコードは Debug 構成にしか無い。</b><code>ImGui::</code> を使う行は必ず <code>#ifdef USE_IMGUI</code> の中に書きます（Release でビルドエラーになります）。</li>
+    <li><b>ImGui のコードは Release 構成には無い。</b><code>ImGui::</code> を使う行は必ず <code>#ifdef USE_IMGUI</code> の中に書きます（Release でビルドエラーになります）。</li>
   </ul>
 </section>
 
@@ -651,7 +651,7 @@ void TitleScene::OnDraw() {
         <div class="d">画面のクリアの後、シーンの描画の前に毎フレーム呼ばれるフックです。既定では何もしません（Sandbox では Web カメラ映像の転送に使っています）。</div>
       </div>
       <div class="fn">
-        <code class="sig">protected: virtual void DrawImGui();<span class="tag t-debug">Debug のみ</span></code>
+        <code class="sig">protected: virtual void DrawImGui();<span class="tag t-debug">USE_IMGUI のみ</span></code>
         <div class="d">開発用の ImGui ウィンドウを組み立てます。既定では現在のシーンの <code>OnDrawImGui</code> を呼びます。全シーン共通のウィンドウを出すときにオーバーライドし、<code>Framework::DrawImGui()</code> も呼びます。宣言・定義とも <code>#ifdef USE_IMGUI</code> で囲みます。</div>
       </div>
       <div class="fn">
@@ -671,7 +671,7 @@ void TitleScene::OnDraw() {
     <p class="lead">シーンの基底クラスです。カメラのビュー射影・視錐台・平行光源・点光源・立体視・PSO の設定といった定型処理はこのクラスが行うので、派生シーンは <code>OnInitialize</code> / <code>OnUpdate</code> / <code>OnDraw</code>（必要なら <code>OnDrawImGui</code>）を書くだけで済みます。シーンは切り替えのたびに新しく作られ、前のシーンは破棄されます。メンバー変数は毎回初期状態から始まります。</p>
 
     <div class="ex">
-      <p class="ex-label">ImGui で値を調整する（Debug のみ）</p>
+      <p class="ex-label">ImGui で値を調整する（Debug・Development）</p>
 <pre class="code">// GameScene.h
 #ifdef USE_IMGUI
     void OnDrawImGui() override;
@@ -707,7 +707,7 @@ void GameScene::OnDrawImGui() {
         <div class="d">毎フレーム呼ばれます（立体視では視点の数だけ呼ばれます）。各オブジェクトの <code>Draw()</code> だけを書きます。標準の PSO・カメラ・光源は設定済みです。</div>
       </div>
       <div class="fn">
-        <code class="sig">protected: virtual void OnDrawImGui() {}<span class="tag t-debug">Debug のみ</span></code>
+        <code class="sig">protected: virtual void OnDrawImGui() {}<span class="tag t-debug">USE_IMGUI のみ</span></code>
         <div class="d">開発用の ImGui を組み立てます。必要なシーンだけオーバーライドします。<code>OnUpdate</code> より先に呼ばれます（<a href="#frame">1フレームの流れ</a>）。</div>
       </div>
       <div class="fn">
@@ -747,7 +747,7 @@ void GameScene::OnDrawImGui() {
 protected: float GetRenderAreaY() const;
 protected: float GetRenderAreaWidth() const;
 protected: float GetRenderAreaHeight() const;</code>
-        <div class="d">ゲームの描画先の矩形（ウィンドウのクライアント座標・ピクセル）。Debug では ImGui のドッキングで空いた中央の領域、それ以外ではウィンドウ全体です。マウス座標をゲーム画面内の座標にするときは <code>GetMousePosition()</code> から X・Y を引きます。</div>
+        <div class="d">ゲームの描画先の矩形（ウィンドウのクライアント座標・ピクセル）。Debug・Development では ImGui のドッキングで空いた中央の領域、Release ではウィンドウ全体です。マウス座標をゲーム画面内の座標にするときは <code>GetMousePosition()</code> から X・Y を引きます。</div>
       </div>
       <div class="fn">
         <code class="sig">protected: float GetAspectRatio() const;</code>
@@ -775,7 +775,7 @@ protected: const Matrix4x4&amp; GetProjectionMatrix() const;</code>
         <div class="d">ルートシグネチャ・この視点のビュー射影・光源・標準 PSO を設定 → <code>OnDraw</code> → <code>DebugDraw</code> の線、の順に描きます。</div>
       </div>
       <div class="fn">
-        <code class="sig">void DrawImGui();<span class="tag t-engine">エンジンが呼ぶ</span><span class="tag t-debug">Debug のみ</span></code>
+        <code class="sig">void DrawImGui();<span class="tag t-engine">エンジンが呼ぶ</span><span class="tag t-debug">USE_IMGUI のみ</span></code>
         <div class="d"><code>OnDrawImGui</code> を呼びます。</div>
       </div>
       <div class="fn">
@@ -1323,7 +1323,7 @@ private:
         <div class="d">今の注視点・距離・角度から作ったビュー行列。</div>
       </div>
       <div class="fn">
-        <code class="sig">void DrawImGui();<span class="tag t-debug">Debug のみ</span></code>
+        <code class="sig">void DrawImGui();<span class="tag t-debug">USE_IMGUI のみ</span></code>
         <div class="d">状態の表示と、回転・移動・ズームの速さなどの調整 UI。</div>
       </div>
     </div>
@@ -1554,7 +1554,7 @@ bool IsMouseRelease(int button) const;</code>
       </div>
       <div class="fn">
         <code class="sig">Vector2 GetMousePosition() const;</code>
-        <div class="d">カーソルの位置（ウィンドウのクライアント領域の左上が原点・ピクセル）。Debug ではゲーム画面が ImGui のドッキングでずれるので、ゲーム画面内の位置にするには <code>GetRenderAreaX()</code> / <code>GetRenderAreaY()</code> を引きます。</div>
+        <div class="d">カーソルの位置（ウィンドウのクライアント領域の左上が原点・ピクセル）。Debug・Development ではゲーム画面が ImGui のドッキングでずれるので、ゲーム画面内の位置にするには <code>GetRenderAreaX()</code> / <code>GetRenderAreaY()</code> を引きます。</div>
       </div>
     </div>
     <p class="sub">ゲームパッド（<code>playerIndex</code> は 0〜3、省略すると 0 = 1P）</p>
@@ -1700,7 +1700,7 @@ static constexpr int32_t kClientHeight = 720;</code>
       <div class="fn">
         <code class="sig">int32_t GetClientWidth() const;
 int32_t GetClientHeight() const;</code>
-        <div class="d">今のクライアント領域の大きさ（ピクセル）。Debug では ImGui も含んだウィンドウ全体の大きさです。ゲーム画面の大きさはシーンの <code>GetRenderAreaWidth/Height()</code> を使います。</div>
+        <div class="d">今のクライアント領域の大きさ（ピクセル）。Debug・Development では ImGui も含んだウィンドウ全体の大きさです。ゲーム画面の大きさはシーンの <code>GetRenderAreaWidth/Height()</code> を使います。</div>
       </div>
       <div class="fn">
         <code class="sig">void SetFullscreen(bool enable);
@@ -2014,7 +2014,7 @@ void SetControlPoint(int index, const Vector3&amp; point);</code>
         <div class="d">制御点の取得と設定（index: 0 = 始点、1 = 中間、2 = 終点。範囲外は assert）。</div>
       </div>
       <div class="fn">
-        <code class="sig">void DrawImGui(const char* label);<span class="tag t-debug">Debug のみ</span></code>
+        <code class="sig">void DrawImGui(const char* label);<span class="tag t-debug">USE_IMGUI のみ</span></code>
         <div class="d">制御点を編集する UI を、呼び出し側の ImGui ウィンドウの中に <code>label</code> の名前のツリーとして差し込みます。</div>
       </div>
     </div>
@@ -2167,7 +2167,7 @@ Log(std::format("score = {}, pos = ({:.2f}, {:.2f})", score_, pos.x, pos.y));</p
         <div class="d">今の方式で描く視点の数（OFF: 1、レンチキュラー: 8、それ以外: 2）。<code>OnDraw</code> はこの回数呼ばれます。</div>
       </div>
       <div class="fn">
-        <code class="sig">void DrawImGui();<span class="tag t-debug">Debug のみ</span></code>
+        <code class="sig">void DrawImGui();<span class="tag t-debug">USE_IMGUI のみ</span></code>
         <div class="d">方式の切り替えと、バリアの間隔・レンズの傾き・左右の入れ替え・アナグリフのゴースト軽減などの調整 UI。</div>
       </div>
       <div class="fn">
@@ -2187,7 +2187,7 @@ void Composite(ID3D12GraphicsCommandList* commandList, D3D12_CPU_DESCRIPTOR_HAND
     <p class="lead">中心のカメラから、左右の目（視点）ごとのビュー射影を作ります。シーンの <code>stereoCamera_</code> として BaseScene が管理します。目の位置は右方向へ平行にずらし、収束距離のところで左右のずれが 0 になるように射影を傾けます。視線追跡が ON のときは、頭の位置に合わせた視点のずれも同じ仕組みで加えます（立体視 OFF でも効きます）。</p>
     <div class="fns">
       <div class="fn">
-        <code class="sig">void DrawImGuiSection();<span class="tag t-debug">Debug のみ</span></code>
+        <code class="sig">void DrawImGuiSection();<span class="tag t-debug">USE_IMGUI のみ</span></code>
         <div class="d">眼間距離（既定 0.1）・収束距離（既定 10）・頭の動きの効き具合の調整 UI を、呼び出し側のウィンドウの中に差し込みます（Begin / End はしません）。例: シーンの <code>OnDrawImGui</code> で <code>stereoCamera_.DrawImGuiSection();</code></div>
       </div>
       <div class="fn">
@@ -2526,7 +2526,7 @@ struct ModelData {
 
   <!-- ---------------------------------------------------------- ImGuiManager -->
   <section class="cls" id="ImGuiManager">
-    <div class="cls-head"><h3>ImGuiManager</h3><span class="path">Engine/Core/ImGuiManager.h</span><span class="tags"><span class="tag">シングルトン</span><span class="tag t-debug">Debug のみ</span></span></div>
+    <div class="cls-head"><h3>ImGuiManager</h3><span class="path">Engine/Core/ImGuiManager.h</span><span class="tags"><span class="tag">シングルトン</span><span class="tag t-debug">USE_IMGUI のみ</span></span></div>
     <p class="lead">ImGui の初期化・フレーム処理・描画・終了をまとめたものです。画面全体をドッキングできる領域にして、ウィンドウを画面の端へ寄せて整理できるようにします。どのウィンドウにも覆われていない中央の領域が、ゲームの描画先になります。ヘッダーごと <code>#ifdef USE_IMGUI</code> の中にあります。</p>
     <div class="fns">
       <div class="fn"><code class="sig">struct GameArea { float x, y, width, height; };

@@ -45,7 +45,7 @@ protected:
     virtual void PreDraw(ID3D12GraphicsCommandList* commandList) { (void)commandList; }
 
 #ifdef USE_IMGUI
-    // 開発用ImGuiウィンドウの構築（既定では現在のシーンのImGuiを構築する。Debugビルドのみ呼ばれる）
+    // 開発用ImGuiウィンドウの構築（既定では現在のシーンのImGuiを構築する。Debug・Developmentビルドのみ呼ばれる）
     virtual void DrawImGui();
 #endif
 

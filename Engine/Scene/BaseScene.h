@@ -22,7 +22,7 @@ namespace Engine {
 ///   OnInitialize : オブジェクトの生成・読み込み
 ///   OnUpdate     : ゲームの処理と、各オブジェクトの Update()
 ///   OnDraw       : 各オブジェクトの Draw()（標準のPSO・カメラ・ライトは設定済み）
-///   OnDrawImGui  : 開発用UI（任意。Debugビルドのみ）
+///   OnDrawImGui  : 開発用UI（任意。Debug・Developmentビルドのみ）
 /// </summary>
 class BaseScene {
 public:

@@ -11,7 +11,7 @@ namespace Engine {
 
 /// <summary>
 /// ImGuiの初期化・フレーム処理・描画・終了処理をまとめたシングルトン。
-/// Debugビルド限定（USE_IMGUI）。Releaseではこのクラスごとビルドから除外される。
+/// Debug・Developmentビルド限定（USE_IMGUI）。Releaseではこのクラスごとビルドから除外される。
 /// 画面全体をドックスペースにし、ウィンドウを画面端へドッキングして整理できるようにする。
 /// どのウィンドウにも占有されていない中央領域（＝ゲームの表示先）をGetGameArea()で公開する。
 /// </summary>

@@ -107,4 +107,7 @@ git worktree add ../DirectXGame-game AL4_develop
 
 - ブランチを切り替えても、git 管理外のファイル（`imgui.ini`・`logs/` など）はそのまま残ります。
   ゲーム制作ブランチに `Sandbox/` フォルダが残って見えても、中身が管理外のファイルだけなら問題ありません
-- ソリューション構成の `Release` はプロジェクトの `Development` 構成（ImGuiなし・最適化なし・assert有効）でビルドされます
+- ビルド構成は3つで、ソリューションの構成はそれぞれ同じ名前のプロジェクト構成でビルドされます
+  - `Debug` … ImGui・デバッグカメラあり、最適化なし。エンジンの中をデバッグするときや、ImGui で値を調整するときに使う
+  - `Development` … ふだんのゲーム開発用。ImGui なし・assert 有効。ゲーム（`Game/`・`Sandbox/`）のコードは最適化なしでデバッガで追え、エンジン（`Engine.lib`）は最適化あり
+  - `Release` … 提出・配布用。すべて最適化あり（プログラム全体の最適化も）、assert なし（`NDEBUG`）

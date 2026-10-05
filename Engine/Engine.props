@@ -40,12 +40,22 @@
     </ClCompile>
   </ItemDefinitionGroup>
 
-  <!-- Development：ImGuiなし・最適化なし・assert有効（ソリューションの Release はこの構成でビルドされる） -->
+  <!--
+    Development：ふだんのゲーム開発用。Release をもとに、次の点だけを変えた構成（ImGuiなし）。
+    ・NDEBUG を定義しない（assert が有効）
+    ・アプリ（Sandbox / Game）は最適化なし・プログラム全体の最適化なし（デバッガで変数やステップ実行を追える）
+    ・エンジン（Engine.lib）は Release と同じく最適化あり（/O2。/GL は Engine.vcxproj の WholeProgramOptimization）
+    エンジンの中をデバッグするときは Debug に切り替える。
+  -->
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Development'">
     <ClCompile>
       <PreprocessorDefinitions>_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Development' and '$(ConfigurationType)'=='Application'">
+    <ClCompile>
       <Optimization>Disabled</Optimization>
     </ClCompile>
   </ItemDefinitionGroup>

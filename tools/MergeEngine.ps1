@@ -4,18 +4,18 @@
 
 .DESCRIPTION
     Run this on the game branch (the branch that has Game/Game.vcxproj).
-    It merges the engine branch and removes the engine-only test app (Sandbox/)
-    from the merge, so the game branch keeps only the engine and the game.
+    It merges the engine branch (master by default) and removes the engine-only
+    test app (Sandbox/) from the merge, so the game branch keeps only the engine and the game.
 
     Usage (from anywhere inside the repository):
         powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1
-        powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1 -EngineBranch CG3_develop
+        powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1 -EngineBranch feature/Input
 
     (This file is ASCII only on purpose: Windows PowerShell 5.1 misreads
      non-ASCII characters in scripts saved as UTF-8 without BOM.)
 #>
 param(
-    [string]$EngineBranch = "CG3_develop"
+    [string]$EngineBranch = "master"
 )
 
 # Work from the repository root

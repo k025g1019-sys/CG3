@@ -448,7 +448,7 @@ void TitleScene::OnDraw() {
   <div class="tbl"><table>
     <thead><tr><th>場所</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td class="m">Engine/</td><td>エンジン本体（静的ライブラリ）。変更は CG3_develop で行い、<code>tools/MergeEngine.ps1</code> でゲームのブランチへ取り込む。</td></tr>
+      <tr><td class="m">Engine/</td><td>エンジン本体（静的ライブラリ）。変更は master から分岐した <code>feature/〇〇</code> で行って master へマージし、<code>tools/MergeEngine.ps1</code> でゲームのブランチへ取り込む。</td></tr>
       <tr><td class="m">Game/</td><td>ゲーム本体（AL4_develop）。実行時のカレントディレクトリもここになる。</td></tr>
       <tr><td class="m">Game/resources/</td><td>モデル・画像・音。コードでは <code>"resources/player.obj"</code> のように Game/ からの相対パスで書く。</td></tr>
       <tr><td class="m">Shaders/</td><td>エンジンのシェーダー。実行時に <code>Shaders/</code> → <code>../Shaders/</code> の順で探される。</td></tr>

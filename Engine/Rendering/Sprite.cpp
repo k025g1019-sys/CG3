@@ -2,12 +2,20 @@
 
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Core/WinApp.h"
+#include "Engine/Graphics/PipelineManager.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Math/Matrix4x4.h"
+#include "Engine/Rendering/RenderContext.h"
 
 namespace Engine {
 
-void Sprite::Initialize(ID3D12Device* device, uint32_t textureHandle, const Vector2& size) {
+void Sprite::Initialize(const std::string& textureFilePath, const Vector2& size) {
+	Initialize(TextureManager::GetInstance()->Load(textureFilePath), size);
+}
+
+void Sprite::Initialize(uint32_t textureHandle, const Vector2& size) {
+	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
+
 	textureHandle_ = textureHandle;
 
 	// クアッド（左上原点のスクリーン座標系。0:左下 / 1:左上 / 2:右下 / 3:右上）
@@ -38,7 +46,11 @@ void Sprite::Initialize(ID3D12Device* device, uint32_t textureHandle, const Vect
 	viewProjectionCB_.Create(device, DirectXCore::kFramesInFlight);
 }
 
-void Sprite::Update(float screenWidth, float screenHeight) {
+void Sprite::Update() {
+	// ゲームの描画先矩形の大きさ（ImGuiビルドではドッキングで空いた中央領域）
+	const float screenWidth = RenderContext::GetInstance()->GetScreenWidth();
+	const float screenHeight = RenderContext::GetInstance()->GetScreenHeight();
+
 	// 基準解像度に対する実画面の倍率。サイズは小さい方の倍率で等比スケールして
 	// スプライトの縦横比を保ち、位置は縦横それぞれ比例させて画面内の相対位置を保つ。
 	// （std::minはWindows.hのmin/maxマクロと衝突するため比較で求める）
@@ -88,19 +100,31 @@ void Sprite::Update(float screenWidth, float screenHeight) {
 	visibility_ = ClassifyFrustum(screenFrustum, AABB2D{ spriteMin, spriteMax });
 }
 
-void Sprite::Draw(ID3D12GraphicsCommandList* commandList) const {
+void Sprite::Draw() const {
 	if (!IsVisible(visibility_)) {
 		return;
 	}
 
+	RenderContext* context = RenderContext::GetInstance();
+	ID3D12GraphicsCommandList* commandList = context->GetCommandList();
 	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	commandList->SetGraphicsRootConstantBufferView(0, materialCB_.GetGPUAddress(frameIndex));
-	commandList->SetGraphicsRootConstantBufferView(1, transformCB_.GetGPUAddress(frameIndex));
-	commandList->SetGraphicsRootDescriptorTable(3, TextureManager::GetInstance()->GetSrvHandleGPU(textureHandle_));
-	// 2Dなのでビュー射影を自前の正射影へ差し替える（3D側は次の視点描画で再バインドされる）
-	commandList->SetGraphicsRootConstantBufferView(4, viewProjectionCB_.GetGPUAddress(frameIndex));
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootMaterial, materialCB_.GetGPUAddress(frameIndex));
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootWorldTransform, transformCB_.GetGPUAddress(frameIndex));
+	commandList->SetGraphicsRootDescriptorTable(
+		PipelineManager::kRootTexture, TextureManager::GetInstance()->GetSrvHandleGPU(textureHandle_));
+	// 2Dなのでビュー射影を自前の正射影へ差し替える
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootViewProjection, viewProjectionCB_.GetGPUAddress(frameIndex));
 
 	mesh_.Draw(commandList);
+
+	// 後に続く3D描画のために、この視点のビュー射影へ戻す
+	if (context->GetViewProjectionAddress() != 0) {
+		commandList->SetGraphicsRootConstantBufferView(
+			PipelineManager::kRootViewProjection, context->GetViewProjectionAddress());
+	}
 }
 
 } // namespace Engine

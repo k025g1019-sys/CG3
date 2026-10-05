@@ -3,9 +3,10 @@
 #include "Engine/Math/Vector2.h"
 #include "Engine/Math/Vector3.h"
 #include "Engine/Math/Matrix4x4.h"
+#include "Engine/Math/Shapes.h"
 
 // =============================================================
-// 視錐台カリング用の形状・平面・視錐台と、その交差判定。
+// 視錐台カリング用の視錐台と、形状（Shapes.h）との交差判定。
 //
 // ・3Dの視錐台は ViewProjection 行列から6平面を抽出（Gribb–Hartmann法）。
 // ・2Dの視錐台は可視範囲の矩形（min/max）から4直線を生成する。
@@ -30,88 +31,6 @@ enum class FrustumVisibility {
     Outside,    // 完全に視錐台の外（描画不要）
     Intersect,  // 境界をまたぐ（一部が内側）
     Inside,     // 完全に視錐台の内側
-};
-
-// ===================== 3D の形状 =====================
-
-// 球
-struct Sphere {
-    Vector3 center;
-    float radius;
-};
-
-// 軸並行境界ボックス（3D）
-struct AABB3D {
-    Vector3 min;
-    Vector3 max;
-};
-
-// 有向境界ボックス（3D）。orientations は正規直交な3軸、size は各軸方向の半幅。
-struct OBB3D {
-    Vector3 center;
-    Vector3 orientations[3];
-    Vector3 size;
-};
-
-// 線分（3D）
-struct Segment3D {
-    Vector3 start;
-    Vector3 end;
-};
-
-// 三角形（3D）
-struct Triangle3D {
-    Vector3 v0;
-    Vector3 v1;
-    Vector3 v2;
-};
-
-// ===================== 2D の形状 =====================
-
-// 円
-struct Circle {
-    Vector2 center;
-    float radius;
-};
-
-// 軸並行境界ボックス（2D）
-struct AABB2D {
-    Vector2 min;
-    Vector2 max;
-};
-
-// 有向境界ボックス（2D）。orientations は正規直交な2軸、size は各軸方向の半幅。
-struct OBB2D {
-    Vector2 center;
-    Vector2 orientations[2];
-    Vector2 size;
-};
-
-// 線分（2D）
-struct Segment2D {
-    Vector2 start;
-    Vector2 end;
-};
-
-// 三角形（2D）
-struct Triangle2D {
-    Vector2 v0;
-    Vector2 v1;
-    Vector2 v2;
-};
-
-// ===================== 平面 / 直線 =====================
-
-// 3Dの平面。dot(normal, p) + distance >= 0 が内側。normal は単位ベクトル。
-struct Plane3D {
-    Vector3 normal;
-    float distance;
-};
-
-// 2Dの直線（2Dにおける「平面」）。dot(normal, p) + distance >= 0 が内側。
-struct Plane2D {
-    Vector2 normal;
-    float distance;
 };
 
 // ===================== 視錐台 =====================

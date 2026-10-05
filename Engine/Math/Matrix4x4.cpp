@@ -334,6 +334,29 @@ Vector3 Normalize(const Vector3& v) {
 	return { v.x / len, v.y / len, v.z / len };
 }
 
+// 反射ベクトル
+Vector3 Reflect(const Vector3& input, const Vector3& normal) {
+	return input - 2.0f * Dot(input, normal) * normal;
+}
+
+#pragma endregion
+
+#pragma region
+
+// 線形補間
+float Lerp(float start, float end, float t) {
+	return start + (end - start) * t;
+}
+
+// ベクトルの線形補間
+Vector3 Lerp(const Vector3& start, const Vector3& end, float t) {
+	return {
+		start.x + (end.x - start.x) * t,
+		start.y + (end.y - start.y) * t,
+		start.z + (end.z - start.z) * t
+	};
+}
+
 #pragma endregion
 
 } // namespace Engine

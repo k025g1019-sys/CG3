@@ -23,6 +23,18 @@ public:
         kCount,     // PSOの総数（enumの末尾に置くこと）
     };
 
+    // 標準RootSignatureのパラメータ番号（SetGraphicsRoot～ の第1引数に使う）
+    enum RootParameter : UINT {
+        kRootMaterial = 0,          // b0 [PS] マテリアル
+        kRootWorldTransform = 1,    // b0 [VS] ワールド行列
+        kRootDirectionalLight = 2,  // b1 [PS] 平行光源
+        kRootTexture = 3,           // t0 [PS] テクスチャ（DescriptorTable）
+        kRootViewProjection = 4,    // b1 [VS] 視点ごとのビュー射影
+        kRootPointLights = 5,       // b2 [PS] 点光源
+
+        kRootParameterCount,        // パラメータ数（enumの末尾に置くこと）
+    };
+
     static PipelineManager* GetInstance();
 
     // 標準シェーダーをコンパイルし、RootSignatureと全PSOを生成する
@@ -35,6 +47,9 @@ public:
     ID3D12RootSignature* GetRootSignature() const { return rootSignature_.Get(); }
 
     ID3D12PipelineState* Get(Pipeline pipeline) const;
+
+    // PSOと、それに合うプリミティブトポロジ（線分PSOならライン、それ以外は三角形）をまとめて設定する
+    void SetPipeline(ID3D12GraphicsCommandList* commandList, Pipeline pipeline) const;
 
 public:
 

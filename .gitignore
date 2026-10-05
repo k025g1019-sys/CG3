@@ -76,6 +76,8 @@ StyleCopReport.xml
 *.ilk
 *.meta
 *.obj
+# 上の *.obj はC++の中間ファイル用。resources/ 以下の3Dモデル(.obj)はアセットなので管理対象に戻す
+!**/resources/**/*.obj
 *.iobj
 *.pch
 *.pdb

@@ -61,3 +61,6 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# git のフックはシェルスクリプトなので、Windows でも改行を LF のまま取り出す
+.githooks/* text eol=lf

@@ -236,6 +236,36 @@ float Length(const Vector3& v);
 /// <returns>長さ1に正規化したベクトル。ゼロベクトルの場合はゼロベクトル</returns>
 Vector3 Normalize(const Vector3& v);
 
+/// <summary>
+/// 反射ベクトル。入射ベクトルを法線の面で跳ね返した向き
+/// </summary>
+/// <param name="input">入射ベクトル（面に向かう向き）</param>
+/// <param name="normal">面の法線（単位ベクトル）</param>
+/// <returns>input - 2 * dot(input, normal) * normal</returns>
+Vector3 Reflect(const Vector3& input, const Vector3& normal);
+
+#pragma endregion
+
+#pragma region
+
+/// <summary>
+/// 線形補間（t=0でstart、t=1でend。0..1の外も直線上を外挿する）
+/// </summary>
+/// <param name="start">始点の値</param>
+/// <param name="end">終点の値</param>
+/// <param name="t">補間係数</param>
+/// <returns>start + (end - start) * t</returns>
+float Lerp(float start, float end, float t);
+
+/// <summary>
+/// ベクトルの線形補間（t=0でstart、t=1でend）
+/// </summary>
+/// <param name="start">始点</param>
+/// <param name="end">終点</param>
+/// <param name="t">補間係数</param>
+/// <returns>start + (end - start) * t</returns>
+Vector3 Lerp(const Vector3& start, const Vector3& end, float t);
+
 #pragma endregion
 
 } // namespace Engine

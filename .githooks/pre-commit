@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# エンジン／ゲームの編集範囲チェック（pre-commit フック）
+#   有効化（リポジトリごとに1回）: git config core.hooksPath .githooks
+#
+# ・ゲーム制作ブランチ（Game/Game.vcxproj があるブランチ）では、Game/ 以外のファイルはコミットできない
+# ・エンジン制作ブランチ（Sandbox/Sandbox.vcxproj があるブランチ）では、Game/ のファイルはコミットできない
+# エンジンブランチを取り込むマージのコミットはチェックしない。
+# 意図してコミットしたいときは git commit --no-verify でチェックを飛ばせる。
+
+# マージの途中（エンジンブランチの取り込み）はチェックしない
+if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+    exit 0
+fi
+
+staged=$(git diff --cached --name-only)
+[ -z "$staged" ] && exit 0
+
+# どちらのブランチかは、コミット済みのファイル構成で判断する
+if git cat-file -e HEAD:Game/Game.vcxproj 2>/dev/null; then
+    role=game
+    bad=$(printf '%s\n' "$staged" | grep -v '^Game/')
+elif git cat-file -e HEAD:Sandbox/Sandbox.vcxproj 2>/dev/null; then
+    role=engine
+    bad=$(printf '%s\n' "$staged" | grep '^Game/')
+else
+    exit 0
+fi
+
+[ -z "$bad" ] && exit 0
+
+if [ "$role" = game ]; then
+    echo "[pre-commit] GAME branch: only files under Game/ can be committed." >&2
+    echo "[pre-commit] ゲーム制作ブランチでは Game/ 以外（エンジン側）のファイルはコミットできません。" >&2
+    echo "             エンジンの修正はエンジン制作ブランチで行い、tools/MergeEngine.ps1 で取り込んでください。" >&2
+else
+    echo "[pre-commit] ENGINE branch: files under Game/ cannot be committed." >&2
+    echo "[pre-commit] エンジン制作ブランチでは Game/（ゲーム側）のファイルはコミットできません。" >&2
+fi
+echo "" >&2
+printf '%s\n' "$bad" | sed 's/^/    /' >&2
+echo "" >&2
+echo "    (git commit --no-verify skips this check)" >&2
+exit 1

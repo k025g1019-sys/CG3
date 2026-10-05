@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <cstdint>
+#include <string>
 
 namespace Engine {
 
@@ -32,6 +33,11 @@ public:
     void ToggleFullscreen() { SetFullscreen(!fullscreen_); }
     bool IsFullscreen() const { return fullscreen_; }
 
+    // ウィンドウのタイトルを設定する。
+    // Initializeより前に呼べば最初からそのタイトルで開き、後で呼べばその場で書き換わる。
+    void SetTitle(const std::wstring& title);
+    const std::wstring& GetTitle() const { return title_; }
+
     HWND GetHwnd() const {
         return hwnd_;
     }
@@ -46,6 +52,9 @@ private:
 private:
     HWND hwnd_ = nullptr;
     WNDCLASS wc_{};
+
+    // ウィンドウのタイトル（ゲーム側がFramework::SetWindowTitleで設定する）
+    std::wstring title_ = L"DirectXGame";
 
     // 現在のクライアント領域サイズ（WM_SIZEで更新される）
     int32_t clientWidth_ = kClientWidth;

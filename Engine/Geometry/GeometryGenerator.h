@@ -17,4 +17,10 @@ std::vector<VertexData> GenerateCubeVertices();
 // GenerateCubeVerticesの頂点列に対応するインデックス列を生成する（6面×2三角形×3頂点＝36個）
 std::vector<uint32_t> GenerateCubeIndices();
 
+// XZ平面上の1x1・原点中心の平面（上(+Y)向き）の頂点列を生成する（4頂点。テクスチャ全体を貼る）
+std::vector<VertexData> GeneratePlaneVertices();
+
+// GeneratePlaneVerticesの頂点列に対応するインデックス列を生成する（2三角形×3頂点＝6個）
+std::vector<uint32_t> GeneratePlaneIndices();
+
 } // namespace Engine

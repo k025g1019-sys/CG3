@@ -68,6 +68,12 @@ PixelShaderOutput main(VertexShaderOutput input)
             gSampler,
             transformedUV.xy
         );
+    
+    // 透明部分を描画しない
+    if (textureColor.a < 0.8f)
+    {
+        discard;
+    }
 
     if (material.lightingMode == kLightingModeNone)
     {
@@ -137,6 +143,6 @@ PixelShaderOutput main(VertexShaderOutput input)
         textureColor.rgb *
         diffuseLight;
     output.color.a = material.color.a * textureColor.a;
-
+    
     return output;
 }

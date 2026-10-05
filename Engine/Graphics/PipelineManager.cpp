@@ -15,10 +15,10 @@ PipelineManager* PipelineManager::GetInstance() {
 void PipelineManager::Initialize(ID3D12Device* device) {
     // 標準シェーダーをコンパイルする
     ComPtr<IDxcBlob> vertexShader =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/Object3d.VS.hlsl", L"vs_6_0");
+        ShaderCompiler::GetInstance()->Compile(L"Object3d.VS.hlsl", L"vs_6_0");
     assert(vertexShader != nullptr);
     ComPtr<IDxcBlob> pixelShader =
-        ShaderCompiler::GetInstance()->Compile(L"Shaders/Object3d.PS.hlsl", L"ps_6_0");
+        ShaderCompiler::GetInstance()->Compile(L"Object3d.PS.hlsl", L"ps_6_0");
     assert(pixelShader != nullptr);
 
     // RootSignatureと用途別PSOを生成する
@@ -44,6 +44,12 @@ void PipelineManager::Finalize() {
 ID3D12PipelineState* PipelineManager::Get(Pipeline pipeline) const {
     assert(pipeline < Pipeline::kCount);
     return pipelines_[size_t(pipeline)].Get();
+}
+
+void PipelineManager::SetPipeline(ID3D12GraphicsCommandList* commandList, Pipeline pipeline) const {
+    commandList->SetPipelineState(Get(pipeline));
+    commandList->IASetPrimitiveTopology(
+        pipeline == Pipeline::kLine ? D3D_PRIMITIVE_TOPOLOGY_LINELIST : D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 ComPtr<ID3D12PipelineState> PipelineManager::CreateGraphicsPipeline(const PipelineConfig& config) {
@@ -94,35 +100,34 @@ ComPtr<ID3D12RootSignature> PipelineManager::CreateRootSignature(ID3D12Device* d
     descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
     descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // Offsetを自動計算
 
-    // RootParameter（0:Material[PS] / 1:World[VS] / 2:DirectionalLight[PS] / 3:Texture[PS] /
-    //                4:ViewProjection[VS] / 5:PointLights[PS]）
-    D3D12_ROOT_PARAMETER rootParameters[6] = {};
-    rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[0].Descriptor.ShaderRegister = 0;
+    // RootParameter（並びは RootParameter 列挙と一致させる）
+    D3D12_ROOT_PARAMETER rootParameters[kRootParameterCount] = {};
+    rootParameters[kRootMaterial].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootMaterial].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootMaterial].Descriptor.ShaderRegister = 0;
 
-    rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-    rootParameters[1].Descriptor.ShaderRegister = 0;
+    rootParameters[kRootWorldTransform].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootWorldTransform].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[kRootWorldTransform].Descriptor.ShaderRegister = 0;
 
-    rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[2].Descriptor.ShaderRegister = 1;
+    rootParameters[kRootDirectionalLight].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootDirectionalLight].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootDirectionalLight].Descriptor.ShaderRegister = 1;
 
-    rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[3].DescriptorTable.pDescriptorRanges = descriptorRange;
-    rootParameters[3].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+    rootParameters[kRootTexture].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[kRootTexture].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootTexture].DescriptorTable.pDescriptorRanges = descriptorRange;
+    rootParameters[kRootTexture].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
 
     // 視点ごとのビュー射影（b1, VS）。立体視で視点ごとに差し替える。
-    rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-    rootParameters[4].Descriptor.ShaderRegister = 1;
+    rootParameters[kRootViewProjection].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootViewProjection].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[kRootViewProjection].Descriptor.ShaderRegister = 1;
 
     // 点光源の配列（b2, PS）。シーン共通で1回だけバインドする。
-    rootParameters[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[5].Descriptor.ShaderRegister = 2;
+    rootParameters[kRootPointLights].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootPointLights].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootPointLights].Descriptor.ShaderRegister = 2;
 
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);
@@ -187,7 +192,20 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
 
     // BlendState（全色要素を書き込む）
     D3D12_BLEND_DESC blendDesc{};
-    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    auto& rt = blendDesc.RenderTarget[0];
+
+    rt.BlendEnable = TRUE;
+
+    rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    rt.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    rt.BlendOp = D3D12_BLEND_OP_ADD;
+
+    rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rt.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+    rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     // RasterizerState（カリング(既定は裏面), 塗りつぶし）
     D3D12_RASTERIZER_DESC rasterizerDesc{};

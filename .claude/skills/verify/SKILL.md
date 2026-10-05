@@ -12,8 +12,9 @@ Win32/DirectX12のGUIアプリ。サーフェスはゲームウィンドウ（�
 & "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" CG3.slnx /p:Configuration=Debug /p:Platform=x64 /m /verbosity:minimal /nologo
 ```
 
-- ソリューションの `Release` はプロジェクトの `Development` 構成でビルドされる（ImGuiなし・最適化なし・assert有効）。
-  プロジェクトの `Release`（NDEBUG・LTCG）を確かめるときはアプリの vcxproj を `/p:Configuration=Release` で直接ビルドする。
+- 構成は Debug / Development / Release の3つで、ソリューションの各構成は同じ名前のプロジェクト構成でビルドされる。
+  Development = ImGuiなし・assert有効（NDEBUGなし）・アプリ（Sandbox/Game）は /Od、Engine.lib は /O2 + /GL（アプリのリンク時に /LTCG で再リンクされる）。
+  Release = NDEBUG・全プロジェクト /O2 + /GL・LTCG。エンジン全体に効く変更は3構成ともビルドして確かめる。
 - 全構成 /W4 警告=エラー。`/t:Rebuild`やCleanは使わない（DirectXTexのシェーダー.incが消えて9009で死ぬ。消えたら `git restore externals/DirectXTex/Shaders/Compiled/`）。
 - ImGui（USE_IMGUI）はDebugのみ。
 

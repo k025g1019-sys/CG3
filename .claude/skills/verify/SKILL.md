@@ -1,4 +1,4 @@
-# Verify DirectXGame (CG2)
+# Verify DirectXGame (CG3)
 
 Win32/DirectX12のGUIアプリ。サーフェスはゲームウィンドウ（キー入力＋描画結果）。
 
@@ -9,7 +9,7 @@ Win32/DirectX12のGUIアプリ。サーフェスはゲームウィンドウ（�
 ## Build
 
 ```powershell
-& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" CG2.slnx /p:Configuration=Debug /p:Platform=x64 /m /verbosity:minimal /nologo
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" CG3.slnx /p:Configuration=Debug /p:Platform=x64 /m /verbosity:minimal /nologo
 ```
 
 - ソリューションの `Release` はプロジェクトの `Development` 構成でビルドされる（ImGuiなし・最適化なし・assert有効）。

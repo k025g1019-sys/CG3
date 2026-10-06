@@ -32,12 +32,28 @@ void PipelineManager::Initialize(ID3D12Device* device) {
 
     pipelines_[size_t(Pipeline::kLine)] = CreateLinePipeline(
         device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get());
+
+    // --- パーティクル（Instancing）用：シェーダーとRootSignatureはObject3d用とは別 ---
+    ComPtr<IDxcBlob> particleVertexShader =
+        ShaderCompiler::GetInstance()->Compile(L"Particle.VS.hlsl", L"vs_6_0");
+    assert(particleVertexShader != nullptr);
+    ComPtr<IDxcBlob> particlePixelShader =
+        ShaderCompiler::GetInstance()->Compile(L"Particle.PS.hlsl", L"ps_6_0");
+    assert(particlePixelShader != nullptr);
+
+    particleRootSignature_ = CreateParticleRootSignature(device);
+
+    // InputLayout・ブレンド・深度などの設定は標準と同じ（RootSignatureとシェーダーだけが違う）
+    pipelines_[size_t(Pipeline::kParticle)] = CreateStandardPipeline(
+        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get(),
+        D3D12_CULL_MODE_BACK);
 }
 
 void PipelineManager::Finalize() {
     for (auto& pipeline : pipelines_) {
         pipeline.Reset();
     }
+    particleRootSignature_.Reset();
     rootSignature_.Reset();
 }
 
@@ -133,6 +149,83 @@ ComPtr<ID3D12RootSignature> PipelineManager::CreateRootSignature(ID3D12Device* d
     descriptionRootSignature.NumParameters = _countof(rootParameters);
 
     // Samplerの設定（s0, バイリニア, WRAP）
+    D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+    staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR; // バイリニアフィルタ
+    staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // 0～1の範囲外をリピート
+    staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER; // 比較しない
+    staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX; // ありったけのMipmapを使う
+    staticSamplers[0].ShaderRegister = 0; // レジスタ番号0を使う
+    staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // PixelShaderで使う
+    descriptionRootSignature.pStaticSamplers = staticSamplers;
+    descriptionRootSignature.NumStaticSamplers = _countof(staticSamplers);
+
+    // シリアライズしてバイナリにする
+    ComPtr<ID3DBlob> signatureBlob;
+    ComPtr<ID3DBlob> errorBlob;
+    HRESULT hr = D3D12SerializeRootSignature(&descriptionRootSignature,
+        D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
+    if (FAILED(hr)) {
+        Log(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+        assert(false);
+    }
+
+    // バイナリを元に生成
+    ComPtr<ID3D12RootSignature> rootSignature;
+    hr = device->CreateRootSignature(0,
+        signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
+        IID_PPV_ARGS(&rootSignature));
+    assert(SUCCEEDED(hr));
+
+    return rootSignature;
+}
+
+ComPtr<ID3D12RootSignature> PipelineManager::CreateParticleRootSignature(ID3D12Device* device) {
+    // RootSignatureの基本設定
+    D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
+    descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    // Instancing用（StructuredBuffer）のDescriptorRange（VSのt0）
+    D3D12_DESCRIPTOR_RANGE descriptorRangeForInstancing[1] = {};
+    descriptorRangeForInstancing[0].BaseShaderRegister = 0; // 0から始まる
+    descriptorRangeForInstancing[0].NumDescriptors = 1; // 数は1つ
+    descriptorRangeForInstancing[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
+    descriptorRangeForInstancing[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // Offsetを自動計算
+
+    // テクスチャ用のDescriptorRange（PSのt0）
+    D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
+    descriptorRange[0].BaseShaderRegister = 0; // 0から始まる
+    descriptorRange[0].NumDescriptors = 1; // 数は1つ
+    descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
+    descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // Offsetを自動計算
+
+    // RootParameter（並びは ParticleRootParameter 列挙と一致させる）
+    D3D12_ROOT_PARAMETER rootParameters[kParticleRootParameterCount] = {};
+    rootParameters[kParticleRootMaterial].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kParticleRootMaterial].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kParticleRootMaterial].Descriptor.ShaderRegister = 0;
+
+    // Object3d用ではCBV（ワールド行列）だった[1]を、StructuredBufferのSRV（DescriptorTable）にする
+    rootParameters[kParticleRootInstancing].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // DescriptorTableを使う
+    rootParameters[kParticleRootInstancing].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; // VertexShaderで使う
+    rootParameters[kParticleRootInstancing].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancing; // Tableの中身の配列を指定
+    rootParameters[kParticleRootInstancing].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancing); // Tableで利用する数
+
+    rootParameters[kParticleRootTexture].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[kParticleRootTexture].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kParticleRootTexture].DescriptorTable.pDescriptorRanges = descriptorRange;
+    rootParameters[kParticleRootTexture].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+
+    // 視点ごとのビュー射影（b1, VS）。立体視で視点ごとに差し替える。
+    rootParameters[kParticleRootViewProjection].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kParticleRootViewProjection].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[kParticleRootViewProjection].Descriptor.ShaderRegister = 1;
+
+    descriptionRootSignature.pParameters = rootParameters;
+    descriptionRootSignature.NumParameters = _countof(rootParameters);
+
+    // Samplerの設定（s0, バイリニア, WRAP。標準RootSignatureと同じ）
     D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
     staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR; // バイリニアフィルタ
     staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // 0～1の範囲外をリピート

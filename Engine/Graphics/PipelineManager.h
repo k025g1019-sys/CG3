@@ -7,7 +7,7 @@
 namespace Engine {
 
 /// <summary>
-/// RootSignatureと用途別PSOを一括生成・所有するレジストリ。
+/// RootSignature（標準・パーティクル用）と用途別PSOを一括生成・所有するレジストリ。
 /// 描画側はGet(Pipeline::～)でPSOを取得するだけでよく、
 /// シェーダーコンパイルやPSO生成の詳細を知る必要がない。
 /// </summary>
@@ -19,6 +19,7 @@ public:
         kStandard,  // 裏面カリング（通常の3Dオブジェクト・スプライト）
         kNoCull,    // カリング無効（内側から見る天球など）
         kLine,      // ライントポロジ・深度無効（選択オブジェクトの軸ギズモなど常に手前に描く線分）
+        kParticle,  // Instancing（パーティクル）。パーティクル用RootSignatureと組で使う
 
         kCount,     // PSOの総数（enumの末尾に置くこと）
     };
@@ -35,20 +36,35 @@ public:
         kRootParameterCount,        // パラメータ数（enumの末尾に置くこと）
     };
 
+    // パーティクル用RootSignatureのパラメータ番号（ライティングしないため光源は持たない）
+    enum ParticleRootParameter : UINT {
+        kParticleRootMaterial = 0,        // b0 [PS] マテリアル（全インスタンス共通）
+        kParticleRootInstancing = 1,      // t0 [VS] インスタンスごとのワールド行列（StructuredBuffer。DescriptorTable）
+        kParticleRootTexture = 2,         // t0 [PS] テクスチャ（DescriptorTable）
+        kParticleRootViewProjection = 3,  // b1 [VS] 視点ごとのビュー射影
+
+        kParticleRootParameterCount,      // パラメータ数（enumの末尾に置くこと）
+    };
+
     static PipelineManager* GetInstance();
 
-    // 標準シェーダーをコンパイルし、RootSignatureと全PSOを生成する
+    // 標準・パーティクル用シェーダーをコンパイルし、RootSignatureと全PSOを生成する
     // （ShaderCompiler::Initializeの後に呼ぶ）
     void Initialize(ID3D12Device* device);
 
     // 全PSOとRootSignatureを解放する（リソースリークチェックより前に呼ぶ）
     void Finalize();
 
+    // 標準RootSignature（kParticle以外のPSO用）
     ID3D12RootSignature* GetRootSignature() const { return rootSignature_.Get(); }
+
+    // パーティクル用RootSignature（kParticleのPSO用。パラメータ番号はParticleRootParameter）
+    ID3D12RootSignature* GetParticleRootSignature() const { return particleRootSignature_.Get(); }
 
     ID3D12PipelineState* Get(Pipeline pipeline) const;
 
-    // PSOと、それに合うプリミティブトポロジ（線分PSOならライン、それ以外は三角形）をまとめて設定する
+    // PSOと、それに合うプリミティブトポロジ（線分PSOならライン、それ以外は三角形）をまとめて設定する。
+    // （RootSignatureは設定しない。kParticleはパーティクル用RootSignatureを設定してから使う）
     void SetPipeline(ID3D12GraphicsCommandList* commandList, Pipeline pipeline) const;
 
 public:
@@ -73,6 +89,10 @@ public:
     // このプロジェクト標準のRootSignatureを生成する
     // (b0:Material[PS], b0:Transform[VS], b1:Light[PS], t0:Texture[PS], s0:Sampler)
     static Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(ID3D12Device* device);
+
+    // パーティクル（Instancing）用のRootSignatureを生成する
+    // (b0:Material[PS], t0:Instancing[VS], t0:Texture[PS], b1:ViewProjection[VS], s0:Sampler)
+    static Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateParticleRootSignature(ID3D12Device* device);
 
     // このプロジェクト標準のInputLayout/各種Stateで描画パイプラインを生成する。
     // cullModeで裏面カリングの挙動を変えられる（天球は内側から見るためNONEを指定する）。
@@ -104,6 +124,9 @@ private:
 private:
 
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
+
+    // Object3d用とは別に作って管理する（rootParameters[1]がCBVではなくStructuredBufferのSRVになる）
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> particleRootSignature_;
 
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelines_[size_t(Pipeline::kCount)];
 };

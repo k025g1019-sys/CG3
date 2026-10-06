@@ -83,13 +83,13 @@ void Mesh::CreateCube(ID3D12Device* device) {
 		indices.data(), uint32_t(indices.size()));
 }
 
-void Mesh::Draw(ID3D12GraphicsCommandList* commandList) const {
+void Mesh::Draw(ID3D12GraphicsCommandList* commandList, uint32_t instanceCount) const {
 	commandList->IASetVertexBuffers(0, 1, &vbv_);
 	if (indexCount_ > 0) {
 		commandList->IASetIndexBuffer(&ibv_);
-		commandList->DrawIndexedInstanced(indexCount_, 1, 0, 0, 0);
+		commandList->DrawIndexedInstanced(indexCount_, instanceCount, 0, 0, 0);
 	} else {
-		commandList->DrawInstanced(vertexCount_, 1, 0, 0);
+		commandList->DrawInstanced(vertexCount_, instanceCount, 0, 0);
 	}
 }
 

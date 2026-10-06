@@ -1,4 +1,5 @@
 #include "Engine/Graphics/DescriptorHeapManager.h"
+#include <algorithm>
 #include <cassert>
 
 namespace Engine {
@@ -16,12 +17,27 @@ void DescriptorHeapManager::Initialize(ID3D12Device* device, ID3D12DescriptorHea
     descriptorSize_ = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     capacity_ = srvHeap->GetDesc().NumDescriptors;
     nextIndex_ = 0;
+    freeIndices_.clear();
 }
 
 uint32_t DescriptorHeapManager::AllocateSrv() {
+    // 返されたスロットがあれば再利用する（シーンを作り直すたびに空きが減らないように）
+    if (!freeIndices_.empty()) {
+        const uint32_t index = freeIndices_.back();
+        freeIndices_.pop_back();
+        return index;
+    }
+
     // ヒープが満杯なら割り当て失敗（capacityを増やすこと）
     assert(nextIndex_ < capacity_);
     return nextIndex_++;
+}
+
+void DescriptorHeapManager::FreeSrv(uint32_t index) {
+    // 払い出していないスロットや、二重に返されたスロットは受け付けない
+    assert(index < nextIndex_);
+    assert(std::find(freeIndices_.begin(), freeIndices_.end(), index) == freeIndices_.end());
+    freeIndices_.push_back(index);
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetSrvCPUHandle(uint32_t index) const {

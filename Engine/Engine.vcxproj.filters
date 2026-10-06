@@ -141,6 +141,9 @@
     <ClCompile Include="Rendering\Object3D.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\ParticleSystem.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Rendering\RenderContext.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
@@ -302,6 +305,9 @@
     <ClInclude Include="Rendering\Object3D.h">
       <Filter>Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\ParticleSystem.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
     <ClInclude Include="Rendering\Primitive.h">
       <Filter>Rendering</Filter>
     </ClInclude>
@@ -309,6 +315,9 @@
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\Sprite.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\StructuredBuffer.h">
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\TransformData3D.h">
@@ -377,6 +386,15 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\Shaders\Object3d.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\Shaders\Particle.PS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\Shaders\Particle.VS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\Shaders\Particle.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Engine.props" />

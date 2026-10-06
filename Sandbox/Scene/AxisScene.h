@@ -4,14 +4,16 @@
 
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/Object3D.h"
+#include "Engine/Rendering/Sprite.h"
 #include "Sandbox/Scene/DemoSceneBase.h"
 
-// 2つ目のデモシーン。三角形・球・axis.obj・teapot.obj・multiMesh.objを描画する
+// 2つ目のデモシーン。三角形・球・axis.obj・teapot.obj・multiMesh.objと、
+// GameSceneから移した5つのOBJモデル（plane・bunny・multiMaterial・suzanne・fence）・2Dスプライトを描画する
 // （Tabキーで最初のシーンと切り替え）。
 // カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBase（とエンジンのBaseScene）が提供する。
 class AxisScene : public DemoSceneBase {
 protected:
-    // 三角形・OBJ・球の生成
+    // 三角形・OBJ・球・スプライトの生成
     void OnInitializeObjects() override;
 
     // 各オブジェクトの行列計算・定数バッファ更新
@@ -23,6 +25,9 @@ protected:
 #ifdef USE_IMGUI
     // "3D Objects"ウィンドウ内の各オブジェクトの編集UI
     void OnDrawObjectsImGui() override;
+
+    // "2D Objects"ウィンドウ（スプライトの編集UI）
+    void OnDrawExtraImGui() override;
 
     // 各オブジェクトのカリング判定結果表示
     void OnDrawCullingImGui() override;
@@ -48,6 +53,14 @@ private:
     Engine::Object3D multiMesh_;  // multiMesh.obj（2サブメッシュ・1マテリアル）
     Engine::Object3D sphere_;
 
+    // --- GameSceneから移したオブジェクト（上のオブジェクトと画面上で重ならない位置に置く）---
+    Engine::Object3D plane_;          // plane.obj
+    Engine::Object3D bunny_;          // bunny.obj（スタンフォードバニー）
+    Engine::Object3D multiMaterial_;  // multiMaterial.obj（2サブメッシュ・2マテリアル）
+    Engine::Object3D suzanne_;        // suzanne.obj（UVなし・テクスチャなし）
+    Engine::Object3D fence_;          // fence.obj（透明部分をdiscardで抜く）
+    Engine::Sprite sprite_;
+
     // --- 球の分割数（ImGuiで変更すると頂点を再生成する）---
     uint32_t subdivision_ = 16;
     uint32_t prevSubdivision_ = 16;
@@ -57,7 +70,16 @@ private:
     int axisTextureIndex_ = 0;
     int teapotTextureIndex_ = 0;
     int multiMeshTextureIndex_ = 0;
-    // 三角形・球はtextureHandles_のインデックス（球の初期テクスチャはuvChecker）
+    int planeTextureIndex_ = 0;
+    int bunnyTextureIndex_ = 0;
+    int multiMaterialTextureIndex_ = 0;
+    int suzanneTextureIndex_ = 0;
+    int fenceTextureIndex_ = 0;
+    // 三角形・球・スプライトはtextureHandles_のインデックス（球の初期テクスチャはuvChecker）
     int triangleTextureIndex_ = 0;
     int sphereTextureIndex_ = 0;
+    int spriteTextureIndex_ = 0;
+
+    // --- スプライト描画のオン/オフ（ImGuiで切り替え） ---
+    bool drawSprite_ = true;
 };

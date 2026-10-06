@@ -56,6 +56,7 @@ public:
     void Finalize();
 
     // 毎フレーム1回呼ぶ。前フレームの状態を退避し、最新の全キー状態を取得する
+    // （ウィンドウが前面にないあいだは、キーボードとマウスは何も押されていない扱いになる）
     void Update();
 
     /// <summary>
@@ -78,7 +79,7 @@ public:
 
     // --- マウス ---
 
-    // 押している間ずっとtrueを返す（buttonはMouseButton）
+    // 押している間ずっとtrueを返す（buttonはMouseButton。範囲外（0〜7以外）ならfalse）
     bool IsMousePress(int button) const;
 
     // 押した瞬間のフレームだけtrueを返す
@@ -98,6 +99,7 @@ public:
 
     // --- ゲームパッド（XInput） ---
     // playerIndexは0〜3（XUSER_MAX_COUNT-1）。既定は0（プレイヤー1）。
+    // 範囲外を渡すと、取得系はfalse / 0を返し、振動系は何もしない。
 
     // 指定プレイヤーのコントローラーが接続されているか
     bool IsPadConnected(int playerIndex = 0) const;
@@ -147,6 +149,12 @@ private:
 
     Input& operator=(const Input&) = delete;
 
+    // playerIndexが0〜3（XUSER_MAX_COUNT-1）の範囲内か
+    static bool IsValidPlayerIndex(int playerIndex);
+
+    // マウスのボタン番号が0〜7（DIMOUSESTATE2のボタン数-1）の範囲内か
+    bool IsValidMouseButton(int button) const;
+
     // トリガーの生値に遊び（デッドゾーン）を適用し、0.0〜1.0へ正規化する
     static float ApplyTriggerDeadzone(BYTE value);
 
@@ -171,13 +179,14 @@ private:
     DIMOUSESTATE2 mouseStatePre_ = {};  // 前フレームのマウス状態
 
     // --- ゲームパッド（XInput） ---
-    XINPUT_STATE padState_[XUSER_MAX_COUNT] = {};     // 今フレームのパッド状態（プレイヤー別）
-    XINPUT_STATE padStatePre_[XUSER_MAX_COUNT] = {};  // 前フレームのパッド状態
-    bool padConnected_[XUSER_MAX_COUNT] = {};         // 各プレイヤーの接続状態
-    float vibrationTimer_[XUSER_MAX_COUNT] = {};      // 振動の自動停止までの残り秒数（0=自動停止なし）
-
-    LARGE_INTEGER perfFrequency_ = {};  // 高分解能タイマーの周波数（振動の時間管理用）
-    LARGE_INTEGER lastCounter_ = {};    // 前回Update時のカウンタ（デルタ時間算出用）
+    // 1人分の状態をまとめた構造体
+    struct Pad {
+        XINPUT_STATE state = {};      // 今フレームの状態
+        XINPUT_STATE statePre = {};   // 前フレームの状態
+        bool connected = false;       // 接続されているか
+        float vibrationTimer = 0.0f;  // 振動の自動停止までの残り秒数（0=自動停止なし）
+    };
+    Pad pads_[XUSER_MAX_COUNT];  // プレイヤー別（添字がplayerIndex）
 };
 
 } // namespace Engine

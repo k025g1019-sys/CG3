@@ -43,6 +43,9 @@
     <Filter Include="String">
       <UniqueIdentifier>{706eb51c-373d-5f2c-a3c4-7f03973096d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tools">
+      <UniqueIdentifier>{a7c2d9e1-5b3f-4f8a-9c21-6e0d4b7f1a35}</UniqueIdentifier>
+    </Filter>
     <Filter Include="imgui">
       <UniqueIdentifier>{d18edae6-b347-5db6-9a82-859b5a811ebb}</UniqueIdentifier>
     </Filter>
@@ -155,6 +158,12 @@
     </ClCompile>
     <ClCompile Include="String\ConvertString.cpp">
       <Filter>String</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\SpriteCanvas.cpp">
+      <Filter>Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\SpriteEditor.cpp">
+      <Filter>Tools</Filter>
     </ClCompile>
     <ClCompile Include="..\externals\imgui\imgui.cpp">
       <Filter>imgui</Filter>
@@ -328,6 +337,12 @@
     </ClInclude>
     <ClInclude Include="String\ConvertString.h">
       <Filter>String</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\SpriteCanvas.h">
+      <Filter>Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\SpriteEditor.h">
+      <Filter>Tools</Filter>
     </ClInclude>
     <ClInclude Include="..\externals\imgui\imconfig.h">
       <Filter>imgui</Filter>

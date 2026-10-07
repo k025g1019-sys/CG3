@@ -2,7 +2,13 @@
 
 #include <cassert>
 #include <cmath>    // sqrtf
-#include <cstring>  // std::memcpy
+#include <cstring>  // std::memcpy, std::memset
+
+#include "Engine/Core/Time.h"
+
+#ifdef USE_IMGUI
+#include "externals/imgui/imgui.h"
+#endif
 
 // DirectInput関連ライブラリ（dxguid.libはGUID_SysKeyboard等のため）
 #pragma comment(lib, "dinput8.lib")
@@ -52,9 +58,7 @@ void Input::Initialize(HWND hwnd) {
     hr = mouse_->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
     assert(SUCCEEDED(hr));
 
-    // 振動の自動停止に使う高分解能タイマーを初期化（XInput本体の初期化は不要）
-    QueryPerformanceFrequency(&perfFrequency_);
-    QueryPerformanceCounter(&lastCounter_);
+    // ゲームパッド（XInput）はデバイスの生成が不要なので、ここでは何もしない
 }
 
 void Input::Finalize() {
@@ -80,11 +84,12 @@ void Input::Update() {
     std::memcpy(keyPre_, key_, sizeof(key_));
     mouseStatePre_ = mouseState_;
 
-    // キーボードの使用を開始（フォーカス喪失からの復帰のため毎フレーム呼ぶ）
-    keyboard_->Acquire();
-
-    // 全キーの入力状態をまとめて取得
-    keyboard_->GetDeviceState(static_cast<DWORD>(sizeof(key_)), key_);
+    // 全キーの入力状態をまとめて取得する（Acquireはフォーカス喪失からの復帰のため毎フレーム呼ぶ）。
+    // 取得できないとき（ウィンドウが前面にない等）はゼロクリアし、押しっぱなし扱いが残らないようにする
+    if (FAILED(keyboard_->Acquire()) ||
+        FAILED(keyboard_->GetDeviceState(static_cast<DWORD>(sizeof(key_)), key_))) {
+        std::memset(key_, 0, sizeof(key_));
+    }
 
     // マウスの状態を取得（フォーカス喪失時は移動量が残らないようゼロクリアする）
     if (FAILED(mouse_->Acquire()) ||
@@ -92,32 +97,41 @@ void Input::Update() {
         mouseState_ = {};
     }
 
-    // --- ゲームパッド（XInput） ---
-    // 全プレイヤー分の状態を取得（前フレームを退避し、未接続スロットはゼロ化）
-    for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
-        padStatePre_[i] = padState_[i];
-        DWORD result = XInputGetState(static_cast<DWORD>(i), &padState_[i]);
-        padConnected_[i] = (result == ERROR_SUCCESS);
-        if (!padConnected_[i]) {
-            padState_[i] = {};  // 未接続はゼロ化（ボタンが押下扱いにならないように）
+#ifdef USE_IMGUI
+    // ImGuiのウィンドウを操作している間（文字入力・スライダー操作・ウィンドウ上のマウス操作など）は、
+    // その操作がゲームにも届かないよう、キーボード／マウスボタン／ホイールは何も押されていない扱いにする
+    // （カーソル位置はそのまま）。ゲーム画面をクリックすればImGuiのフォーカスが外れ、通常どおり届く
+    if (ImGui::GetCurrentContext() != nullptr) {
+        const ImGuiIO& io = ImGui::GetIO();
+        if (io.WantCaptureKeyboard) {
+            std::memset(key_, 0, sizeof(key_));
+        }
+        if (io.WantCaptureMouse) {
+            std::memset(mouseState_.rgbButtons, 0, sizeof(mouseState_.rgbButtons));
+            mouseState_.lZ = 0;
         }
     }
+#endif
 
-    // 振動の自動停止タイマーを進める
-    LARGE_INTEGER now;
-    QueryPerformanceCounter(&now);
-    float deltaTime = static_cast<float>(now.QuadPart - lastCounter_.QuadPart) /
-                      static_cast<float>(perfFrequency_.QuadPart);
-    lastCounter_ = now;
-    // ブレークポイント等で時間が大きく飛んだ場合に備えて上限を設ける
-    if (deltaTime > 0.1f) {
-        deltaTime = 0.1f;
-    }
+    // --- ゲームパッド（XInput） ---
+    // 振動の自動停止に使う経過時間（エンジンの時間管理から取得。処理落ち時の上限もTime側で適用済み）
+    const float deltaTime = Time::GetDeltaTime();
+
     for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
-        if (vibrationTimer_[i] > 0.0f) {
-            vibrationTimer_[i] -= deltaTime;
-            if (vibrationTimer_[i] <= 0.0f) {
-                vibrationTimer_[i] = 0.0f;
+        Pad& pad = pads_[i];
+
+        // 前フレームの状態を退避して最新の状態を取得する
+        pad.statePre = pad.state;
+        pad.connected = (XInputGetState(static_cast<DWORD>(i), &pad.state) == ERROR_SUCCESS);
+        if (!pad.connected) {
+            pad.state = {};  // 未接続はゼロ化（ボタンが押下扱いにならないように）
+        }
+
+        // 振動の自動停止タイマーを進める
+        if (pad.vibrationTimer > 0.0f) {
+            pad.vibrationTimer -= deltaTime;
+            if (pad.vibrationTimer <= 0.0f) {
+                pad.vibrationTimer = 0.0f;
                 ApplyVibration(i, 0.0f, 0.0f);  // 時間切れで停止
             }
         }
@@ -139,15 +153,24 @@ bool Input::IsRelease(uint8_t keyNumber) const {
 }
 
 bool Input::IsMousePress(int button) const {
+    if (!IsValidMouseButton(button)) {
+        return false;
+    }
     return (mouseState_.rgbButtons[button] & 0x80) != 0;
 }
 
 bool Input::IsMouseTrigger(int button) const {
+    if (!IsValidMouseButton(button)) {
+        return false;
+    }
     // 今フレームは押下、前フレームは非押下
     return (mouseState_.rgbButtons[button] & 0x80) != 0 && (mouseStatePre_.rgbButtons[button] & 0x80) == 0;
 }
 
 bool Input::IsMouseRelease(int button) const {
+    if (!IsValidMouseButton(button)) {
+        return false;
+    }
     // 今フレームは非押下、前フレームは押下
     return (mouseState_.rgbButtons[button] & 0x80) == 0 && (mouseStatePre_.rgbButtons[button] & 0x80) != 0;
 }
@@ -170,99 +193,112 @@ Vector2 Input::GetMousePosition() const {
 // --- ゲームパッド（XInput） ---
 
 bool Input::IsPadConnected(int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return false;
     }
-    return padConnected_[playerIndex];
+    return pads_[playerIndex].connected;
 }
 
 bool Input::IsPadPress(int button, int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return false;
     }
-    return (padState_[playerIndex].Gamepad.wButtons & button) != 0;
+    return (pads_[playerIndex].state.Gamepad.wButtons & button) != 0;
 }
 
 bool Input::IsPadTrigger(int button, int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return false;
     }
     // 今フレームは押下、前フレームは非押下
-    bool isPress = (padState_[playerIndex].Gamepad.wButtons & button) != 0;
-    bool wasPress = (padStatePre_[playerIndex].Gamepad.wButtons & button) != 0;
+    const Pad& pad = pads_[playerIndex];
+    bool isPress = (pad.state.Gamepad.wButtons & button) != 0;
+    bool wasPress = (pad.statePre.Gamepad.wButtons & button) != 0;
     return isPress && !wasPress;
 }
 
 bool Input::IsPadRelease(int button, int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return false;
     }
     // 今フレームは非押下、前フレームは押下
-    bool isPress = (padState_[playerIndex].Gamepad.wButtons & button) != 0;
-    bool wasPress = (padStatePre_[playerIndex].Gamepad.wButtons & button) != 0;
+    const Pad& pad = pads_[playerIndex];
+    bool isPress = (pad.state.Gamepad.wButtons & button) != 0;
+    bool wasPress = (pad.statePre.Gamepad.wButtons & button) != 0;
     return !isPress && wasPress;
 }
 
 float Input::GetLeftTrigger(int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return 0.0f;
     }
-    return ApplyTriggerDeadzone(padState_[playerIndex].Gamepad.bLeftTrigger);
+    return ApplyTriggerDeadzone(pads_[playerIndex].state.Gamepad.bLeftTrigger);
 }
 
 float Input::GetRightTrigger(int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return 0.0f;
     }
-    return ApplyTriggerDeadzone(padState_[playerIndex].Gamepad.bRightTrigger);
+    return ApplyTriggerDeadzone(pads_[playerIndex].state.Gamepad.bRightTrigger);
 }
 
 Vector2 Input::GetLeftStick(int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return { 0.0f, 0.0f };
     }
+    const XINPUT_GAMEPAD& gamepad = pads_[playerIndex].state.Gamepad;
     return ApplyStickDeadzone(
-        padState_[playerIndex].Gamepad.sThumbLX,
-        padState_[playerIndex].Gamepad.sThumbLY,
+        gamepad.sThumbLX,
+        gamepad.sThumbLY,
         static_cast<float>(XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE));
 }
 
 Vector2 Input::GetRightStick(int playerIndex) const {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return { 0.0f, 0.0f };
     }
+    const XINPUT_GAMEPAD& gamepad = pads_[playerIndex].state.Gamepad;
     return ApplyStickDeadzone(
-        padState_[playerIndex].Gamepad.sThumbRX,
-        padState_[playerIndex].Gamepad.sThumbRY,
+        gamepad.sThumbRX,
+        gamepad.sThumbRY,
         static_cast<float>(XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE));
 }
 
 void Input::SetVibration(float leftMotor, float rightMotor, int playerIndex) {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return;
     }
-    vibrationTimer_[playerIndex] = 0.0f;  // 自動停止なし（StopVibrationまで持続）
+    pads_[playerIndex].vibrationTimer = 0.0f;  // 自動停止なし（StopVibrationまで持続）
     ApplyVibration(playerIndex, leftMotor, rightMotor);
 }
 
 void Input::SetVibrationForTime(float leftMotor, float rightMotor, float seconds, int playerIndex) {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return;
     }
     if (seconds <= 0.0f) {
         StopVibration(playerIndex);  // 0以下は即停止
         return;
     }
-    vibrationTimer_[playerIndex] = seconds;
+    pads_[playerIndex].vibrationTimer = seconds;
     ApplyVibration(playerIndex, leftMotor, rightMotor);
 }
 
 void Input::StopVibration(int playerIndex) {
-    if (playerIndex < 0 || playerIndex >= XUSER_MAX_COUNT) {
+    if (!IsValidPlayerIndex(playerIndex)) {
         return;
     }
-    vibrationTimer_[playerIndex] = 0.0f;
+    pads_[playerIndex].vibrationTimer = 0.0f;
     ApplyVibration(playerIndex, 0.0f, 0.0f);
+}
+
+bool Input::IsValidPlayerIndex(int playerIndex) {
+    return playerIndex >= 0 && playerIndex < XUSER_MAX_COUNT;
+}
+
+bool Input::IsValidMouseButton(int button) const {
+    // ボタン数はDIMOUSESTATE2のrgbButtonsの要素数（8個）
+    return button >= 0 && button < static_cast<int>(_countof(mouseState_.rgbButtons));
 }
 
 float Input::ApplyTriggerDeadzone(BYTE value) {

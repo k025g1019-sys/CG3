@@ -43,6 +43,10 @@ public:
 
     Transform3D& GetTransform() { return transform_; }
 
+    // サイズ（基準解像度のピクセル）を変える（クアッドの頂点位置を書き換える。テクスチャのサイズに合わせ直すとき等に使う）
+    void SetSize(const Vector2& size);
+    Vector2 GetSize() const { return size_; }
+
     // UV変換（scale / rotate.z / translateを使用）
     Transform3D& GetUVTransform() { return uvTransform_; }
 
@@ -63,6 +67,8 @@ public:
 private:
 
     Mesh mesh_;  // クアッド（4頂点＋6インデックス）
+
+    Vector2 size_{ 0.0f, 0.0f };  // スプライトのサイズ（基準解像度のピクセル）
 
     Transform3D transform_{ { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
 

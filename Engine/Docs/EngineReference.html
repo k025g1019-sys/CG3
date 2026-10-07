@@ -1472,7 +1472,7 @@ void RecomputeBoundingSphere();</code>
   <!-- ---------------------------------------------------------- Input -->
   <section class="cls" id="Input">
     <div class="cls-head"><h3>Input</h3><span class="path">Engine/Input/Input.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
-    <p class="lead">キーボード・マウス（DirectInput）とゲームパッド（XInput、最大 4 人）の入力です。エンジンが毎フレーム状態を更新するので、ゲーム側は問い合わせるだけで済みます。キーごとに問い合わせるので、同時押しもそのまま判定できます。キーボードとマウスは、ウィンドウが前面にあるときだけ取得されます。</p>
+    <p class="lead">キーボード・マウス（DirectInput）とゲームパッド（XInput、最大 4 人）の入力です。エンジンが毎フレーム状態を更新するので、ゲーム側は問い合わせるだけで済みます。キーごとに問い合わせるので、同時押しもそのまま判定できます。キーボードとマウスは、ウィンドウが前面にあるときだけ取得されます。前面にないあいだは、何も押されていない扱いになります。</p>
     <div class="ex">
       <p class="ex-label">例: キーボードとパッドの両方で動かす</p>
 <pre class="code">#include "Engine/Input/Input.h"
@@ -1542,7 +1542,7 @@ if (input-&gt;IsTrigger(DIK_SPACE) || input-&gt;IsPadTrigger(kPadA)) {
         <code class="sig">bool IsMousePress(int button) const;
 bool IsMouseTrigger(int button) const;
 bool IsMouseRelease(int button) const;</code>
-        <div class="d">押している間／押した瞬間／離した瞬間。<code>button</code> は <code>kMouseLeft</code> などの <code>MouseButton</code>。</div>
+        <div class="d">押している間／押した瞬間／離した瞬間。<code>button</code> は <code>kMouseLeft</code> などの <code>MouseButton</code>。範囲外（0〜7 以外）の番号には false を返します。</div>
       </div>
       <div class="fn">
         <code class="sig">Vector2 GetMouseMove() const;</code>

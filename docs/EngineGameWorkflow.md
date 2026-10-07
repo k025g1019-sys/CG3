@@ -91,6 +91,7 @@ git worktree add ../DirectXGame-game AL4_develop
 | OBJモデル | `object.Initialize("resources/player.obj");`（同じファイルは1回だけ読み込まれる） |
 | 毎フレーム | `OnUpdate` で `object.Update();`、`OnDraw` で `object.Draw();` |
 | 2D画像 | `sprite.Initialize("resources/title.png", { 幅, 高さ });` → `Update()` / `Draw()` |
+| 2D画像をその場で描く | `Engine::SpriteEditor::GetInstance()->SetOpen(true);` で「Sprite Editor」ウィンドウを開いて描き、`sprite.SetTextureHandle(Engine::SpriteEditor::GetInstance()->GetTextureHandle());` で表示する（どちらも `#ifdef USE_IMGUI` の中）。気に入ったら PNG/JPG に保存（Debug / Development のみ。詳しくは `docs/SpriteEditor.md`） |
 | 当たり判定 | `Engine::IsCollision(a, b)`（`Engine/Math/Collision.h`。球・AABB・OBB・線分など） |
 | 曲線 | `Engine::Curve` の `GetPoint(t)`（`Engine/Math/Curve.h`） |
 | デバッグ線 | `Engine::DebugDraw::DrawSphere(sphere, color);` など（`OnUpdate` で毎フレーム呼ぶ） |

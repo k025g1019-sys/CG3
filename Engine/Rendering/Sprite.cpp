@@ -17,6 +17,7 @@ void Sprite::Initialize(uint32_t textureHandle, const Vector2& size) {
 	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
 
 	textureHandle_ = textureHandle;
+	size_ = size;
 
 	// クアッド（左上原点のスクリーン座標系。0:左下 / 1:左上 / 2:右下 / 3:右上）
 	VertexData vertices[4]{};
@@ -44,6 +45,17 @@ void Sprite::Initialize(uint32_t textureHandle, const Vector2& size) {
 	transformCB_.Create(device, DirectXCore::kFramesInFlight);
 	materialCB_.Create(device, DirectXCore::kFramesInFlight);
 	viewProjectionCB_.Create(device, DirectXCore::kFramesInFlight);
+}
+
+void Sprite::SetSize(const Vector2& size) {
+	size_ = size;
+
+	// クアッドの頂点位置だけ書き換える（並びはInitializeと同じ。UVはそのまま）
+	VertexData* vertices = mesh_.GetMappedVertices();
+	vertices[0].position = { 0.0f, size.y, 0.0f, 1.0f };
+	vertices[1].position = { 0.0f, 0.0f, 0.0f, 1.0f };
+	vertices[2].position = { size.x, size.y, 0.0f, 1.0f };
+	vertices[3].position = { size.x, 0.0f, 0.0f, 1.0f };
 }
 
 void Sprite::Update() {

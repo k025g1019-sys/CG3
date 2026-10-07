@@ -6,6 +6,10 @@
 
 #include "Engine/Core/Time.h"
 
+#ifdef USE_IMGUI
+#include "externals/imgui/imgui.h"
+#endif
+
 // DirectInput関連ライブラリ（dxguid.libはGUID_SysKeyboard等のため）
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
@@ -92,6 +96,22 @@ void Input::Update() {
         FAILED(mouse_->GetDeviceState(static_cast<DWORD>(sizeof(DIMOUSESTATE2)), &mouseState_))) {
         mouseState_ = {};
     }
+
+#ifdef USE_IMGUI
+    // ImGuiのウィンドウを操作している間（文字入力・スライダー操作・ウィンドウ上のマウス操作など）は、
+    // その操作がゲームにも届かないよう、キーボード／マウスボタン／ホイールは何も押されていない扱いにする
+    // （カーソル位置はそのまま）。ゲーム画面をクリックすればImGuiのフォーカスが外れ、通常どおり届く
+    if (ImGui::GetCurrentContext() != nullptr) {
+        const ImGuiIO& io = ImGui::GetIO();
+        if (io.WantCaptureKeyboard) {
+            std::memset(key_, 0, sizeof(key_));
+        }
+        if (io.WantCaptureMouse) {
+            std::memset(mouseState_.rgbButtons, 0, sizeof(mouseState_.rgbButtons));
+            mouseState_.lZ = 0;
+        }
+    }
+#endif
 
     // --- ゲームパッド（XInput） ---
     // 振動の自動停止に使う経過時間（エンジンの時間管理から取得。処理落ち時の上限もTime側で適用済み）

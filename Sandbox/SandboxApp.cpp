@@ -8,6 +8,7 @@
 
 #ifdef USE_IMGUI
 #include "Engine/Core/ImGuiManager.h"
+#include "Engine/Tools/SpriteEditor.h"
 #include "externals/imgui/imgui.h"
 #endif
 
@@ -28,6 +29,9 @@ void SandboxApp::Initialize() {
 		  "3D Objects", "2D Objects", "Camera", "Directional Light",
 		  "Point Lights", "Sound", "Frustum Culling", "Debug Draw" },
 		{ "Webcam" });
+
+	// スプライトエディタのウィンドウを最初から開いておく（"Display"ウィンドウのチェックで開閉できる）
+	SpriteEditor::GetInstance()->SetOpen(true);
 #endif
 
 	// 最初のシーンを予約する（生成・初期化はメインループの最初に行われる）。
@@ -141,6 +145,15 @@ void SandboxApp::DrawImGui() {
 		// エンジンの時間管理（60FPS固定）の経過時間
 		ImGui::Text("DeltaTime: %.2f ms / Total: %.1f s",
 			Time::GetDeltaTime() * 1000.0f, Time::GetTotalTime());
+
+		ImGui::Separator();
+
+		// スプライトエディタのウィンドウの開閉（描いた内容は"2D Objects"の"Sprite Editor Preview"に映る）
+		SpriteEditor* editor = SpriteEditor::GetInstance();
+		bool editorOpen = editor->IsOpen();
+		if (ImGui::Checkbox("Sprite Editor", &editorOpen)) {
+			editor->SetOpen(editorOpen);
+		}
 	}
 	ImGui::End();
 

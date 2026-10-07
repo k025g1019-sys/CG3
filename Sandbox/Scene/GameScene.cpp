@@ -3,6 +3,7 @@
 #include "Engine/Rendering/Mesh.h"
 
 #ifdef USE_IMGUI
+#include "Engine/Tools/SpriteEditor.h"
 #include "externals/imgui/imgui.h"
 #endif
 
@@ -31,6 +32,17 @@ void GameScene::OnInitializeObjects() {
 
 	// --- スプライト ---
 	sprite_.Initialize(textureHandles_[spriteTextureIndex_], { 640.0f, 360.0f });
+
+#ifdef USE_IMGUI
+	// --- スプライトエディタのプレビュー ---
+	// エディタのキャンバスのテクスチャハンドルをそのまま渡す。描いた内容は毎フレーム反映され、
+	// サイズ（ピクセル）はキャンバスのサイズと同じにする（OnUpdateObjectsで追従させる）。
+	SpriteEditor* editor = SpriteEditor::GetInstance();
+	editorSprite_.Initialize(
+		editor->GetTextureHandle(),
+		{ float(editor->GetCanvasWidth()), float(editor->GetCanvasHeight()) });
+	editorSprite_.GetTransform().translate = { 800.0f, 400.0f, 0.0f };
+#endif
 }
 
 void GameScene::OnUpdateObjects() {
@@ -42,6 +54,19 @@ void GameScene::OnUpdateObjects() {
 
 	// スプライト（正射影・2Dカリング。基準解像度との比に応じて等比スケールされる）
 	sprite_.Update();
+
+#ifdef USE_IMGUI
+	// エディタでキャンバスをリサイズ／画像を読み込んだときは、スプライトのサイズも合わせる
+	{
+		const SpriteEditor* editor = SpriteEditor::GetInstance();
+		const Vector2 canvasSize{ float(editor->GetCanvasWidth()), float(editor->GetCanvasHeight()) };
+		const Vector2 spriteSize = editorSprite_.GetSize();
+		if (spriteSize.x != canvasSize.x || spriteSize.y != canvasSize.y) {
+			editorSprite_.SetSize(canvasSize);
+		}
+		editorSprite_.Update();
+	}
+#endif
 }
 
 #ifndef NDEBUG
@@ -141,6 +166,28 @@ void GameScene::OnDrawExtraImGui() {
 		ImGui::PopID();
 		ImGui::TreePop();
 	}
+
+	// スプライトエディタで描いた内容のプレビュー（位置・拡大率はここで調整する）
+	if (ImGui::TreeNode("Sprite Editor Preview")) {
+		ImGui::PushID("SpriteEditorPreview");
+
+		SpriteEditor* editor = SpriteEditor::GetInstance();
+		ImGui::Checkbox("Draw", &drawEditorSprite_);
+		ImGui::SameLine();
+		if (ImGui::Button("Open Sprite Editor")) {
+			editor->SetOpen(true);
+		}
+		ImGui::Text("Canvas: %d x %d px", editor->GetCanvasWidth(), editor->GetCanvasHeight());
+		ImGui::Separator();
+
+		Transform3D& transform = editorSprite_.GetTransform();
+		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.05f);
+		ImGui::DragFloat3("translate", &transform.translate.x, 0.35f);
+
+		ImGui::PopID();
+		ImGui::TreePop();
+	}
 	ImGui::End();
 }
 
@@ -151,6 +198,7 @@ void GameScene::OnDrawCullingImGui() {
 	ImGui::Text("Suzanne       (sphere) : %s", VisibilityText(suzanne_.GetVisibility()));
 	ImGui::Text("Fence         (sphere) : %s", VisibilityText(fence_.GetVisibility()));
 	ImGui::Text("Sprite        (2D AABB): %s", VisibilityText(sprite_.GetVisibility()));
+	ImGui::Text("EditorSprite  (2D AABB): %s", VisibilityText(editorSprite_.GetVisibility()));
 }
 #endif
 
@@ -165,4 +213,11 @@ void GameScene::OnDrawObjects() {
 	if (drawSprite_) {
 		sprite_.Draw();
 	}
+
+#ifdef USE_IMGUI
+	// スプライトエディタのプレビュー
+	if (drawEditorSprite_) {
+		editorSprite_.Draw();
+	}
+#endif
 }

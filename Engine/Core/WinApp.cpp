@@ -40,6 +40,15 @@ LRESULT CALLBACK WinApp::WindowProc(
     case WM_DESTROY:
     PostQuitMessage(0);
     return 0;
+
+    case WM_SYSCOMMAND:
+    // Altキー単押し（やF10）でウィンドウが「メニューモード」に入ると、次のキーが来るまでメッセージループが
+    // 止まりゲームが固まる。このウィンドウにメニューは無いので、その要求だけ無視する
+    // （スプライトエディタの Alt+クリック／Alt+ホイールを安心して使えるようにする）
+    if ((wparam & 0xFFF0) == SC_KEYMENU) {
+        return 0;
+    }
+    break;
     }
 
     return DefWindowProc(hwnd, msg, wparam, lparam);
@@ -142,7 +151,10 @@ bool WinApp::ProcessMessage() {
 
     MSG msg{};
 
-    if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+    // たまっているメッセージを今フレームで全部処理する。
+    // 1フレームに1件だけだと、キー入力（1文字でKEYDOWN・CHAR・KEYUPの3件）やクリックが
+    // 何フレームも遅れて届き、ImGuiの文字入力やボタン操作がもたつく
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
 
         TranslateMessage(&msg);
         DispatchMessage(&msg);

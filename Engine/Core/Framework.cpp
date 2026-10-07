@@ -24,6 +24,7 @@
 
 #ifdef USE_IMGUI
 #include "Engine/Core/ImGuiManager.h"
+#include "Engine/Tools/SpriteEditor.h"
 #endif
 
 using Microsoft::WRL::ComPtr;
@@ -84,6 +85,9 @@ void Framework::Run() {
 		Update();
 
 		dxCore->BeginFrame();
+
+		// CPUから書き換えた動的テクスチャ（スプライトエディタのキャンバス等）の転送コマンドを、描画より前に積む
+		TextureManager::GetInstance()->BeginFrame(commandList);
 
 		// シーン描画前のフック（Webカメラテクスチャの転送コマンド発行など）
 		PreDraw(commandList);
@@ -194,6 +198,8 @@ void Framework::Initialize() {
 
 #ifdef USE_IMGUI
 	ImGuiManager::GetInstance()->Initialize();
+	// スプライトエディタ（Debug・Development限定。ウィンドウは SpriteEditor::SetOpen(true) で開く）
+	SpriteEditor::GetInstance()->Initialize();
 #endif
 }
 
@@ -244,6 +250,9 @@ void Framework::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex)
 #ifdef USE_IMGUI
 void Framework::DrawImGui() {
 	SceneManager::GetInstance()->DrawImGui();
+
+	// スプライトエディタのウィンドウ（開いているときだけ表示される。キャンバスのテクスチャ反映もここで行う）
+	SpriteEditor::GetInstance()->DrawImGui();
 }
 #endif
 

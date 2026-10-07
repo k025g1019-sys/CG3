@@ -6,6 +6,7 @@
 
 // 最初のデモシーン。2Dスプライトと5つのOBJモデル
 // （plane・bunny・multiMaterial・suzanne・fence）を描画する。
+// Debug・Developmentではスプライトエディタで描いた内容をそのまま映すプレビュー用スプライトも置く。
 // カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBase（とエンジンのBaseScene）が提供する。
 class GameScene : public DemoSceneBase {
 protected:
@@ -58,4 +59,10 @@ private:
 
     // --- スプライト描画のオン/オフ（ImGuiで切り替え） ---
     bool drawSprite_ = true;
+
+#ifdef USE_IMGUI
+    // --- スプライトエディタのプレビュー（キャンバスのテクスチャをそのまま表示。サイズはキャンバスに追従）---
+    Engine::Sprite editorSprite_;
+    bool drawEditorSprite_ = true;
+#endif
 };

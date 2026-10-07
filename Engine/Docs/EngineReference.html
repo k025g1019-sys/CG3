@@ -313,6 +313,8 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
           <li><a class="mono" href="#Primitive">Primitive</a></li>
           <li><a class="mono" href="#Material">Material / LightingMode</a></li>
           <li><a class="mono" href="#Sprite">Sprite</a></li>
+          <li><a class="mono" href="#SpriteEditor">SpriteEditor</a></li>
+          <li><a class="mono" href="#SpriteCanvas">SpriteCanvas</a></li>
           <li><a class="mono" href="#Camera">Camera</a></li>
           <li><a class="mono" href="#Light">DirectionalLight / PointLight</a></li>
           <li><a class="mono" href="#DebugDraw">DebugDraw</a></li>
@@ -461,15 +463,15 @@ void TitleScene::OnDraw() {
   <h2>1フレームの流れ</h2>
   <p class="group-lead"><code>Framework::Run()</code> のメインループが毎フレーム行う処理です。色の付いた行がゲーム側のコード（シーンの On～）が呼ばれるところです。</p>
   <ol class="frame">
-    <li>ウィンドウのメッセージを処理する（×ボタンでループを抜けて終了処理へ）</li>
+    <li>たまっているウィンドウのメッセージを全部処理する（×ボタンでループを抜けて終了処理へ）</li>
     <li>ウィンドウサイズが変わっていれば、スワップチェーンや深度バッファを作り直す</li>
     <li class="hook">予約されたシーンがあれば切り替える（GPUの完了待ち → 前のシーンを破棄 → 次のシーンの <code>OnInitialize</code>）<span class="who">SceneManager</span></li>
-    <li class="hook">[Debug・Development] ImGui のフレームを始め、<code>DrawImGui</code>（シーンの <code>OnDrawImGui</code>）で UI を組み立てる</li>
-    <li>入力を更新する（キーボード・マウス・パッドの今フレームの状態を取る）<span class="who">Input::Update</span></li>
+    <li class="hook">[Debug・Development] ImGui のフレームを始め、<code>DrawImGui</code>（シーンの <code>OnDrawImGui</code>）で UI を組み立てる。スプライトエディタのウィンドウもここで組み立てられ、描いた内容がテクスチャへ送られる</li>
+    <li>入力を更新する（キーボード・マウス・パッドの今フレームの状態を取る。ImGui を操作中のキー・マウスボタンは無視される）<span class="who">Input::Update</span></li>
     <li><kbd>F11</kbd> が押されたらボーダレス全画面を切り替える</li>
     <li>ゲームの描画先矩形をシーンへ渡す（Debug・Development では ImGui のドッキングで空いた中央領域）</li>
     <li class="hook"><code>Update</code> → シーンの <code>OnUpdate</code> → カメラの確定（ビュー・射影・視錐台）→ 光源を定数バッファへ</li>
-    <li>画面をクリアする（<code>BeginFrame</code>）→ <code>PreDraw</code> フック</li>
+    <li>画面をクリアする（<code>BeginFrame</code>）→ 動的テクスチャの転送コマンドを積む（<code>TextureManager::BeginFrame</code>）→ <code>PreDraw</code> フック</li>
     <li class="hook"><code>Draw</code> → ルートシグネチャ・カメラ・光源・標準PSOを設定 → シーンの <code>OnDraw</code> → <code>DebugDraw</code> の線</li>
     <li>[Debug・Development] ImGui を画面全体へ描く</li>
     <li>画面に表示する（<code>EndFrame</code>。垂直同期あり）→ このフレームの <code>DebugDraw</code> の線を消す</li>
@@ -558,6 +560,7 @@ void TitleScene::OnDraw() {
       <tr><td>16進数で色を指定する</td><td><code>obj.SetColor(0xFF6650FF);</code>（<code>0xRRGGBBAA</code> の8桁。Sprite・光源も同じ）</td><td><a href="#Color">ColorFromHex</a></td></tr>
       <tr><td>半透明にする</td><td><code>obj.SetColor({1, 1, 1, 0.5f});</code>（不透明な物の後に描く）</td><td><a href="#pitfalls">つまずきやすい点</a></td></tr>
       <tr><td>2D の画像・UI を出す</td><td><code>sprite.Initialize("resources/title.png", {640, 360});</code></td><td><a href="#Sprite">Sprite</a></td></tr>
+      <tr><td>画像をその場で描いて試す（開発中）</td><td><code>SpriteEditor::GetInstance()-&gt;SetOpen(true);</code> → <code>sprite.SetTextureHandle(SpriteEditor::GetInstance()-&gt;GetTextureHandle());</code>（<code>#ifdef USE_IMGUI</code>）</td><td><a href="#SpriteEditor">SpriteEditor</a></td></tr>
       <tr><td>カメラを動かす・見下ろす</td><td><code>camera_.GetTransform().translate = {0, 3, -12};</code> <code>rotate.x = 0.15f;</code></td><td><a href="#Camera">Camera</a></td></tr>
       <tr><td>光の向きを変える</td><td><code>directionalLight_.direction = {0.4f, -1.0f, 0.6f};</code></td><td><a href="#Light">DirectionalLight</a></td></tr>
       <tr><td>点光源を置く</td><td><code>pointLights_.lights[0].enabled = 1;</code> ほか位置・色・半径</td><td><a href="#Light">PointLight</a></td></tr>
@@ -604,6 +607,7 @@ void TitleScene::OnDraw() {
     <li><b><kbd>F11</kbd> はエンジンが使う</b>（全画面の切り替え）。<code>DebugCamera</code> を使うシーンでは <kbd>Enter</kbd> もデバッグカメラの ON/OFF に使われます。</li>
     <li><b>スティックは上が +Y、マウスは下が +Y。</b></li>
     <li><b>ウィンドウが後ろにあるとキーボードとマウスは取れない</b>（DirectInput の前面モード）。パッドは取れます。</li>
+    <li><b>ImGui を操作している間はキーとマウスボタンがゲームに届かない</b>（Debug・Development）。ImGui のウィンドウを触っている・文字を入力している・スプライトエディタにフォーカスがある間、<code>Input</code> のキーとマウスボタンは押されていない扱いになります。ゲーム画面をクリックすると戻ります。</li>
     <li><b><code>OnUpdate</code> の中の <code>GetViewMatrix()</code> は前のフレームの値。</b>カメラはOnUpdate の後に確定します。</li>
     <li><b>ImGui のコードは Release 構成には無い。</b><code>ImGui::</code> を使う行は必ず <code>#ifdef USE_IMGUI</code> の中に書きます（Release でビルドエラーになります）。</li>
   </ul>
@@ -1073,7 +1077,12 @@ void SetColor(uint32_t rgba);</code>
       </div>
       <div class="fn">
         <code class="sig">void SetTextureHandle(uint32_t textureHandle);</code>
-        <div class="d">テクスチャを差し替えます。</div>
+        <div class="d">テクスチャを差し替えます。<a href="#SpriteEditor">SpriteEditor</a> の <code>GetTextureHandle()</code> を渡すと、エディタで描いている内容がそのまま映ります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetSize(const Vector2&amp; size);
+Vector2 GetSize() const;</code>
+        <div class="d">表示サイズ（1280×720 基準のピクセル）を変えます・返します。4 頂点の位置を書き換えるだけなので、<code>Initialize</code> のやり直しは不要です。テクスチャの大きさに合わせ直すときなどに使います。</div>
       </div>
       <div class="fn">
         <code class="sig">VertexData* GetMappedVertices();</code>
@@ -1082,6 +1091,130 @@ void SetColor(uint32_t rgba);</code>
       <div class="fn">
         <code class="sig">FrustumVisibility GetVisibility() const;</code>
         <div class="d">直近の <code>Update()</code> で判定した、画面との重なり具合。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- SpriteEditor -->
+  <section class="cls" id="SpriteEditor">
+    <div class="cls-head"><h3>SpriteEditor</h3><span class="path">Engine/Tools/SpriteEditor.h</span><span class="tags"><span class="tag">シングルトン</span><span class="tag t-debug">USE_IMGUI のみ</span></span></div>
+    <p class="lead">ImGui の「Sprite Editor」ウィンドウで 2D スプライトをマウスで描き、ゲームに出してその場で確かめ、気に入ったら PNG / JPG に保存するエンジン内のツールです。描いた内容はテクスチャハンドルとして公開されるので、普通の <code>Sprite</code> に渡すだけで表示できます（描いている途中もリアルタイムで反映）。Debug・Development ビルドだけにあり、ヘッダーごと <code>#ifdef USE_IMGUI</code> の中です。初期化とウィンドウの構築は <code>Framework</code> が行うので、ゲーム側は開くことと、ハンドルを <code>Sprite</code> に渡すことだけです。操作一覧は <code>docs/SpriteEditor.md</code> にあります。</p>
+    <div class="ex">
+      <p class="ex-label">例: エディタで描いた画像をシーンに出す</p>
+<pre class="code">#ifdef USE_IMGUI
+#include "Engine/Tools/SpriteEditor.h"
+#endif
+
+void GameScene::OnInitialize() {
+#ifdef USE_IMGUI
+    SpriteEditor* editor = SpriteEditor::GetInstance();
+    editorSprite_.Initialize(
+        editor-&gt;GetTextureHandle(),
+        { float(editor-&gt;GetCanvasWidth()), float(editor-&gt;GetCanvasHeight()) });
+    editor-&gt;SetOpen(true);   // ウィンドウを開く
+#endif
+}
+void GameScene::OnUpdate() {
+#ifdef USE_IMGUI
+    // キャンバスをリサイズしたらスプライトのサイズも合わせる（変わったときだけ）
+    const SpriteEditor* editor = SpriteEditor::GetInstance();
+    const Vector2 canvasSize{ float(editor-&gt;GetCanvasWidth()), float(editor-&gt;GetCanvasHeight()) };
+    if (editorSprite_.GetSize().x != canvasSize.x || editorSprite_.GetSize().y != canvasSize.y) {
+        editorSprite_.SetSize(canvasSize);
+    }
+    editorSprite_.Update();
+#endif
+}
+void GameScene::OnDraw() {
+#ifdef USE_IMGUI
+    editorSprite_.Draw();
+#endif
+}</pre>
+    </div>
+    <p class="sub">主な操作（エディタのウィンドウ上）</p>
+    <div class="tbl"><table>
+      <thead><tr><th>操作</th><th>動き</th></tr></thead>
+      <tbody>
+        <tr><td>左ドラッグ ／ 左Shift + 左クリック</td><td>ペン ／ 塗りつぶし（同じ色の連続した領域）</td></tr>
+        <tr><td>右ドラッグ ／ 左Shift + 右クリック</td><td>消しゴム ／ 透過塗りつぶし</td></tr>
+        <tr><td>Alt + 左クリック</td><td>スポイト（クリックした所の色をペン色にする）</td></tr>
+        <tr><td>左Ctrl + ホイール ／ 左Shift + ホイール ／ Alt + ホイール</td><td>ペンの太さ ／ 消しゴムの太さ（1〜100 px） ／ 表示の拡大縮小</td></tr>
+        <tr><td>左Ctrl + 左ドラッグ → 範囲内で左ドラッグ → <kbd>Enter</kbd></td><td>範囲選択 → 枠ごと移動 → 確定（選択中は範囲の外だけ描ける）</td></tr>
+        <tr><td>ホイール押し込みドラッグ ／ 左Ctrl + Z</td><td>表示の移動 ／ 元に戻す（直近 5 回）</td></tr>
+        <tr><td>Save ／ Load</td><td>パス欄のファイルへ保存（PNG は透過、JPG は白背景。サブフォルダは自動作成、同名は上書き確認）／ 読み込み</td></tr>
+      </tbody>
+    </table></div>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">static SpriteEditor* GetInstance();</code>
+        <div class="d">唯一のインスタンスを返します。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetOpen(bool open);
+bool IsOpen() const;</code>
+        <div class="d">ウィンドウを開く・閉じる（既定は閉じている）。ウィンドウ右上の × で閉じたときも <code>IsOpen()</code> が false になります。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t GetTextureHandle() const;</code>
+        <div class="d">キャンバスの内容が入ったテクスチャのハンドル。<code>Sprite::Initialize</code> や <code>SetTextureHandle</code> に渡します。<code>Framework::Initialize()</code> の後なら、いつ呼んでも同じ値です（リサイズしてもハンドルは変わりません）。</div>
+        <p class="ret"><b>戻り値</b> <a href="#TextureManager">TextureManager</a> の動的テクスチャのハンドル</p>
+      </div>
+      <div class="fn">
+        <code class="sig">int GetCanvasWidth() const;
+int GetCanvasHeight() const;</code>
+        <div class="d">キャンバスの今の大きさ（ピクセル。初期 64×64、最大 1024×1024）。Resize や Load で変わるので、スプライトのサイズを合わせるときは毎フレーム比べます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Initialize();
+void DrawImGui();<span class="tag t-engine">エンジンが呼ぶ</span></code>
+        <div class="d">キャンバスとテクスチャの作成、ウィンドウの構築・入力処理・テクスチャへの反映。<code>Framework</code> が呼ぶので、ゲーム側で呼ぶ必要はありません。</div>
+      </div>
+    </div>
+    <div class="note info"><span class="note-label">保存したファイルの使い方</span>
+      保存先は実行ディレクトリ（Game/）からの相対パスで、既定は <code>resources/sprite.png</code> です。保存した画像は普通どおり <code>sprite.Initialize("resources/sprite.png", {64, 64});</code> で読めます（Release でも使えます）。そのファイルを既に読み込んでいる <code>Sprite</code> があれば、保存した瞬間にその場で差し替わります。
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- SpriteCanvas -->
+  <section class="cls" id="SpriteCanvas">
+    <div class="cls-head"><h3>SpriteCanvas</h3><span class="path">Engine/Tools/SpriteCanvas.h</span><span class="tags"><span class="tag t-debug">Release には入らない</span></span></div>
+    <p class="lead"><a href="#SpriteEditor">SpriteEditor</a> の中身です。RGBA8 のピクセル配列と、ペン・塗りつぶし・消しゴム・範囲選択・リサイズ・Undo・PNG/JPG の保存と読み込みを、ImGui や GPU に依存せずに持っています。エディタの見た目や操作を変えずに画像処理だけ使いたいとき（自前のツールなど）に直接使えます。ピクセルは <code>uint32_t</code> 1 個で、メモリ順 R, G, B, A（<code>0xAABBGGRR</code>。ImGui の <code>IM_COL32</code> と同じ）。アルファ 0 が「塗っていない」です。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Create(int width, int height);
+int GetWidth() const;  int GetHeight() const;
+uint32_t GetPixel(int x, int y) const;
+const std::vector&lt;uint32_t&gt;&amp; GetComposite();
+uint64_t GetRevision() const;</code>
+        <div class="d">透明なキャンバスを作る（1〜1024 にクランプ）、大きさ、1 ピクセルの値（範囲外は 0）、見た目どおりの合成結果（移動中の選択範囲も重ねたもの）、内容が変わるたびに増えるカウンタ（テクスチャの更新が必要かの判定用）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void BeginStroke();
+void DrawLine(Point from, Point to, int size, uint32_t color);
+void EraseLine(Point from, Point to, int size);
+void FloodFill(Point at, uint32_t color);
+void FloodErase(Point at);</code>
+        <div class="d">ひと続きのドラッグの前に <code>BeginStroke</code>（Undo 用のスナップショット）を呼んでから、2 点間を円形スタンプで塗る・消す。塗りつぶしは 1 回の編集として自分で履歴を積みます。選択中は選択範囲の外にだけ効きます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">bool CanUndo() const;
+void Undo();</code>
+        <div class="d">直近 5 回まで戻せます。戻すと選択は解除されます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void BeginSelection(Point anchor);  void UpdateSelection(Point current);  void EndSelection();
+void MoveSelection(int dx, int dy);  void CommitSelection();
+bool HasSelection() const;  bool IsSelecting() const;  Rect GetSelection() const;</code>
+        <div class="d">矩形の範囲選択。<code>EndSelection</code> で中身が浮動レイヤに切り出され、<code>MoveSelection</code> で枠ごと動き、<code>CommitSelection</code> で下地に焼き込まれます（動かさずに確定した選択は Undo に数えません）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Resize(int width, int height);</code>
+        <div class="d">中心を基準に大きさを変えます（はみ出した分は捨て、足りない分は透明）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">bool Save(const std::string&amp; path, ImageFormat format, std::string&amp; error);
+bool Load(const std::string&amp; path, std::string&amp; error);</code>
+        <div class="d">保存（<code>ImageFormat::kPng</code> は透過のまま、<code>kJpg</code> は白と合成。親フォルダは自動で作る）と読み込み（1024×1024 まで。キャンバスの大きさも画像に合わせる）。失敗すると false を返し、<code>error</code> に理由（英語）が入ります。</div>
       </div>
     </div>
   </section>
@@ -1332,7 +1465,7 @@ private:
   <!-- ---------------------------------------------------------- TextureManager -->
   <section class="cls" id="TextureManager">
     <div class="cls-head"><h3>TextureManager</h3><span class="path">Engine/Graphics/TextureManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
-    <p class="lead">テクスチャの読み込み・GPU への転送・キャッシュを行います。同じパスは1回だけ読み込まれ、同じハンドルが返ります。<code>Object3D::SetTexture</code> や <code>Sprite::Initialize(パス, …)</code> の中でも使われているので、直接呼ぶのはハンドルを使い回したいときだけで十分です。</p>
+    <p class="lead">テクスチャの読み込み・GPU への転送・キャッシュを行います。同じパスは1回だけ読み込まれ、同じハンドルが返ります。<code>Object3D::SetTexture</code> や <code>Sprite::Initialize(パス, …)</code> の中でも使われているので、直接呼ぶのはハンドルを使い回したいときだけで十分です。ハンドルは SRV ヒープの枠に対応していて、<code>Reload</code> や <code>ResizeDynamic</code> で中身を差し替えても変わりません。CPU から何度でも書き換えられる「動的テクスチャ」も作れます（スプライトエディタのキャンバスがこれです）。</p>
     <div class="fns">
       <div class="fn">
         <code class="sig">static TextureManager* GetInstance();</code>
@@ -1345,8 +1478,29 @@ private:
         <p class="ret"><b>戻り値</b> テクスチャハンドル（<code>SetTextureHandle</code> などに渡す）</p>
       </div>
       <div class="fn">
+        <code class="sig">uint32_t Reload(const std::string&amp; filepath);
+bool IsLoaded(const std::string&amp; filepath) const;</code>
+        <div class="d">ファイルを読み直して、同じハンドルの中身を差し替えます（そのハンドルを使っている <code>Sprite</code> や <code>Object3D</code> はそのまま新しい画像になります）。まだ読み込んでいないパスなら <code>Load</code> と同じです。差し替えの前に GPU の完了を待つので、毎フレーム呼ぶものではありません。スプライトエディタが保存後に使っています。<code>IsLoaded</code> はそのパスが読み込み済みかを返します。</div>
+      </div>
+      <div class="fn">
         <code class="sig">uint32_t GetWhiteTexture();</code>
         <div class="d">1×1 の白いテクスチャのハンドル。テクスチャなしで色だけ出したいときに使います。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t CreateDynamic(const std::string&amp; key, uint32_t width, uint32_t height);
+void UpdateDynamic(uint32_t textureHandle, const uint32_t* pixels);
+void ResizeDynamic(uint32_t textureHandle, uint32_t width, uint32_t height);</code>
+        <div class="d">動的テクスチャ（CPU から書き換えられる RGBA8・sRGB・ミップマップなし）を作る・中身を差し替える・大きさを変える。<code>UpdateDynamic</code> に渡した内容は CPU 側にコピーされ、次のフレームの <code>BeginFrame</code> で GPU へ送られます（1 フレームに何度呼んでも転送は 1 回）。<code>ResizeDynamic</code> は中身を透明に戻し、GPU の完了を待ちます。どちらも <code>OnUpdate</code> や <code>OnDrawImGui</code> から呼びます（<code>OnDraw</code> の中では呼べません）。</div>
+        <dl class="pr">
+          <dt>key</dt><dd>他のテクスチャと重ならない名前。実ファイルのパスと衝突しないよう <code>"&lt;name&gt;"</code> のように書く。同じ key で 2 回呼ぶと同じハンドルが返る（大きさは変わらない）</dd>
+          <dt>pixels</dt><dd>幅×高さ個の <code>uint32_t</code>。メモリ順 R, G, B, A（<code>0xAABBGGRR</code>）</dd>
+        </dl>
+        <p class="ret"><b>戻り値</b> テクスチャハンドル（<code>Load</code> のハンドルと同じように使える）</p>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t GetWidth(uint32_t textureHandle) const;
+uint32_t GetHeight(uint32_t textureHandle) const;</code>
+        <div class="d">テクスチャの大きさ（ピクセル）。画像の解像度どおりにスプライトを出すときに使えます。</div>
       </div>
       <div class="fn">
         <code class="sig">D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU(uint32_t textureHandle) const;</code>
@@ -1359,8 +1513,9 @@ private:
       </div>
       <div class="fn">
         <code class="sig">void Initialize(ID3D12Device* device, ID3D12GraphicsCommandList* commandList);
+void BeginFrame(ID3D12GraphicsCommandList* commandList);
 void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
-        <div class="d">転送コマンドを積むコマンドリストの登録と、全テクスチャの解放。テクスチャを個別に解放する関数はありません。</div>
+        <div class="d">転送コマンドを積むコマンドリストの登録、毎フレームの動的テクスチャの転送（描画コマンドより前）、全テクスチャの解放。テクスチャを個別に解放する関数はありません。</div>
       </div>
     </div>
   </section>
@@ -1472,7 +1627,7 @@ void RecomputeBoundingSphere();</code>
   <!-- ---------------------------------------------------------- Input -->
   <section class="cls" id="Input">
     <div class="cls-head"><h3>Input</h3><span class="path">Engine/Input/Input.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
-    <p class="lead">キーボード・マウス（DirectInput）とゲームパッド（XInput、最大 4 人）の入力です。エンジンが毎フレーム状態を更新するので、ゲーム側は問い合わせるだけで済みます。キーごとに問い合わせるので、同時押しもそのまま判定できます。キーボードとマウスは、ウィンドウが前面にあるときだけ取得されます。前面にないあいだは、何も押されていない扱いになります。</p>
+    <p class="lead">キーボード・マウス（DirectInput）とゲームパッド（XInput、最大 4 人）の入力です。エンジンが毎フレーム状態を更新するので、ゲーム側は問い合わせるだけで済みます。キーごとに問い合わせるので、同時押しもそのまま判定できます。キーボードとマウスは、ウィンドウが前面にあるときだけ取得されます。前面にないあいだは、何も押されていない扱いになります。Debug・Development では、ImGui を操作している間（ImGui のウィンドウにマウスが乗っている・スライダーや文字入力を触っている・スプライトエディタにフォーカスがある）も、キーとマウスボタン・ホイールは何も押されていない扱いになります（カーソル位置とパッドはそのまま）。</p>
     <div class="ex">
       <p class="ex-label">例: キーボードとパッドの両方で動かす</p>
 <pre class="code">#include "Engine/Input/Input.h"
@@ -1722,7 +1877,7 @@ const std::wstring&amp; GetTitle() const;</code>
 bool ProcessMessage();
 bool IsSizeChanged() const;
 void ClearSizeChangedFlag();<span class="tag t-engine">エンジンが呼ぶ</span></code>
-        <div class="d">ウィンドウの生成、メッセージ処理（閉じられたら false）、サイズ変化の検出。</div>
+        <div class="d">ウィンドウの生成、メッセージ処理（たまっている分を毎フレーム全部処理する。閉じられたら false）、サイズ変化の検出。メニューは無いので、Alt や F10 を単独で押してもウィンドウはメニューモードに入りません（入るとゲームが止まるため）。</div>
       </div>
     </div>
   </section>
@@ -2540,6 +2695,17 @@ ImGuiManager::GetInstance()-&gt;SetDefaultDockLayout({ "Game", "Player" }, { "Lo
 #endif</pre>
         </div>
       </div>
+      <div class="fn">
+        <code class="sig">void PushPointSampling(ImDrawList* drawList);
+void PopPointSampling(ImDrawList* drawList);</code>
+        <div class="d">ImGui の画像描画（<code>ImGui::Image</code> / <code>ImDrawList::AddImage</code>）は既定でバイリニア補間なので、拡大するとにじみます。Push から Pop までの間に <code>drawList</code> へ積んだ画像は点サンプリング（最近傍）で描かれ、ドット絵をくっきり拡大できます。スプライトエディタのキャンバスがこれを使っています。</div>
+        <div class="ex">
+<pre class="code">ImDrawList* dl = ImGui::GetWindowDrawList();
+ImGuiManager::GetInstance()-&gt;PushPointSampling(dl);
+dl-&gt;AddImage(reinterpret_cast&lt;ImTextureID&gt;(srv.ptr), pos, ImVec2(pos.x + 512.0f, pos.y + 512.0f));
+ImGuiManager::GetInstance()-&gt;PopPointSampling(dl);</pre>
+        </div>
+      </div>
       <div class="fn"><code class="sig">static ImGuiManager* GetInstance();
 void Initialize();
 void BeginFrame();
@@ -2565,7 +2731,7 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><d
 </section>
 
 <footer class="foot">
-  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作り、2026-10-01 に色の指定（<code>SetColor</code> / <code>ColorFromHex</code>）を追記しました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたら、このファイルも同じコミットで直してください。</p>
+  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作り、2026-10-01 に色の指定（<code>SetColor</code> / <code>ColorFromHex</code>）、2026-10-07 にスプライトエディタ（<code>SpriteEditor</code> / <code>SpriteCanvas</code>・動的テクスチャ・点サンプリング描画）を追記しました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたときは、master からゲームのブランチへ取り込むタイミングでまとめてこのファイルを直します。</p>
 </footer>
 
 </main>

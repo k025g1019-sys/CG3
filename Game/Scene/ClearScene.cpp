@@ -1,7 +1,7 @@
-#include "Game/Scene/TitleScene.h"
+#include "Game/Scene/ClearScene.h"
 
 #include "Engine/Input/Input.h"
-#include "Game/Scene/BossScene.h"
+#include "Game/Scene/TitleScene.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -9,14 +9,14 @@
 
 using namespace Engine;
 
-void TitleScene::OnInitialize() {
+void ClearScene::OnInitialize() {
 	camera_.GetTransform().translate = { 0.0f, 0.0f, -6.0f };
 
-	// 立方体の面の向きが分かるよう、光を斜め上から当てる
+	// 球の陰影が分かるよう、光を斜め上から当てる
 	directionalLight_.direction = { 0.4f, -1.0f, 0.6f };
 
-	logo_.Initialize(Primitive::kCube);
-	logo_.SetColor({ 1.0f, 0.8f, 0.2f, 1.0f });
+	mark_.Initialize(Primitive::kSphere);
+	mark_.SetColor({ 0.3f, 0.9f, 0.4f, 1.0f });
 
 	// フェードインから始める
 	fade_.Initialize();
@@ -24,11 +24,10 @@ void TitleScene::OnInitialize() {
 	phase_ = Phase::kFadeIn;
 }
 
-void TitleScene::OnUpdate() {
-	// 仮ロゴをゆっくり回す
-	logo_.GetTransform().rotate.x += 0.01f;
-	logo_.GetTransform().rotate.y += 0.02f;
-	logo_.Update();
+void ClearScene::OnUpdate() {
+	// 仮モデルをゆっくり回す
+	mark_.GetTransform().rotate.y += 0.02f;
+	mark_.Update();
 
 	fade_.Update();
 
@@ -49,25 +48,25 @@ void TitleScene::OnUpdate() {
 		}
 		break;
 	case Phase::kFadeOut:
-		// フェードアウトが終わったらボス戦へ（切り替わるのは次のフレームの頭）
+		// フェードアウトが終わったらタイトルへ（切り替わるのは次のフレームの頭）
 		if (fade_.IsFinished()) {
-			ChangeScene<BossScene>();
+			ChangeScene<TitleScene>();
 		}
 		break;
 	}
 }
 
-void TitleScene::OnDraw() {
-	logo_.Draw();
+void ClearScene::OnDraw() {
+	mark_.Draw();
 
 	// フェードは一番最後（最前面）
 	fade_.Draw();
 }
 
 #ifdef USE_IMGUI
-void TitleScene::OnDrawImGui() {
-	ImGui::Begin("Title");
-	ImGui::Text("Press Enter / Space to start");
+void ClearScene::OnDrawImGui() {
+	ImGui::Begin("Clear");
+	ImGui::Text("CLEAR!  Press Enter / Space to return to the title");
 	ImGui::End();
 }
 #endif

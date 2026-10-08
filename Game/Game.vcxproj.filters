@@ -7,32 +7,123 @@
     <Filter Include="Scene">
       <UniqueIdentifier>{f8b65250-ed86-5b08-9f9e-d420bb8ce5c3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Stage">
+      <UniqueIdentifier>{7bc0c901-3479-498a-8b42-8833604762c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util">
+      <UniqueIdentifier>{a3c1f2e4-5b6d-4e7f-9a0b-1c2d3e4f5a6b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effect">
+      <UniqueIdentifier>{b7d2c4a1-6e3f-4a8b-9c0d-2e1f3a4b5c6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI">
+      <UniqueIdentifier>{c8e3d5b2-7f4a-4b9c-8d1e-3f2a4b5c6d7e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyGame.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Effect\DeathParticles.cpp">
+      <Filter>Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Object\Bit.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Object\Boomerang.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Object\Boss.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Object\FallingRock.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
     <ClCompile Include="Object\Player.cpp">
       <Filter>Object</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\GameScene.cpp">
+    <ClCompile Include="Object\Shockwave.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\BossScene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\ClearScene.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\TitleScene.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Object\Enemy.cpp" />
+    <ClCompile Include="Stage\CameraController.cpp">
+      <Filter>Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Stage\Stage.cpp">
+      <Filter>Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Fade.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Gauge.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Util\Easing.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Util\ScreenToWorld.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyGame.h" />
+    <ClInclude Include="Effect\DeathParticles.h">
+      <Filter>Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\Bit.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\Boomerang.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\Boss.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\FallingRock.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\Hazard.h">
+      <Filter>Object</Filter>
+    </ClInclude>
     <ClInclude Include="Object\Player.h">
       <Filter>Object</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\GameScene.h">
+    <ClInclude Include="Object\Shockwave.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\BossScene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\ClearScene.h">
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Scene\TitleScene.h">
       <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Object\Enemy.h" />
+    <ClInclude Include="Stage\CameraController.h">
+      <Filter>Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage\Stage.h">
+      <Filter>Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Fade.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Gauge.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\Easing.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\ScreenToWorld.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

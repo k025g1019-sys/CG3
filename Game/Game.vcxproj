@@ -64,17 +64,42 @@
   <ItemGroup>
     <ClCompile Include="MyGame.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Object\Enemy.cpp" />
+    <ClCompile Include="Effect\DeathParticles.cpp" />
+    <ClCompile Include="Object\Bit.cpp" />
+    <ClCompile Include="Object\Boomerang.cpp" />
+    <ClCompile Include="Object\Boss.cpp" />
+    <ClCompile Include="Object\FallingRock.cpp" />
     <ClCompile Include="Object\Player.cpp" />
-    <ClCompile Include="Scene\GameScene.cpp" />
+    <ClCompile Include="Object\Shockwave.cpp" />
+    <ClCompile Include="Scene\BossScene.cpp" />
+    <ClCompile Include="Scene\ClearScene.cpp" />
     <ClCompile Include="Scene\TitleScene.cpp" />
+    <ClCompile Include="Stage\CameraController.cpp" />
+    <ClCompile Include="Stage\Stage.cpp" />
+    <ClCompile Include="UI\Fade.cpp" />
+    <ClCompile Include="UI\Gauge.cpp" />
+    <ClCompile Include="Util\Easing.cpp" />
+    <ClCompile Include="Util\ScreenToWorld.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyGame.h" />
-    <ClInclude Include="Object\Enemy.h" />
+    <ClInclude Include="Effect\DeathParticles.h" />
+    <ClInclude Include="Object\Bit.h" />
+    <ClInclude Include="Object\Boomerang.h" />
+    <ClInclude Include="Object\Boss.h" />
+    <ClInclude Include="Object\FallingRock.h" />
+    <ClInclude Include="Object\Hazard.h" />
     <ClInclude Include="Object\Player.h" />
-    <ClInclude Include="Scene\GameScene.h" />
+    <ClInclude Include="Object\Shockwave.h" />
+    <ClInclude Include="Scene\BossScene.h" />
+    <ClInclude Include="Scene\ClearScene.h" />
     <ClInclude Include="Scene\TitleScene.h" />
+    <ClInclude Include="Stage\CameraController.h" />
+    <ClInclude Include="Stage\Stage.h" />
+    <ClInclude Include="UI\Fade.h" />
+    <ClInclude Include="UI\Gauge.h" />
+    <ClInclude Include="Util\Easing.h" />
+    <ClInclude Include="Util\ScreenToWorld.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

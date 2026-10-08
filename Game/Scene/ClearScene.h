@@ -5,9 +5,9 @@
 #include "Game/UI/Fade.h"
 
 /// <summary>
-/// タイトル画面（仮）。フェードインのあと Enter / Space でフェードアウトし、ボス戦へ進む。
+/// クリア画面（仮）。フェードインのあと Enter / Space でフェードアウトし、タイトルへ戻る。
 /// </summary>
-class TitleScene : public Engine::BaseScene {
+class ClearScene : public Engine::BaseScene {
 protected:
 
 	void OnInitialize() override;
@@ -28,12 +28,12 @@ private:
 	enum class Phase {
 		kFadeIn,   // フェードイン
 		kMain,     // 入力待ち
-		kFadeOut,  // フェードアウト（終わったらボス戦へ）
+		kFadeOut,  // フェードアウト（終わったらタイトルへ）
 	};
 
 	static inline const float kFadeDuration = 1.0f;  // フェードにかける時間（秒）
 
-	Engine::Object3D logo_;         // タイトルロゴの代わりの仮モデル（回転する立方体）
+	Engine::Object3D mark_;         // クリア表示の代わりの仮モデル（回転する球）
 	Fade fade_;                     // 画面の出入りのフェード
 	Phase phase_ = Phase::kFadeIn;  // 現在の段階
 };

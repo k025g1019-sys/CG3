@@ -58,8 +58,16 @@ void ParticleSystem::Initialize(const std::string& objFilePath, uint32_t particl
 	}
 }
 
-void ParticleSystem::Update() {
+void ParticleSystem::Update(const Matrix4x4& viewMatrix) {
 	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
+
+	// --- ビルボード行列（カメラの回転と同じ回転をさせて、パーティクルの表を常にカメラへ向ける）---
+	// カメラのワールド行列（ビュー行列の逆行列）から、平行移動成分を消して回転だけにする。
+	// （板ポリ（plane.obj）の表は最初からカメラ側（-Z方向）を向いているため、裏返す回転は掛けない）
+	Matrix4x4 billboardMatrix = Inverse(viewMatrix);
+	billboardMatrix.m[3][0] = 0.0f;
+	billboardMatrix.m[3][1] = 0.0f;
+	billboardMatrix.m[3][2] = 0.0f;
 
 	// --- 各パーティクルのワールド行列と色を、このフレームのスロットへ書き込む ---
 	// （ビュー射影は視点ごとの共有CBuffer（VSのb1）で渡すため、ここではワールド行列だけを計算する）
@@ -81,8 +89,16 @@ void ParticleSystem::Update() {
 			particle = MakeNewParticle(randomEngine_);
 		}
 
-		instancingData[index].World =
-			MakeAffineMatrix(particle.transform_.scale, particle.transform_.rotate, particle.transform_.translate);
+		if (isBillboardEnabled_) {
+			// ビルボードを使う：回転の代わりにビルボード行列を掛ける（Scale * Billboard * Translate）
+			Matrix4x4 scaleMatrix = MakeScaleMatrix(particle.transform_.scale);
+			Matrix4x4 translateMatrix = MakeTranslateMatrix(particle.transform_.translate);
+			instancingData[index].World = scaleMatrix * billboardMatrix * translateMatrix;
+		} else {
+			// ビルボードを使わない：パーティクルのTransformの回転のまま
+			instancingData[index].World =
+				MakeAffineMatrix(particle.transform_.scale, particle.transform_.rotate, particle.transform_.translate);
+		}
 
 		// 経過時間が生存時間に近づくほど、α値を下げて薄くしていく（発生時は1、消滅時は0）
 		const float alpha = 1.0f - (particle.currentTime_ / particle.lifeTime_);

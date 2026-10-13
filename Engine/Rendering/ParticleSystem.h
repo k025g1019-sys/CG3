@@ -21,6 +21,7 @@ class Mesh;
 /// 1回の描画命令（DrawInstanced）でまとめて描くパーティクル。
 ///   Initialize : メッシュと、パーティクルの数を決め、全パーティクルを乱数で発生させる
 ///   Update     : 移動・生存時間の更新をし、ワールド行列と色をStructuredBufferへ書き込む（毎フレーム、Drawより前に呼ぶ）
+///                ビルボードが有効なら、渡されたビュー行列を使ってパーティクルの表を常にカメラへ向ける
 ///   Draw       : パーティクル用のRootSignature・PSO（加算合成）で描画する（シーンのOnDrawの中で呼ぶ）
 /// パーティクルは発生時に位置・速度・色・生存時間（1～3秒）を乱数で決め、生存時間に近づくほど薄くなる。
 /// 生存時間を過ぎたものは消滅し、同じ数を保つようにすぐ新しく発生させる。
@@ -37,8 +38,11 @@ public:
     /// <param name="particleCount">パーティクルの数（この数ぶんのGPUリソースを確保し、常にこの数を描く）</param>
     void Initialize(const std::string& objFilePath, uint32_t particleCount);
 
-    // 各パーティクルを動かし、ワールド行列・色とマテリアルを書き込む（毎フレーム、Drawより前に呼ぶ）
-    void Update();
+    /// <summary>
+    /// 各パーティクルを動かし、ワールド行列・色とマテリアルを書き込む（毎フレーム、Drawより前に呼ぶ）
+    /// </summary>
+    /// <param name="viewMatrix">カメラのビュー行列（ビルボードでパーティクルをカメラへ向けるために使う）</param>
+    void Update(const Matrix4x4& viewMatrix);
 
     // 描画する（シーンのOnDrawの中で呼ぶ）。描き終わったら標準のRootSignature・PSOへ戻す。
     // パーティクルごとの視錐台カリングはしない（全パーティクルをまとめて描く）
@@ -46,6 +50,11 @@ public:
 
     // パーティクルの数（Initializeで決めた数）
     uint32_t GetParticleCount() const { return uint32_t(particles_.size()); }
+
+    // ビルボード（パーティクルの表を常にカメラへ向ける）を使うか。既定は使う。
+    // 使わないときは、各パーティクルのTransformの回転のままの向きで描く
+    void SetBillboardEnabled(bool enabled) { isBillboardEnabled_ = enabled; }
+    bool IsBillboardEnabled() const { return isBillboardEnabled_; }
 
     // 全パーティクル共通のマテリアル（パーティクルごとの色に掛け合わされる。lightingModeはパーティクルでは使わない）
     Material& GetMaterial() { return material_; }
@@ -103,6 +112,9 @@ private:
 
     // 乱数生成器（Initializeで初期化する。パーティクルの生成に使う）
     std::mt19937 randomEngine_;
+
+    // ビルボードを使うか（trueなら、パーティクルの表が常にカメラを向く）
+    bool isBillboardEnabled_ = true;
 
     // Instancing用：パーティクルの数ぶんのワールド行列と色を格納するStructuredBuffer（VSのt0）
     StructuredBuffer<ParticleForGPU> instancingBuffer_;

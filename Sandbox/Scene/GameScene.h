@@ -6,7 +6,7 @@
 #include "Sandbox/Scene/DemoSceneBase.h"
 
 // 最初のデモシーン。板ポリ（plane.obj）のパーティクル10個を、Instancingで1回の描画命令でまとめて描画する。
-// パーティクルは乱数で発生し、1～3秒かけて薄くなって消え、すぐ再発生する（加算合成で描く）。
+// パーティクルは乱数で発生し、1～3秒かけて薄くなって消え、すぐ再発生する（加算合成で描き、ビルボードで常にカメラを向く）。
 // （それまで置いていたOBJモデル・スプライトはAxisSceneへ移した）
 // カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBase（とエンジンのBaseScene）が提供する。
 class GameScene : public DemoSceneBase {
@@ -21,7 +21,7 @@ protected:
     void OnDrawObjects() override;
 
 #ifdef USE_IMGUI
-    // "3D Objects"ウィンドウ内のパーティクルのUI（パーティクルの数の表示・共通の色）
+    // "3D Objects"ウィンドウ内のパーティクルのUI（パーティクルの数の表示・ビルボードの切り替え・共通の色）
     void OnDrawObjectsImGui() override;
 
     // カリング判定結果表示（パーティクルはインスタンスごとのカリングをしない）

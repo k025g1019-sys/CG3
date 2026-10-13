@@ -19,7 +19,7 @@ public:
         kStandard,  // 裏面カリング（通常の3Dオブジェクト・スプライト）
         kNoCull,    // カリング無効（内側から見る天球など）
         kLine,      // ライントポロジ・深度無効（選択オブジェクトの軸ギズモなど常に手前に描く線分）
-        kParticle,  // Instancing（パーティクル）。パーティクル用RootSignatureと組で使う
+        kParticle,  // Instancing（パーティクル）・加算合成・深度書き込み無効。パーティクル用RootSignatureと組で使う
 
         kCount,     // PSOの総数（enumの末尾に置くこと）
     };
@@ -39,7 +39,7 @@ public:
     // パーティクル用RootSignatureのパラメータ番号（ライティングしないため光源は持たない）
     enum ParticleRootParameter : UINT {
         kParticleRootMaterial = 0,        // b0 [PS] マテリアル（全インスタンス共通）
-        kParticleRootInstancing = 1,      // t0 [VS] インスタンスごとのワールド行列（StructuredBuffer。DescriptorTable）
+        kParticleRootInstancing = 1,      // t0 [VS] パーティクルごとのワールド行列と色（StructuredBuffer。DescriptorTable）
         kParticleRootTexture = 2,         // t0 [PS] テクスチャ（DescriptorTable）
         kParticleRootViewProjection = 3,  // b1 [VS] 視点ごとのビュー射影
 
@@ -102,6 +102,14 @@ public:
         IDxcBlob* vertexShader,
         IDxcBlob* pixelShader,
         D3D12_CULL_MODE cullMode = D3D12_CULL_MODE_BACK);
+
+    // パーティクル用パイプラインを生成する。
+    // 加算合成（AddBlend）・深度テスト有効・深度書き込み無効（半透明どうしが重なっても互いを隠さない）。
+    static Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateParticlePipeline(
+        ID3D12Device* device,
+        ID3D12RootSignature* rootSignature,
+        IDxcBlob* vertexShader,
+        IDxcBlob* pixelShader);
 
     // 線分描画用パイプラインを生成する（軸ギズモなど常に手前に表示する線分向け）。
     // ライントポロジ・カリング無効・深度無効（他オブジェクトに隠れず常に手前に表示される）。

@@ -43,10 +43,9 @@ void PipelineManager::Initialize(ID3D12Device* device) {
 
     particleRootSignature_ = CreateParticleRootSignature(device);
 
-    // InputLayout・ブレンド・深度などの設定は標準と同じ（RootSignatureとシェーダーだけが違う）
-    pipelines_[size_t(Pipeline::kParticle)] = CreateStandardPipeline(
-        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get(),
-        D3D12_CULL_MODE_BACK);
+    // InputLayoutは標準と同じ。ブレンドは加算合成、深度は書き込まない
+    pipelines_[size_t(Pipeline::kParticle)] = CreateParticlePipeline(
+        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get());
 }
 
 void PipelineManager::Finalize() {
@@ -309,6 +308,76 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
     D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
     depthStencilDesc.DepthEnable = true;
     depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+    PipelineConfig config{};
+    config.device = device;
+    config.rootSignature = rootSignature;
+    config.inputLayout = inputLayoutDesc;
+    config.blendDesc = blendDesc;
+    config.rasterizerDesc = rasterizerDesc;
+    config.depthStencilDesc = depthStencilDesc;
+    config.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    config.dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    config.vertexShader = vertexShader;
+    config.pixelShader = pixelShader;
+
+    return CreateGraphicsPipeline(config);
+}
+
+ComPtr<ID3D12PipelineState> PipelineManager::CreateParticlePipeline(
+    ID3D12Device* device,
+    ID3D12RootSignature* rootSignature,
+    IDxcBlob* vertexShader,
+    IDxcBlob* pixelShader) {
+    // InputLayout（標準と同じPOSITION / TEXCOORD / NORMAL。頂点構造を共有する）
+    D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
+    inputElementDescs[0].SemanticName = "POSITION";
+    inputElementDescs[0].SemanticIndex = 0;
+    inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[1].SemanticName = "TEXCOORD";
+    inputElementDescs[1].SemanticIndex = 0;
+    inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+    inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[2].SemanticName = "NORMAL";
+    inputElementDescs[2].SemanticIndex = 0;
+    inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+    inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+    inputLayoutDesc.pInputElementDescs = inputElementDescs;
+    inputLayoutDesc.NumElements = _countof(inputElementDescs);
+
+    // BlendState（加算合成。結果 = Src.rgb * Src.a + Dest.rgb）
+    // 重なるほど明るくなり、描く順番によらず同じ結果になる
+    D3D12_BLEND_DESC blendDesc{};
+
+    auto& rt = blendDesc.RenderTarget[0];
+
+    rt.BlendEnable = TRUE;
+
+    rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    rt.DestBlend = D3D12_BLEND_ONE;
+    rt.BlendOp = D3D12_BLEND_OP_ADD;
+
+    // α値は描画先のものをそのまま残す（光を足すだけで、描画先の不透明度は変えない）
+    rt.SrcBlendAlpha = D3D12_BLEND_ZERO;
+    rt.DestBlendAlpha = D3D12_BLEND_ONE;
+    rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    // RasterizerState（裏面カリング, 塗りつぶし）
+    D3D12_RASTERIZER_DESC rasterizerDesc{};
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+
+    // DepthStencilState（深度テストは有効, 書き込みはしない, LessEqual）
+    // 深度を書き込むと、手前のパーティクルの透明な部分が奥のパーティクルを隠してしまう
+    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+    depthStencilDesc.DepthEnable = true;
+    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
     depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
     PipelineConfig config{};

@@ -1,14 +1,16 @@
 #include "Particle.hlsli"
 
-// インスタンスごとのワールド行列（視点に依存しない。C++側 Engine::TransformationMatrix と一致させる）
-struct TransformationMatrix
+// パーティクルごとのワールド行列（視点に依存しない）と色
+// （C++側 Engine::ParticleSystem::ParticleForGPU と一致させる）
+struct ParticleForGPU
 {
     float4x4 World;
+    float4 color;
 };
 
-// 全インスタンス分のワールド行列（C++の配列のようにインデックスで読む）。
+// 全パーティクル分のデータ（C++の配列のようにインデックスで読む）。
 // StructuredBufferはViewとしてはSRVなので、register識別子はtを使う
-StructuredBuffer<TransformationMatrix> gTransformationMatrices : register(t0);
+StructuredBuffer<ParticleForGPU> gParticle : register(t0);
 
 // 視点ごとのビュー射影行列（立体視で視点ごとに差し替える。全インスタンス共通）
 cbuffer ViewProjectionBuffer : register(b1)
@@ -27,14 +29,17 @@ VertexShaderOutput main(VertexShaderInput input, uint32_t instanceId : SV_Instan
 {
     VertexShaderOutput output;
     // インスタンスごとに異なるTransform情報で描画する
-    float4 worldPosition = mul(input.position, gTransformationMatrices[instanceId].World);
+    float4 worldPosition = mul(input.position, gParticle[instanceId].World);
     output.position = mul(worldPosition, gViewProjection);
     output.texcoord = input.texcoord;
 
     output.normal =
     normalize(
         mul(input.normal,
-            (float3x3) gTransformationMatrices[instanceId].World)
+            (float3x3) gParticle[instanceId].World)
     );
+
+    // パーティクルごとの色をPSへ渡す
+    output.color = gParticle[instanceId].color;
     return output;
 }

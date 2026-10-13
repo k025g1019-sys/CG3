@@ -23,7 +23,7 @@ struct PixelShaderOutput
     float4 color : SV_TARGET0;
 };
 
-// かんたんのためライティングはしない（マテリアルの色×テクスチャの色をそのまま出す）
+// かんたんのためライティングはしない（マテリアルの色×テクスチャの色×パーティクルごとの色をそのまま出す）
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
@@ -40,7 +40,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             transformedUV.xy
         );
 
-    output.color = material.color * textureColor;
+    output.color = material.color * textureColor * input.color;
 
     // 最終的なαが0のときだけ描画しない
     if (output.color.a == 0.0f)

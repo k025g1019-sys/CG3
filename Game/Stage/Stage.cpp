@@ -1,10 +1,31 @@
 #include "Game/Stage/Stage.h"
 
+#include "Game/Util/GlobalVariables.h"
+
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
 #endif
 
 using namespace Engine;
+
+#pragma region 調整値
+
+void Stage::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Stage";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	globalVariables->AddItem(groupName, "Width", kWidth);
+}
+
+void Stage::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Stage";
+	kWidth = globalVariables->GetFloatValue(groupName, "Width");
+}
+
+#pragma endregion
 
 #pragma region 初期化
 
@@ -64,7 +85,6 @@ void Stage::Draw() const {
 #ifdef USE_IMGUI
 void Stage::DrawImGui() {
 	if (ImGui::TreeNode("Stage")) {
-		ImGui::DragFloat("width", &kWidth, 0.1f, 4.0f, 200.0f);
 		ImGui::Text("left: %.2f  right: %.2f  groundY: %.2f", GetLeftEdge(), GetRightEdge(), GetGroundY());
 		ImGui::TreePop();
 	}

@@ -19,10 +19,19 @@ void Fade::Initialize() {
 	counter_ = 0.0f;
 }
 
-void Fade::Update() {
+void Fade::Update(float screenWidth, float screenHeight) {
 	// フェードなしの間は何もしない
 	if (status_ == Status::kNone) {
 		return;
+	}
+
+	// スプライトは縦横の小さい方の倍率で等比に拡大されるので、描画先が横長（縦長）でも端が空かないよう、
+	// その倍率で割った大きさにして全体を覆う（全画面にすると右端が途切れていた対策）
+	const float scaleX = screenWidth / static_cast<float>(WinApp::kClientWidth);
+	const float scaleY = screenHeight / static_cast<float>(WinApp::kClientHeight);
+	const float sizeScale = (scaleX < scaleY) ? scaleX : scaleY;
+	if (sizeScale > 0.0f) {
+		sprite_.SetSize({ screenWidth / sizeScale, screenHeight / sizeScale });
 	}
 
 	// 経過時間を進める（かける時間で頭打ち）

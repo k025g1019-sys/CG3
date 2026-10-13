@@ -26,6 +26,12 @@
     <ClCompile Include="Effect\DeathParticles.cpp">
       <Filter>Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Effect\GuardEffect.cpp">
+      <Filter>Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Effect\HitEffect.cpp">
+      <Filter>Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Object\Bit.cpp">
       <Filter>Object</Filter>
     </ClCompile>
@@ -68,13 +74,25 @@
     <ClCompile Include="Util\Easing.cpp">
       <Filter>Util</Filter>
     </ClCompile>
+    <ClCompile Include="Util\GlobalVariables.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
     <ClCompile Include="Util\ScreenToWorld.cpp">
       <Filter>Util</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyGame.h" />
+    <ClInclude Include="Effect\BaseEffect.h">
+      <Filter>Effect</Filter>
+    </ClInclude>
     <ClInclude Include="Effect\DeathParticles.h">
+      <Filter>Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Effect\GuardEffect.h">
+      <Filter>Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Effect\HitEffect.h">
       <Filter>Effect</Filter>
     </ClInclude>
     <ClInclude Include="Object\Bit.h">
@@ -120,6 +138,9 @@
       <Filter>UI</Filter>
     </ClInclude>
     <ClInclude Include="Util\Easing.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\GlobalVariables.h">
       <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="Util\ScreenToWorld.h">

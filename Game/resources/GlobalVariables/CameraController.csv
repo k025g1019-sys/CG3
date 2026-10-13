@@ -1,0 +1,7 @@
+name,type,value
+Distance,float,22
+FocusRate,float,0.3
+FollowRate,float,0.1
+Height,float,4
+MaxFocusOffset,float,5
+OffsetX,float,0

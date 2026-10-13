@@ -1,10 +1,32 @@
 #include "Game/Effect/DeathParticles.h"
 
+#include "Game/Util/GlobalVariables.h"
+
 #include <algorithm>
 #include <cmath>
 #include <numbers>
 
 using namespace Engine;
+
+void DeathParticles::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "DeathParticles";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	// ※個数（kNumParticles）は配列の大きさなので調整項目にしない
+	globalVariables->AddItem(groupName, "Duration", kDuration);
+	globalVariables->AddItem(groupName, "Speed", kSpeed);
+	globalVariables->AddItem(groupName, "Scale", kScale);
+}
+
+void DeathParticles::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "DeathParticles";
+	kDuration = globalVariables->GetFloatValue(groupName, "Duration");
+	kSpeed = globalVariables->GetFloatValue(groupName, "Speed");
+	kScale = globalVariables->GetFloatValue(groupName, "Scale");
+}
 
 void DeathParticles::Initialize(const Vector3& position) {
 	// 全パーティクルを発生位置にそろえる

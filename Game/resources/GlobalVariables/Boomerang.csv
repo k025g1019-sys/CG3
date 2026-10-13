@@ -1,0 +1,9 @@
+name,type,value
+CatchDistance,float,0.6
+Damage,int,2
+OutwardDuration,float,0.56
+Radius,float,0.5
+ReturnAcceleration,float,0.0096
+ReturnMaxSpeed,float,0.4
+ReturnStartSpeed,float,0.064
+SpinSpeed,float,0.32

@@ -4,6 +4,7 @@
 #include "Engine/Math/Curve.h"
 #include "Engine/Rendering/DebugDraw.h"
 #include "Game/Stage/Stage.h"
+#include "Game/Util/GlobalVariables.h"
 
 #include <algorithm>
 #include <array>
@@ -23,6 +24,77 @@ const Vector4 kBodyColor = { 1.0f, 0.4f, 0.3f, 1.0f };     // 通常の色
 const Vector4 kDamagedColor = { 1.0f, 0.85f, 0.8f, 1.0f };  // 無敵中の点滅色
 
 } // namespace
+
+#pragma region 調整値
+
+void Player::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Player";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	globalVariables->AddItem(groupName, "MaxLife", kMaxLife);
+	globalVariables->AddItem(groupName, "MeleeDamage", kMeleeDamage);
+	globalVariables->AddItem(groupName, "Acceleration", kAcceleration);
+	globalVariables->AddItem(groupName, "Attenuation", kAttenuation);
+	globalVariables->AddItem(groupName, "BrakeAttenuation", kBrakeAttenuation);
+	globalVariables->AddItem(groupName, "LimitRunSpeed", kLimitRunSpeed);
+	globalVariables->AddItem(groupName, "JumpSpeed", kJumpSpeed);
+	globalVariables->AddItem(groupName, "JumpCutRate", kJumpCutRate);
+	globalVariables->AddItem(groupName, "Gravity", kGravity);
+	globalVariables->AddItem(groupName, "MaxFallSpeed", kMaxFallSpeed);
+	globalVariables->AddItem(groupName, "GlideFallSpeed", kGlideFallSpeed);
+	globalVariables->AddItem(groupName, "CoyoteTime", kCoyoteTime);
+	globalVariables->AddItem(groupName, "ApexSpeedThreshold", kApexSpeedThreshold);
+	globalVariables->AddItem(groupName, "ApexGravityRate", kApexGravityRate);
+	globalVariables->AddItem(groupName, "JumpBufferTime", kJumpBufferTime);
+	globalVariables->AddItem(groupName, "AttackJumpLockTime", kAttackJumpLockTime);
+	globalVariables->AddItem(groupName, "GroundAttackDuration", kGroundAttackDuration);
+	globalVariables->AddItem(groupName, "AirAttackDuration", kAirAttackDuration);
+	globalVariables->AddItem(groupName, "GroundAttackRadius", kGroundAttackRadius);
+	globalVariables->AddItem(groupName, "GroundAttackOffsetX", kGroundAttackOffsetX);
+	globalVariables->AddItem(groupName, "AirAttackRadius", kAirAttackRadius);
+	globalVariables->AddItem(groupName, "CurveStepPerNotch", kCurveStepPerNotch);
+	globalVariables->AddItem(groupName, "MaxCurveOffset", kMaxCurveOffset);
+	globalVariables->AddItem(groupName, "ThrowOffsetY", kThrowOffsetY);
+	globalVariables->AddItem(groupName, "InvincibleDuration", kInvincibleDuration);
+	globalVariables->AddItem(groupName, "DamageKnockbackSpeed", kDamageKnockbackSpeed);
+	globalVariables->AddItem(groupName, "DamageKnockbackUpSpeed", kDamageKnockbackUpSpeed);
+}
+
+void Player::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Player";
+	kMaxLife = globalVariables->GetIntValue(groupName, "MaxLife");
+	kMeleeDamage = globalVariables->GetIntValue(groupName, "MeleeDamage");
+	kAcceleration = globalVariables->GetFloatValue(groupName, "Acceleration");
+	kAttenuation = globalVariables->GetFloatValue(groupName, "Attenuation");
+	kBrakeAttenuation = globalVariables->GetFloatValue(groupName, "BrakeAttenuation");
+	kLimitRunSpeed = globalVariables->GetFloatValue(groupName, "LimitRunSpeed");
+	kJumpSpeed = globalVariables->GetFloatValue(groupName, "JumpSpeed");
+	kJumpCutRate = globalVariables->GetFloatValue(groupName, "JumpCutRate");
+	kGravity = globalVariables->GetFloatValue(groupName, "Gravity");
+	kMaxFallSpeed = globalVariables->GetFloatValue(groupName, "MaxFallSpeed");
+	kGlideFallSpeed = globalVariables->GetFloatValue(groupName, "GlideFallSpeed");
+	kCoyoteTime = globalVariables->GetFloatValue(groupName, "CoyoteTime");
+	kApexSpeedThreshold = globalVariables->GetFloatValue(groupName, "ApexSpeedThreshold");
+	kApexGravityRate = globalVariables->GetFloatValue(groupName, "ApexGravityRate");
+	kJumpBufferTime = globalVariables->GetFloatValue(groupName, "JumpBufferTime");
+	kAttackJumpLockTime = globalVariables->GetFloatValue(groupName, "AttackJumpLockTime");
+	kGroundAttackDuration = globalVariables->GetFloatValue(groupName, "GroundAttackDuration");
+	kAirAttackDuration = globalVariables->GetFloatValue(groupName, "AirAttackDuration");
+	kGroundAttackRadius = globalVariables->GetFloatValue(groupName, "GroundAttackRadius");
+	kGroundAttackOffsetX = globalVariables->GetFloatValue(groupName, "GroundAttackOffsetX");
+	kAirAttackRadius = globalVariables->GetFloatValue(groupName, "AirAttackRadius");
+	kCurveStepPerNotch = globalVariables->GetFloatValue(groupName, "CurveStepPerNotch");
+	kMaxCurveOffset = globalVariables->GetFloatValue(groupName, "MaxCurveOffset");
+	kThrowOffsetY = globalVariables->GetFloatValue(groupName, "ThrowOffsetY");
+	kInvincibleDuration = globalVariables->GetFloatValue(groupName, "InvincibleDuration");
+	kDamageKnockbackSpeed = globalVariables->GetFloatValue(groupName, "DamageKnockbackSpeed");
+	kDamageKnockbackUpSpeed = globalVariables->GetFloatValue(groupName, "DamageKnockbackUpSpeed");
+}
+
+#pragma endregion
 
 #pragma region 初期化
 
@@ -45,10 +117,12 @@ void Player::Initialize(const Stage* stage) {
 	isGrounded_ = true;
 	isGliding_ = false;
 	coyoteTimer_ = 0.0f;
+	jumpBufferTimer_ = 0.0f;
 
 	attackType_ = AttackType::kNone;
 	attackTimer_ = 0.0f;
 	attackHasHit_ = false;
+	attackJumpLockTimer_ = 0.0f;
 
 	isAiming_ = false;
 	curveOffset_ = 0.0f;
@@ -110,11 +184,25 @@ void Player::UpdateJump() {
 		coyoteTimer_ += kFrameTime;
 	}
 
-	// ジャンプ開始：床の上か、床を離れた直後なら受け付ける
-	if (IsJumpTrigger() && (isGrounded_ || coyoteTimer_ < kCoyoteTime)) {
+	// 先行入力：押した瞬間を少しの間おぼえておき、跳べるようになった時点で跳ぶ
+	if (IsJumpTrigger()) {
+		jumpBufferTimer_ = kJumpBufferTime;
+	} else if (jumpBufferTimer_ > 0.0f) {
+		jumpBufferTimer_ -= kFrameTime;
+	}
+
+	// 地上攻撃を出した直後はジャンプできない
+	if (attackJumpLockTimer_ > 0.0f) {
+		attackJumpLockTimer_ -= kFrameTime;
+	}
+
+	// ジャンプ開始：床の上か床を離れた直後で、攻撃のロック中でなければ受け付ける
+	const bool canJump = (isGrounded_ || coyoteTimer_ < kCoyoteTime) && attackJumpLockTimer_ <= 0.0f;
+	if (jumpBufferTimer_ > 0.0f && canJump) {
 		velocity_.y = kJumpSpeed;
 		isGrounded_ = false;
 		coyoteTimer_ = kCoyoteTime;  // 猶予を使い切る（空中でもう一度跳べないようにする）
+		jumpBufferTimer_ = 0.0f;
 		return;
 	}
 
@@ -136,8 +224,12 @@ void Player::UpdateJump() {
 }
 
 void Player::UpdatePhysics() {
-	// 重力。ゆっくり降下中は落下速度の上限を下げる
-	velocity_.y -= kGravity;
+	// 重力。頂点付近（上下の速度が小さい間）は弱めて滞空感を出し、ゆっくり降下中は落下速度の上限を下げる
+	float gravity = kGravity;
+	if (!isGrounded_ && std::fabs(velocity_.y) < kApexSpeedThreshold) {
+		gravity *= kApexGravityRate;
+	}
+	velocity_.y -= gravity;
 	const float fallLimit = isGliding_ ? kGlideFallSpeed : kMaxFallSpeed;
 	if (velocity_.y < -fallLimit) {
 		velocity_.y = -fallLimit;
@@ -177,11 +269,12 @@ void Player::UpdateCollision() {
 void Player::UpdateAttack() {
 	Input* input = Input::GetInstance();
 
-	// 持続時間を減らし、終わったら解除。空中攻撃は着地でも終わる
+	// 持続時間を減らし、終わったら解除。地上攻撃は床を離れると、空中攻撃は着地すると終わる
 	if (IsAttacking()) {
 		attackTimer_ -= kFrameTime;
+		const bool leftGroundDuringGroundAttack = (attackType_ == AttackType::kGround) && !isGrounded_;
 		const bool landedDuringAirAttack = (attackType_ == AttackType::kAir) && isGrounded_;
-		if (attackTimer_ <= 0.0f || landedDuringAirAttack) {
+		if (attackTimer_ <= 0.0f || leftGroundDuringGroundAttack || landedDuringAirAttack) {
 			attackType_ = AttackType::kNone;
 			attackTimer_ = 0.0f;
 		}
@@ -192,6 +285,7 @@ void Player::UpdateAttack() {
 		if (isGrounded_) {
 			attackType_ = AttackType::kGround;
 			attackTimer_ = kGroundAttackDuration;
+			attackJumpLockTimer_ = kAttackJumpLockTime;  // 出した直後は跳べない
 		} else {
 			attackType_ = AttackType::kAir;
 			attackTimer_ = kAirAttackDuration;
@@ -267,11 +361,15 @@ void Player::UpdateInvincible() {
 	model_.SetColor(blink ? kDamagedColor : kBodyColor);
 }
 
-void Player::OnDamage(float knockbackDirectionX) {
+bool Player::OnDamage(float knockbackDirectionX) {
 	if (IsInvincible() || IsDead()) {
-		return;
+		return false;
 	}
-	life_--;
+
+	// 開発用の無敵モードではライフを減らさない（吹き飛びと無敵の演出はそのまま）
+	if (!isInvincibleMode_) {
+		life_--;
+	}
 
 	// ライフが尽きたら、その場で止まる（吹き飛ばない。やられ演出はシーンが進める）
 	if (life_ <= 0) {
@@ -279,14 +377,23 @@ void Player::OnDamage(float knockbackDirectionX) {
 		velocity_ = { 0.0f, 0.0f, 0.0f };
 		attackType_ = AttackType::kNone;
 		isAiming_ = false;
-		return;
+		return true;
 	}
 	invincibleTimer_ = kInvincibleDuration;
 
-	// 相手から離れる向きに吹き飛ぶ
+	// 相手から離れる向きに吹き飛ぶ（吹き飛び中に先行入力やコヨーテタイムで跳ばないよう、どちらも使い切る）
 	const float direction = (knockbackDirectionX >= 0.0f) ? 1.0f : -1.0f;
 	velocity_ = { direction * kDamageKnockbackSpeed, kDamageKnockbackUpSpeed, 0.0f };
 	isGrounded_ = false;
+	coyoteTimer_ = kCoyoteTime;
+	jumpBufferTimer_ = 0.0f;
+	return true;
+}
+
+void Player::UpdateModel() {
+	model_.Update();
+	boomerang_.UpdateModel();
+	UpdateAttackMark();
 }
 
 void Player::UpdateAttackMark() {
@@ -353,6 +460,8 @@ void Player::DrawImGui() {
 		ImGui::Text("velocity: %.3f, %.3f", velocity_.x, velocity_.y);
 		ImGui::Text("grounded: %s  gliding: %s  coyote: %.2f", isGrounded_ ? "true" : "false", isGliding_ ? "true" : "false", coyoteTimer_);
 		ImGui::Text("direction: %s  life: %d / %d  invincible: %.2f", (lrDirection_ == LRDirection::kRight) ? "right" : "left", life_, kMaxLife, invincibleTimer_);
+		ImGui::Text("jumpBuffer: %.2f  attackJumpLock: %.2f", jumpBufferTimer_, attackJumpLockTimer_);
+		ImGui::Checkbox("invincible mode (no damage, reactions on)", &isInvincibleMode_);
 
 		const char* attackName = "none";
 		if (attackType_ == AttackType::kGround) {
@@ -364,33 +473,6 @@ void Player::DrawImGui() {
 		ImGui::Text("cursor: %.2f, %.2f", cursorWorldPosition_.x, cursorWorldPosition_.y);
 		ImGui::Separator();
 
-		if (ImGui::TreeNode("Move / Jump")) {
-			ImGui::DragFloat("acceleration", &kAcceleration, 0.001f, 0.0f, 1.0f, "%.4f");
-			ImGui::DragFloat("attenuation", &kAttenuation, 0.01f, 0.0f, 1.0f);
-			ImGui::DragFloat("brakeAttenuation", &kBrakeAttenuation, 0.01f, 0.0f, 1.0f);
-			ImGui::DragFloat("limitRunSpeed", &kLimitRunSpeed, 0.005f, 0.0f, 2.0f);
-			ImGui::DragFloat("jumpSpeed", &kJumpSpeed, 0.005f, 0.0f, 2.0f);
-			ImGui::DragFloat("jumpCutRate", &kJumpCutRate, 0.01f, 0.0f, 1.0f);
-			ImGui::DragFloat("gravity", &kGravity, 0.0005f, 0.0f, 0.1f, "%.4f");
-			ImGui::DragFloat("maxFallSpeed", &kMaxFallSpeed, 0.005f, 0.0f, 2.0f);
-			ImGui::DragFloat("glideFallSpeed", &kGlideFallSpeed, 0.005f, 0.0f, 1.0f);
-			ImGui::DragFloat("coyoteTime", &kCoyoteTime, 0.01f, 0.0f, 1.0f);
-			ImGui::TreePop();
-		}
-		if (ImGui::TreeNode("Attack / Aim / Damage")) {
-			ImGui::DragFloat("groundAttackDuration", &kGroundAttackDuration, 0.01f, 0.0f, 3.0f);
-			ImGui::DragFloat("airAttackDuration", &kAirAttackDuration, 0.01f, 0.0f, 3.0f);
-			ImGui::DragFloat("groundAttackRadius", &kGroundAttackRadius, 0.01f, 0.1f, 5.0f);
-			ImGui::DragFloat("groundAttackOffsetX", &kGroundAttackOffsetX, 0.01f, 0.0f, 5.0f);
-			ImGui::DragFloat("airAttackRadius", &kAirAttackRadius, 0.01f, 0.1f, 5.0f);
-			ImGui::DragFloat("curveStepPerNotch", &kCurveStepPerNotch, 0.05f, 0.0f, 5.0f);
-			ImGui::DragFloat("maxCurveOffset", &kMaxCurveOffset, 0.1f, 0.0f, 20.0f);
-			ImGui::DragFloat("throwOffsetY", &kThrowOffsetY, 0.01f, -2.0f, 2.0f);
-			ImGui::DragFloat("invincibleDuration", &kInvincibleDuration, 0.05f, 0.0f, 5.0f);
-			ImGui::DragFloat("damageKnockbackSpeed", &kDamageKnockbackSpeed, 0.01f, 0.0f, 2.0f);
-			ImGui::DragFloat("damageKnockbackUpSpeed", &kDamageKnockbackUpSpeed, 0.01f, 0.0f, 2.0f);
-			ImGui::TreePop();
-		}
 		boomerang_.DrawImGui();
 		ImGui::TreePop();
 	}

@@ -257,7 +257,7 @@ AL4 のゲーム制作は「授業で習得した知識のみを使う」制約�
 | 地形種ごとのモデル切替・回転、ブロックの大量配置 | ○ | AL3 | |
 | 複数ステージ（一覧 CSV ＋ StageManager） | ○ | AL3 | |
 | ホットリロード（ImGui ボタンで CSV 再読込） | ○ | AL3 | |
-| 調整項目の一元管理（GlobalVariables: 登録 ／ 反映 ／ ImGui 編集 ／ 保存 ／ 読込） | ○ | AL3 | **保存形式は CSV（決定）**。fstream だけで書ける |
+| 調整項目の一元管理（GlobalVariables: 登録 ／ 反映 ／ ImGui 編集 ／ 保存 ／ 読込） | ○ | AL3 | **保存形式は CSV（決定）**。fstream だけで書ける。2026-10-12 に `Game/Util/GlobalVariables` として実装済み（GameDesign の M5-1） |
 | デバッグ起動設定（CSV で開始ステージ指定） | ○ | AL3 | |
 | 背景の視差スクロール（レイヤー） | △ | （AL3 完成版は ex3 以降） | 複数レイヤーを奥行きの違う Z に置いて描くだけなら ◎（描画順・座標変換の知識で足りる）。§8（未確認） |
 
@@ -392,3 +392,5 @@ AL4 のゲーム制作は「授業で習得した知識のみを使う」制約�
 
 - 2026-10-07: 初版。PG3 ／ MT3・MT4 ／ AL2_01・AL2_02・PG2 ／ 昨年作 ／ AL3（〜ex3）／ 自作エンジン を棚卸し
 - 2026-10-07: 要確認事項の判断を反映（unique_ptr 使用、ラムダ・constexpr・指示付き初期化・json・パッド不使用、スクリーン→ワールド変換の承認、SE のみ）
+- 2026-10-12: 調整項目の一元管理（GlobalVariables）を CSV 保存で実装済みにした（§4.5）。使った知識は AL3 の GlobalVariables（map ＋ variant ＋ ImGui Drag）、マップチップの CSV 読込（getline）、ofstream の書き出し、filesystem、std::stoi ／ stof
+- 2026-10-13: エフェクト（AL3 の BaseEffect ／ HitEffect ／ GuardEffect と同じ形。Object3D の色のアルファとイージングで拡大 → 消える）、ジャンプの先行入力・頂点付近の重力弱め・攻撃後のジャンプ禁止（いずれも秒のタイマーと条件分岐の組み合わせ。新しい API は無し）、カメラの注目点（Lerp と clamp）を実装。知識の追加は無し

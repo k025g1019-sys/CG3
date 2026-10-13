@@ -1,10 +1,28 @@
 #include "Game/Object/Shockwave.h"
 
 #include "Game/Stage/Stage.h"
+#include "Game/Util/GlobalVariables.h"
 
 #include <cassert>
 
 using namespace Engine;
+
+void Shockwave::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Shockwave";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	globalVariables->AddItem(groupName, "Speed", kSpeed);
+	globalVariables->AddItem(groupName, "Radius", kRadius);
+}
+
+void Shockwave::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Shockwave";
+	kSpeed = globalVariables->GetFloatValue(groupName, "Speed");
+	kRadius = globalVariables->GetFloatValue(groupName, "Radius");
+}
 
 void Shockwave::Initialize(const Vector3& position, float direction, const Stage* stage) {
 	assert(stage);
@@ -30,6 +48,10 @@ void Shockwave::Update() {
 	}
 
 	model_.GetTransform().translate = position_;
+	model_.Update();
+}
+
+void Shockwave::UpdateModel() {
 	model_.Update();
 }
 

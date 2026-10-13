@@ -29,7 +29,7 @@ void ClearScene::OnUpdate() {
 	mark_.GetTransform().rotate.y += 0.02f;
 	mark_.Update();
 
-	fade_.Update();
+	fade_.Update(GetRenderAreaWidth(), GetRenderAreaHeight());
 
 	Input* input = Input::GetInstance();
 	switch (phase_) {

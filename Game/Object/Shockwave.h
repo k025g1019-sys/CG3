@@ -21,14 +21,21 @@ public:
 
 	void Update() override;
 
+	void UpdateModel() override;
+
 	void Draw() const override;
 
 	Engine::Sphere GetHitSphere() const override { return { position_, kRadius }; }
 
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
+
 private:
 
 	// --- 調整値 ---
-	static inline float kSpeed = 0.22f;   // 進む速さ（1 フレームあたり）
+	static inline float kSpeed = 0.18f;   // 進む速さ（1 フレームあたり）
 	static inline float kRadius = 0.45f;  // 当たり判定の半径（中心は床から半径ぶん上）
 
 	Engine::Object3D model_;                           // 見た目（仮モデル：平たい立方体）

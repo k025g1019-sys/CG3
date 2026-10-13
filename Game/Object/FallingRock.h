@@ -20,6 +20,8 @@ public:
 
 	void Update() override;
 
+	void UpdateModel() override;
+
 	void Draw() const override;
 
 	Engine::Sphere GetHitSphere() const override { return { position_, kRadius }; }
@@ -28,13 +30,18 @@ public:
 
 	void OnHitByPlayer() override { Kill(); }
 
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
+
 private:
 
 	// --- 調整値 ---
-	static inline float kGravity = 0.012f;      // 落下の加速度（1 フレームあたり）
-	static inline float kMaxFallSpeed = 0.4f;   // 落下速度の上限
+	static inline float kGravity = 0.0096f;     // 落下の加速度（1 フレームあたり）
+	static inline float kMaxFallSpeed = 0.32f;  // 落下速度の上限
 	static inline float kRadius = 0.6f;         // 当たり判定の半径
-	static inline float kSpinSpeed = 0.05f;     // 見た目の回転速度（ラジアン / フレーム）
+	static inline float kSpinSpeed = 0.04f;     // 見た目の回転速度（ラジアン / フレーム）
 
 	Engine::Object3D model_;                           // 見た目（仮モデル：球）
 	Engine::Vector3 position_ = { 0.0f, 0.0f, 0.0f };  // 現在位置

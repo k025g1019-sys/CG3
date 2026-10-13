@@ -52,7 +52,8 @@
 ## 定数と調整値
 
 - マジックナンバーは `k` 定数に抽出し、行末コメントで意味を書く
-- ゲームの手触りに関わる値（速度・時間・半径など）はクラス先頭にまとめ、ImGui で触れるようにする。保存・読込は CSV（調整項目の仕組みは AllowedKnowledge §4.5）
+- ゲームの手触りに関わる値（速度・時間・半径など）はクラス先頭に `static inline` でまとめ、そのクラスの `static void RegisterGlobalVariables()`（既定値の登録）と `static void ApplyGlobalVariables()`（反映）で GlobalVariables に載せる。編集は Development ビルドの「Global Variables」ウィンドウ、保存は CSV（GameDesign の M5-1）。各クラスの DrawImGui では値を編集しない（状態の表示だけ）
+- 新しいクラスに調整値を足したら、`BossScene::RegisterGlobalVariables()` ／ `ApplyGlobalVariables()` の一覧にも追加する
 - 円周率は `std::numbers::pi_v<float>`。度→ラジアンは定数倍で書く
 - `std::min` ／ `std::max` は Windows.h のマクロと衝突するので、比較式か `(std::min)(a, b)` で書く
 
@@ -76,6 +77,8 @@
 - ImGui を使うコードは `#ifdef USE_IMGUI` で囲み、シーンの `OnDrawImGui()` に書く。開発中だけのコードは `#ifndef NDEBUG`（`_DEBUG` は使わない）
 - `/W4 /WX` なので未使用の変数・引数はビルドエラー。使わない引数は名前をコメントアウトする（`float /*deltaTime*/`）
 - `Object3D` ／ `Sprite` は毎フレーム `Update()` → `Draw()`。スプライトは `OnDraw` の最後、半透明は不透明の後に奥から描く
+- 描くものの `Update()` を止めてはいけない（定数バッファがフレームごとに別のスロットなので、止めたまま描くと前のフレームの位置と交互に描かれてガタつく）。止めて見せたいときは動きだけ止め、`UpdateModel()` のような見た目だけの更新を毎フレーム呼ぶ
+- 使い捨てのもの（エフェクト・攻撃物）を消すときは、終わったフレームは描かず、次のフレームの更新の最初で `erase` する（描画中のフレームが参照している定数バッファをその場で壊さない）。`BossScene::UpdateEffects` ／ `Boss::UpdateHazards` の形に合わせる
 - 音声ファイルの読込（`Audio::LoadWave`）はアプリで 1 回だけ（キャッシュが無いため）
 
 ## 昨年作から引き継がないもの

@@ -24,8 +24,8 @@ public:
 		kReturn,   // 復路（持ち主へ戻る）
 	};
 
-	// 1 ヒットのダメージ（往路と復路で同じ）
-	static inline const int32_t kDamage = 2;
+	// 1 ヒットのダメージ（往路と復路で同じ。調整値）
+	static inline int32_t kDamage = 2;
 
 	/// <summary>
 	/// 仮モデルを作る
@@ -38,14 +38,24 @@ public:
 	/// <param name="ownerPosition">持ち主の現在位置（復路の目標）</param>
 	void Update(const Engine::Vector3& ownerPosition);
 
+	/// <summary>
+	/// 見た目だけを更新する（止めて見せる間も毎フレーム呼ぶ。描くものは毎フレーム Update が必要なため）
+	/// </summary>
+	void UpdateModel();
+
 	void Draw() const;
 
 #ifdef USE_IMGUI
 	/// <summary>
-	/// 状態の表示と調整値の編集（呼び出し側の ImGui ウィンドウの中に差し込む）
+	/// 状態の表示（呼び出し側の ImGui ウィンドウの中に差し込む。調整値の編集は Global Variables ウィンドウで行う）
 	/// </summary>
 	void DrawImGui();
 #endif
+
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
 
 	/// <summary>
 	/// 投げる（飛行中は無視する）
@@ -80,13 +90,13 @@ public:
 private:
 
 	// --- 調整値（ImGui で変更可）---
-	static inline float kOutwardDuration = 0.45f;      // 往路にかける秒数
-	static inline float kReturnStartSpeed = 0.08f;     // 復路の初速（1 フレームあたり）
-	static inline float kReturnAcceleration = 0.012f;  // 復路の加速度（1 フレームあたり）
-	static inline float kReturnMaxSpeed = 0.5f;        // 復路の最高速度（1 フレームあたり）
+	static inline float kOutwardDuration = 0.56f;      // 往路にかける秒数
+	static inline float kReturnStartSpeed = 0.064f;    // 復路の初速（1 フレームあたり）
+	static inline float kReturnAcceleration = 0.0096f; // 復路の加速度（1 フレームあたり）
+	static inline float kReturnMaxSpeed = 0.4f;        // 復路の最高速度（1 フレームあたり）
 	static inline float kCatchDistance = 0.6f;         // 持ち主との距離がこれ以下になったら回収
 	static inline float kRadius = 0.5f;                // 当たり判定の半径
-	static inline float kSpinSpeed = 0.4f;             // 見た目の回転速度（ラジアン / フレーム）
+	static inline float kSpinSpeed = 0.32f;            // 見た目の回転速度（ラジアン / フレーム）
 
 	// --- 固定値 ---
 	static inline const float kFrameTime = 1.0f / 60.0f;  // 1 フレームの秒数

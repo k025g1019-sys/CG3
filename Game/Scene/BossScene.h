@@ -2,7 +2,9 @@
 
 #include "Engine/Math/Vector2.h"
 #include "Engine/Math/Vector3.h"
+#include "Engine/Math/Vector4.h"
 #include "Engine/Scene/BaseScene.h"
+#include "Game/Effect/BaseEffect.h"
 #include "Game/Effect/DeathParticles.h"
 #include "Game/Object/Boss.h"
 #include "Game/Object/Player.h"
@@ -12,6 +14,7 @@
 #include "Game/UI/Gauge.h"
 
 #include <memory>
+#include <vector>
 
 /// <summary>
 /// ボス戦のシーン。ステージ・プレイヤー・ボス・カメラ・UI を持ち、オブジェクト同士の当たり判定をまとめて行う。
@@ -20,6 +23,13 @@
 /// 開発中は Esc でタイトルへ、C でクリアへ、P でボスの AI の ON / OFF、H でプレイヤーにダメージ。
 /// </summary>
 class BossScene : public Engine::BaseScene {
+public:
+
+	// 調整項目を登録（このシーンが持つオブジェクトの分もまとめて。起動時にファイルを読み込んだ後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（このシーンが持つオブジェクトの分もまとめて。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
+
 protected:
 
 	void OnInitialize() override;
@@ -63,6 +73,7 @@ private:
 	Gauge bossGauge_;                     // ボスの HP（下）
 	Fade fade_;                           // シーンの出入りのフェード
 	std::unique_ptr<DeathParticles> deathParticles_;  // やられ演出（やられたときに作る）
+	std::vector<std::unique_ptr<BaseEffect>> effects_;  // ヒットや弾きのエフェクト（終わったものは取り除く）
 
 	Phase phase_ = Phase::kPlay;          // 現在の段階
 	float deathTimer_ = 0.0f;             // やられてからの時間（秒）
@@ -86,6 +97,14 @@ private:
 
 	// すべての当たり判定（プレイヤーの攻撃 → ボス・攻撃物、ボスの攻撃 → プレイヤー、体の押し出し）
 	void CheckAllCollisions();
+
+	// エフェクトの更新と、終わったものの削除
+	void UpdateEffects();
+
+	// エフェクトの発生
+	void SpawnHitEffect(const Engine::Vector3& position, const Engine::Vector4& color);
+	void SpawnGuardEffect(const Engine::Vector3& position);
+	void SpawnBossHitEffect(Boss::HitResult result, const Engine::Vector3& attackPosition);  // ボスへの攻撃の結果に合わせて出す
 
 	// プレイヤーを描くか（やられ演出で止まって見せた後は消す）
 	bool IsPlayerVisible() const;

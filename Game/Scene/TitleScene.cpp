@@ -30,7 +30,7 @@ void TitleScene::OnUpdate() {
 	logo_.GetTransform().rotate.y += 0.02f;
 	logo_.Update();
 
-	fade_.Update();
+	fade_.Update(GetRenderAreaWidth(), GetRenderAreaHeight());
 
 	Input* input = Input::GetInstance();
 	switch (phase_) {

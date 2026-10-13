@@ -3,6 +3,7 @@
 #include "Engine/Math/Curve.h"
 #include "Engine/Math/Matrix4x4.h"
 #include "Game/Util/Easing.h"
+#include "Game/Util/GlobalVariables.h"
 
 #include <algorithm>
 
@@ -11,6 +12,39 @@
 #endif
 
 using namespace Engine;
+
+#pragma region 調整値
+
+void Boomerang::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Boomerang";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	globalVariables->AddItem(groupName, "Damage", kDamage);
+	globalVariables->AddItem(groupName, "OutwardDuration", kOutwardDuration);
+	globalVariables->AddItem(groupName, "ReturnStartSpeed", kReturnStartSpeed);
+	globalVariables->AddItem(groupName, "ReturnAcceleration", kReturnAcceleration);
+	globalVariables->AddItem(groupName, "ReturnMaxSpeed", kReturnMaxSpeed);
+	globalVariables->AddItem(groupName, "CatchDistance", kCatchDistance);
+	globalVariables->AddItem(groupName, "Radius", kRadius);
+	globalVariables->AddItem(groupName, "SpinSpeed", kSpinSpeed);
+}
+
+void Boomerang::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Boomerang";
+	kDamage = globalVariables->GetIntValue(groupName, "Damage");
+	kOutwardDuration = globalVariables->GetFloatValue(groupName, "OutwardDuration");
+	kReturnStartSpeed = globalVariables->GetFloatValue(groupName, "ReturnStartSpeed");
+	kReturnAcceleration = globalVariables->GetFloatValue(groupName, "ReturnAcceleration");
+	kReturnMaxSpeed = globalVariables->GetFloatValue(groupName, "ReturnMaxSpeed");
+	kCatchDistance = globalVariables->GetFloatValue(groupName, "CatchDistance");
+	kRadius = globalVariables->GetFloatValue(groupName, "Radius");
+	kSpinSpeed = globalVariables->GetFloatValue(groupName, "SpinSpeed");
+}
+
+#pragma endregion
 
 #pragma region 初期化
 
@@ -50,6 +84,10 @@ void Boomerang::Update(const Vector3& ownerPosition) {
 	if (IsFlying()) {
 		transform.rotate.z += kSpinSpeed;
 	}
+	model_.Update();
+}
+
+void Boomerang::UpdateModel() {
 	model_.Update();
 }
 
@@ -148,13 +186,6 @@ void Boomerang::DrawImGui() {
 			phaseName = "return";
 		}
 		ImGui::Text("phase: %s  position: %.2f, %.2f  speed: %.3f  hasHit: %s", phaseName, position_.x, position_.y, speed_, hasHit_ ? "true" : "false");
-		ImGui::DragFloat("outwardDuration", &kOutwardDuration, 0.01f, 0.05f, 5.0f);
-		ImGui::DragFloat("returnStartSpeed", &kReturnStartSpeed, 0.005f, 0.0f, 2.0f);
-		ImGui::DragFloat("returnAcceleration", &kReturnAcceleration, 0.001f, 0.0f, 0.5f, "%.4f");
-		ImGui::DragFloat("returnMaxSpeed", &kReturnMaxSpeed, 0.01f, 0.0f, 3.0f);
-		ImGui::DragFloat("catchDistance", &kCatchDistance, 0.01f, 0.0f, 3.0f);
-		ImGui::DragFloat("radius", &kRadius, 0.01f, 0.05f, 3.0f);
-		ImGui::DragFloat("spinSpeed", &kSpinSpeed, 0.01f, 0.0f, 2.0f);
 		ImGui::TreePop();
 	}
 }

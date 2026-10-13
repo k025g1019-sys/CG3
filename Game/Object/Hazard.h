@@ -14,6 +14,9 @@ public:
 
 	virtual void Update() = 0;
 
+	// 見た目だけを更新する（止めて見せる間も毎フレーム呼ぶ。描くものは毎フレーム Update が必要なため）
+	virtual void UpdateModel() = 0;
+
 	virtual void Draw() const = 0;
 
 	// 当たり判定（プレイヤーへのダメージと、プレイヤーの攻撃による破壊の両方に使う）

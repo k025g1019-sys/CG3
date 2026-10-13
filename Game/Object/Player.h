@@ -14,7 +14,7 @@ class Stage;
 /// 空中で W / Space を押し続けるとゆっくり降下する。
 /// 左クリックで近接攻撃（地上は正面の円、空中は自分を中心にした大きい円）。
 /// 右ボタンを押している間はカーソルを狙い、ホイールで予測線を曲げ、離すとブーメランを投げる。
-/// ライフは 3。被弾すると吹き飛んでしばらく無敵になり、尽きるとその場で止まる（やられ演出はシーンが進める）。
+/// ライフは調整値（既定 6）。被弾すると吹き飛んでしばらく無敵になり、尽きるとその場で止まる（やられ演出はシーンが進める）。
 /// 位置はモデルの translate で持ち（Z は常に 0）、速度は 1 フレームあたりの移動量。
 /// </summary>
 class Player {
@@ -37,8 +37,8 @@ public:
 		kAir,     // 空中攻撃（自分を中心にした大きい円）
 	};
 
-	// 近接攻撃 1 発のダメージ（ブーメランより低いが連続で出せる）
-	static inline const int32_t kMeleeDamage = 1;
+	// 近接攻撃 1 発のダメージ（ブーメランより低いが連続で出せる。調整値）
+	static inline int32_t kMeleeDamage = 1;
 
 	/// <summary>
 	/// 仮モデルを作り、ステージの床の上に置く
@@ -63,10 +63,15 @@ public:
 
 #ifdef USE_IMGUI
 	/// <summary>
-	/// 状態の表示と調整値の編集（呼び出し側の ImGui ウィンドウの中に差し込む）
+	/// 状態の表示（呼び出し側の ImGui ウィンドウの中に差し込む。調整値の編集は Global Variables ウィンドウで行う）
 	/// </summary>
 	void DrawImGui();
 #endif
+
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
 
 	/// <summary>
 	/// カーソルのワールド座標（Z=0 平面）を渡す。狙いと投擲に使うので Update の前に毎フレーム呼ぶ
@@ -75,10 +80,20 @@ public:
 
 	/// <summary>
 	/// ダメージを受けた（無敵中とやられた後は無視）。ライフを 1 減らし、相手から離れる向きに吹き飛んでしばらく無敵になる。
-	/// ライフが尽きたら吹き飛ばずにその場で止まる
+	/// ライフが尽きたら吹き飛ばずにその場で止まる。開発用の無敵モードではライフを減らさない
 	/// </summary>
 	/// <param name="knockbackDirectionX">吹き飛ぶ向き（+1 で右、-1 で左）</param>
-	void OnDamage(float knockbackDirectionX);
+	/// <returns>ダメージの処理をしたら true（無敵中などで無視したら false）</returns>
+	bool OnDamage(float knockbackDirectionX);
+
+	/// <summary>
+	/// 見た目だけを更新する（止めて見せる間も毎フレーム呼ぶ。描くものは毎フレーム Update が必要なため）
+	/// </summary>
+	void UpdateModel();
+
+	// 開発用の無敵モード（ダメージを受けないが、吹き飛びと無敵の演出はする）
+	void SetInvincibleMode(bool enabled) { isInvincibleMode_ = enabled; }
+	bool IsInvincibleMode() const { return isInvincibleMode_; }
 
 	/// <summary>
 	/// 位置の X だけを変える（ボスの体から押し出すときなど）
@@ -120,20 +135,24 @@ private:
 	static inline float kAcceleration = 0.02f;       // 左右移動の加速度
 	static inline float kAttenuation = 0.15f;        // 入力が無いときの減衰率（1 フレームでこの割合だけ速度が減る）
 	static inline float kBrakeAttenuation = 0.3f;    // 逆方向へ入力したときの減衰率（急ブレーキ）
-	static inline float kLimitRunSpeed = 0.18f;      // 左右移動の最高速度
-	static inline float kJumpSpeed = 0.25f;          // ジャンプの初速
-	static inline float kJumpCutRate = 0.7f;         // 上昇中にキーを離している間、毎フレーム上昇速度に掛ける倍率（小さいほど低く跳ぶ）
-	static inline float kGravity = 0.0105f;          // 重力（毎フレーム速度から引く）
-	static inline float kMaxFallSpeed = 0.35f;       // 落下速度の上限
-	static inline float kGlideFallSpeed = 0.06f;     // ゆっくり降下中の落下速度の上限
+	static inline float kLimitRunSpeed = 0.16f;      // 左右移動の最高速度
+	static inline float kJumpSpeed = 0.4f;           // ジャンプの初速
+	static inline float kJumpCutRate = 0.8f;         // 上昇中にキーを離している間、毎フレーム上昇速度に掛ける倍率（小さいほど低く跳ぶ）
+	static inline float kGravity = 0.02f;            // 重力（毎フレーム速度から引く）
+	static inline float kMaxFallSpeed = 0.32f;       // 落下速度の上限
+	static inline float kGlideFallSpeed = 0.04f;     // ゆっくり降下中の落下速度の上限
 	static inline float kCoyoteTime = 0.1f;          // 床を離れてからジャンプを受け付ける猶予（秒）
+	static inline float kApexSpeedThreshold = 0.07f; // 上下の速度がこれより小さい間は頂点付近とみなす
+	static inline float kApexGravityRate = 0.5f;     // 頂点付近で重力に掛ける倍率（小さいほど頂点に長くいる）
+	static inline float kJumpBufferTime = 0.2f;      // ジャンプの先行入力を覚えておく時間（秒）
 
 	// --- 近接攻撃の調整値 ---
 	static inline float kGroundAttackDuration = 0.5f;  // 地上攻撃の持続（秒）
-	static inline float kAirAttackDuration = 0.8f;     // 空中攻撃の持続（秒）
-	static inline float kGroundAttackRadius = 0.6f;    // 地上攻撃の円の半径
-	static inline float kGroundAttackOffsetX = 1.0f;   // 地上攻撃の円の中心を正面へずらす量
-	static inline float kAirAttackRadius = 1.2f;       // 空中攻撃の円の半径（プレイヤーより大きい）
+	static inline float kAirAttackDuration = 0.7f;     // 空中攻撃の持続（秒）
+	static inline float kGroundAttackRadius = 1.5f;    // 地上攻撃の円の半径
+	static inline float kGroundAttackOffsetX = 1.8f;   // 地上攻撃の円の中心を正面へずらす量
+	static inline float kAirAttackRadius = 1.5f;       // 空中攻撃の円の半径（プレイヤーより大きい）
+	static inline float kAttackJumpLockTime = 0.15f;   // 地上攻撃を出してからジャンプできない時間（秒）
 
 	// --- 狙い・投擲の調整値 ---
 	static inline float kCurveStepPerNotch = 1.0f;     // ホイール 1 目盛りで曲線の膨らみが変わる量
@@ -141,14 +160,14 @@ private:
 	static inline float kThrowOffsetY = 0.2f;          // 投げ始める位置を中心から上にずらす量
 
 	// --- 被弾の調整値 ---
+	static inline int32_t kMaxLife = 6;                 // ライフの最大値
 	static inline float kInvincibleDuration = 1.0f;     // 被弾後の無敵時間（秒）
 	static inline float kDamageKnockbackSpeed = 0.25f;  // 被弾で吹き飛ぶ横の初速
 	static inline float kDamageKnockbackUpSpeed = 0.2f; // 被弾で吹き飛ぶ上の初速
 
 	// --- 固定値 ---
-	static inline const int32_t kMaxLife = 3;             // ライフの最大値
 	static inline const float kWidth = 1.0f;              // 当たり判定の幅
-	static inline const float kHeight = 1.0f;             // 当たり判定の高さ
+	static inline const float kHeight = 2.0f;             // 当たり判定の高さ
 	static inline const float kBodyRadius = 0.5f;         // 体の判定の半径
 	static inline const float kFrameTime = 1.0f / 60.0f;  // 1 フレームの秒数
 	static inline const float kWheelNotch = 120.0f;       // ホイール 1 目盛りぶんの入力値
@@ -162,10 +181,12 @@ private:
 	bool isGrounded_ = false;                             // 床に着いているか
 	bool isGliding_ = false;                              // ゆっくり降下中か
 	float coyoteTimer_ = 0.0f;                            // 床を離れてからの経過時間（秒）
+	float jumpBufferTimer_ = 0.0f;                        // ジャンプの先行入力の残り時間（秒）
 
 	AttackType attackType_ = AttackType::kNone;           // 現在の近接攻撃
 	float attackTimer_ = 0.0f;                            // 近接攻撃の残り時間（秒）
 	bool attackHasHit_ = false;                           // 今の近接攻撃が既に当たったか
+	float attackJumpLockTimer_ = 0.0f;                    // 地上攻撃を出した後にジャンプできない残り時間（秒）
 
 	Engine::Vector3 cursorWorldPosition_ = { 0.0f, 0.0f, 0.0f };  // カーソルのワールド座標（Z=0 平面。シーンから毎フレーム受け取る）
 	bool isAiming_ = false;                               // 右ボタンを押して狙っている最中か
@@ -174,6 +195,7 @@ private:
 
 	float invincibleTimer_ = 0.0f;                        // 被弾後の無敵の残り時間（秒）
 	int32_t life_ = kMaxLife;                             // 残りライフ（0 でやられ）
+	bool isInvincibleMode_ = false;                       // 開発用：ダメージを受けない（吹き飛びと無敵の演出はする）
 
 	// 左右の入力で加速・減速する
 	void UpdateMove();

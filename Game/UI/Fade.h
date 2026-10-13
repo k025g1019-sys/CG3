@@ -24,9 +24,12 @@ public:
 	void Initialize();
 
 	/// <summary>
-	/// 経過時間を進めて不透明度を更新する（毎フレーム呼ぶ）
+	/// 経過時間を進めて不透明度を更新する（毎フレーム呼ぶ）。
+	/// 描画先の大きさを受け取り、縦横比が 1280x720 と違っても画面全体を覆う大きさに合わせる
 	/// </summary>
-	void Update();
+	/// <param name="screenWidth">描画先の幅（px。シーンの GetRenderAreaWidth()）</param>
+	/// <param name="screenHeight">描画先の高さ（px。シーンの GetRenderAreaHeight()）</param>
+	void Update(float screenWidth, float screenHeight);
 
 	/// <summary>
 	/// フェード中だけスプライトを描く（OnDraw の一番最後に呼ぶ）

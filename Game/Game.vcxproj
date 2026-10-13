@@ -65,6 +65,8 @@
     <ClCompile Include="MyGame.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Effect\DeathParticles.cpp" />
+    <ClCompile Include="Effect\GuardEffect.cpp" />
+    <ClCompile Include="Effect\HitEffect.cpp" />
     <ClCompile Include="Object\Bit.cpp" />
     <ClCompile Include="Object\Boomerang.cpp" />
     <ClCompile Include="Object\Boss.cpp" />
@@ -79,11 +81,15 @@
     <ClCompile Include="UI\Fade.cpp" />
     <ClCompile Include="UI\Gauge.cpp" />
     <ClCompile Include="Util\Easing.cpp" />
+    <ClCompile Include="Util\GlobalVariables.cpp" />
     <ClCompile Include="Util\ScreenToWorld.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyGame.h" />
+    <ClInclude Include="Effect\BaseEffect.h" />
     <ClInclude Include="Effect\DeathParticles.h" />
+    <ClInclude Include="Effect\GuardEffect.h" />
+    <ClInclude Include="Effect\HitEffect.h" />
     <ClInclude Include="Object\Bit.h" />
     <ClInclude Include="Object\Boomerang.h" />
     <ClInclude Include="Object\Boss.h" />
@@ -99,6 +105,7 @@
     <ClInclude Include="UI\Fade.h" />
     <ClInclude Include="UI\Gauge.h" />
     <ClInclude Include="Util\Easing.h" />
+    <ClInclude Include="Util\GlobalVariables.h" />
     <ClInclude Include="Util\ScreenToWorld.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

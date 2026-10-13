@@ -1,0 +1,5 @@
+name,type,value
+Gravity,float,0.0096
+MaxFallSpeed,float,0.32
+Radius,float,0.6
+SpinSpeed,float,0.04

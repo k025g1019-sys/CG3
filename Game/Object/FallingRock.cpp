@@ -1,10 +1,32 @@
 #include "Game/Object/FallingRock.h"
 
 #include "Game/Stage/Stage.h"
+#include "Game/Util/GlobalVariables.h"
 
 #include <cassert>
 
 using namespace Engine;
+
+void FallingRock::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "FallingRock";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	globalVariables->AddItem(groupName, "Gravity", kGravity);
+	globalVariables->AddItem(groupName, "MaxFallSpeed", kMaxFallSpeed);
+	globalVariables->AddItem(groupName, "Radius", kRadius);
+	globalVariables->AddItem(groupName, "SpinSpeed", kSpinSpeed);
+}
+
+void FallingRock::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "FallingRock";
+	kGravity = globalVariables->GetFloatValue(groupName, "Gravity");
+	kMaxFallSpeed = globalVariables->GetFloatValue(groupName, "MaxFallSpeed");
+	kRadius = globalVariables->GetFloatValue(groupName, "Radius");
+	kSpinSpeed = globalVariables->GetFloatValue(groupName, "SpinSpeed");
+}
 
 void FallingRock::Initialize(const Vector3& position, const Stage* stage) {
 	assert(stage);
@@ -35,6 +57,10 @@ void FallingRock::Update() {
 	Transform3D& transform = model_.GetTransform();
 	transform.translate = position_;
 	transform.rotate.z += kSpinSpeed;
+	model_.Update();
+}
+
+void FallingRock::UpdateModel() {
 	model_.Update();
 }
 

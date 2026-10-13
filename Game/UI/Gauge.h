@@ -30,6 +30,11 @@ public:
 	/// </summary>
 	void Draw() const;
 
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
+
 private:
 
 	static inline float kDelayFollowRate = 0.08f;  // 遅れバーが残量バーに追いつく割合（1 フレームあたり）

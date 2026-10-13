@@ -1,0 +1,4 @@
+name,type,value
+AngularSpeed,float,0.024
+OrbitRadius,float,3.2
+Radius,float,0.35

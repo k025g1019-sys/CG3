@@ -19,6 +19,8 @@ public:
 
 	void Update() override;
 
+	void UpdateModel() override;
+
 	void Draw() const override;
 
 	Engine::Sphere GetHitSphere() const override { return { position_, kRadius }; }
@@ -29,11 +31,16 @@ public:
 
 	void SetAnchor(const Engine::Vector3& anchor) override { anchor_ = anchor; }
 
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
+
 private:
 
 	// --- 調整値 ---
 	static inline float kOrbitRadius = 3.2f;    // 回る半径
-	static inline float kAngularSpeed = 0.03f;  // 回る速さ（ラジアン / フレーム）
+	static inline float kAngularSpeed = 0.024f; // 回る速さ（ラジアン / フレーム）
 	static inline float kRadius = 0.35f;        // 当たり判定の半径
 
 	Engine::Object3D model_;                           // 見た目（仮モデル：球）

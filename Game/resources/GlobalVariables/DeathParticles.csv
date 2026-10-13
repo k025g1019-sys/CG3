@@ -1,0 +1,4 @@
+name,type,value
+Duration,float,1
+Scale,float,0.5
+Speed,float,0.1

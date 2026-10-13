@@ -2,6 +2,7 @@
 
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Math/Matrix4x4.h"
+#include "Game/Util/GlobalVariables.h"
 
 #include <algorithm>
 
@@ -13,6 +14,21 @@ const Vector4 kBackgroundColor = { 0.08f, 0.08f, 0.1f, 0.85f };  // 背景の色
 const Vector4 kDelayBarColor = { 1.0f, 1.0f, 1.0f, 0.9f };      // 遅れバーの色
 
 } // namespace
+
+void Gauge::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Gauge";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	globalVariables->AddItem(groupName, "DelayFollowRate", kDelayFollowRate);
+}
+
+void Gauge::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Gauge";
+	kDelayFollowRate = globalVariables->GetFloatValue(groupName, "DelayFollowRate");
+}
 
 void Gauge::Initialize(const Vector2& position, const Vector2& size, const Vector4& barColor) {
 	position_ = position;

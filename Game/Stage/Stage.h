@@ -23,10 +23,15 @@ public:
 
 #ifdef USE_IMGUI
 	/// <summary>
-	/// 幅などを編集する（呼び出し側の ImGui ウィンドウの中に差し込む）
+	/// 端の位置を表示する（呼び出し側の ImGui ウィンドウの中に差し込む。調整値の編集は Global Variables ウィンドウで行う）
 	/// </summary>
 	void DrawImGui();
 #endif
+
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
 
 	// 床の上面の高さ
 	float GetGroundY() const { return kGroundY; }

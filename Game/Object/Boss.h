@@ -5,6 +5,7 @@
 #include "Engine/Rendering/Object3D.h"
 #include "Game/Object/Hazard.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -63,26 +64,45 @@ public:
 	/// </summary>
 	void Draw() const;
 
+	/// <summary>
+	/// 半透明の予備動作の印（突進・叩きつけの進路、落石の落下位置）を描く（不透明なものをすべて描いた後に呼ぶ）
+	/// </summary>
+	void DrawEffect() const;
+
+	/// <summary>
+	/// 見た目だけを更新する（止めて見せる間も毎フレーム呼ぶ。描くものは毎フレーム Update が必要なため）
+	/// </summary>
+	void UpdateModel();
+
 #ifdef USE_IMGUI
 	/// <summary>
-	/// 状態の表示と調整値の編集（呼び出し側の ImGui ウィンドウの中に差し込む）
+	/// 状態の表示（呼び出し側の ImGui ウィンドウの中に差し込む。調整値の編集は Global Variables ウィンドウで行う）
 	/// </summary>
 	void DrawImGui();
 #endif
 
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
+
 	/// <summary>
-	/// プレイヤーの攻撃（近接・ブーメラン）を当てる。弱点 → 体 の順に調べて結果を返す。
-	/// 盾が有効で正面からの攻撃なら弾く
+	/// プレイヤーの攻撃（近接・ブーメラン）を当てる。盾が有効で正面からの攻撃なら弾き、そうでなければ 弱点 → 体 の順に調べて結果を返す
 	/// </summary>
 	/// <param name="attackSphere">攻撃の判定</param>
 	/// <param name="damage">基本ダメージ（コアに当たると 2 倍）</param>
-	HitResult ApplyAttack(const Engine::Sphere& attackSphere, int32_t damage);
+	/// <param name="attackerPosition">攻撃してきた側の位置（近接はプレイヤー、ブーメランはブーメラン自身）。正面か背後かの判定に使う。
+	/// 近接の判定は大きく正面から体越しにコアへ届くことがあるので、判定の中心ではなく攻撃した側の位置で見る</param>
+	HitResult ApplyAttack(const Engine::Sphere& attackSphere, int32_t damage, const Engine::Vector3& attackerPosition);
 
 	// 体の判定（箱）
 	Engine::AABB3D GetBodyBox() const;
 
 	// 弱点のコアの判定（背中側）
 	Engine::Sphere GetCoreSphere() const;
+
+	// 盾の位置（正面。弾いたエフェクトを出す位置）
+	Engine::Vector3 GetShieldPosition() const;
 
 	// 盾が有効か（疲れ・怯み・やられの間は無効）
 	bool IsGuarding() const;
@@ -126,12 +146,15 @@ private:
 	};
 
 	// --- 固定値 ---
-	static inline const int32_t kMaxHp = 24;               // 最大 HP
-	static inline const int32_t kWeakPointMultiplier = 2;  // コアに当たったときのダメージ倍率
 	static inline const int32_t kAttackPatternCount = 3;   // 攻撃の種類（突進 / 叩きつけ / 落石）
-	static inline const int32_t kRockCount = 4;            // 落石 1 回で落とす岩の数
-	static inline const int32_t kBitCount = 3;             // 第 2 段階で呼ぶビットの数
+	static inline const int32_t kMaxRockMarkers = 8;       // 落石の印の数の上限（RockCount もここまで）
 	static inline const float kFrameTime = 1.0f / 60.0f;   // 1 フレームの秒数
+
+	// --- HP と数の調整値 ---
+	static inline int32_t kMaxHp = 24;               // 最大 HP
+	static inline int32_t kWeakPointMultiplier = 2;  // コアに当たったときのダメージ倍率
+	static inline int32_t kRockCount = 4;            // 落石 1 回で落とす岩の数
+	static inline int32_t kBitCount = 3;             // 第 2 段階で呼ぶビットの数
 
 	// --- 体の調整値 ---
 	static inline float kBodyHalfWidth = 1.0f;     // 体の半分の幅
@@ -141,32 +164,40 @@ private:
 	static inline float kCoreOffsetY = 0.4f;       // コアの高さ（中心から上へ）
 	static inline float kCoreRadius = 0.45f;       // コアの半径
 
-	// --- 行動の調整値（秒、1 フレームあたりの量）---
-	static inline float kFirstIdleDuration = 1.5f;  // 戦闘開始から最初の攻撃までの待ち
-	static inline float kIdleDuration = 1.2f;       // 攻撃と攻撃の間の待ち
-	static inline float kTurnDelay = 0.5f;          // 待機中、背後に回られてから向き直るまでの遅れ
-	static inline float kChargeWindup = 0.6f;       // 突進の予備動作
-	static inline float kChargeSpeed = 0.3f;        // 突進の速さ
+	// --- 行動の調整値（秒、1 フレームあたりの量。2026-10-13 に動きを 8 割の速さにした）---
+	static inline float kFirstIdleDuration = 1.9f;  // 戦闘開始から最初の攻撃までの待ち
+	static inline float kIdleDuration = 1.5f;       // 攻撃と攻撃の間の待ち
+	static inline float kTurnDelay = 0.6f;          // 待機中、背後に回られてから向き直るまでの遅れ
+	static inline float kChargeWindup = 0.75f;      // 突進の予備動作
+	static inline float kChargeSpeed = 0.24f;       // 突進の速さ
 	static inline float kChargeDistance = 14.0f;    // 突進で走る距離の上限（壁に着いても止まる）
 	static inline float kChargeMinDistance = 3.0f;  // これより近いと突進ではなく叩きつけにする
-	static inline float kTiredDuration = 1.5f;      // 突進後の疲れ（盾が下がる時間）
-	static inline float kSlamWindup = 0.7f;         // 叩きつけの振りかぶり
-	static inline float kSlamRecover = 0.8f;        // 叩きつけの余韻
+	static inline float kTiredDuration = 1.9f;      // 突進後の疲れ（盾が下がる時間）
+	static inline float kSlamWindup = 0.9f;         // 叩きつけの振りかぶり
+	static inline float kSlamRecover = 1.0f;        // 叩きつけの余韻
 	static inline float kSlamRange = 5.0f;          // これより遠いと叩きつけではなく突進にする
-	static inline float kRockRoar = 0.5f;           // 落石の予備動作
-	static inline float kRockRecover = 1.0f;        // 落石の余韻
+	static inline float kRockRoar = 0.6f;           // 落石の予備動作
+	static inline float kRockRecover = 1.25f;       // 落石の余韻
 	static inline float kRockSpawnHeight = 11.0f;   // 岩の出現する高さ
 	static inline float kRockHeightStep = 2.0f;     // 岩ごとの高さの差（落ちる時間をずらす）
 	static inline float kRockSpreadX = 3.0f;        // 岩を散らす横幅（プレイヤーの左右）
-	static inline float kStaggerDuration = 0.5f;    // 怯みの時間
+	static inline float kStaggerDuration = 0.6f;    // 怯みの時間
+	static inline float kStaggerCooldown = 2.0f;    // 怯んだ後、次に怯むまでの間隔（連続で怯ませて封じられないように）
 	static inline float kDeathDuration = 1.5f;      // やられ演出の時間
 	static inline float kDeathSinkSpeed = 0.02f;    // やられ演出で沈む速さ
 	static inline float kFlashDuration = 0.15f;     // ダメージを受けたときの白い点滅
+	static inline float kShieldFlashDuration = 0.12f;  // 弾いたときの盾の白い点滅
 	static inline float kBitAnchorOffsetY = 1.0f;   // ビットが回る中心の高さ（中心から上へ）
 
 	Engine::Object3D body_;    // 体（仮モデル：箱）
 	Engine::Object3D shield_;  // 盾（仮モデル：薄い板。盾が有効なときだけ描く）
 	Engine::Object3D core_;    // 弱点のコア（仮モデル：球）
+
+	Engine::Object3D attackMark_;                                // 突進・叩きつけの進路の印（床の上の半透明の帯）
+	std::array<Engine::Object3D, kMaxRockMarkers> rockMarks_;    // 落石の落下位置の印（床の上の半透明の円盤）
+	bool isAttackMarkVisible_ = false;                           // 進路の印を描くか
+	int32_t visibleRockMarkCount_ = 0;                           // 描く落石の印の数
+	std::vector<float> rockTargetsX_;                            // 今回の落石の落下位置（吠え始めに決める）
 
 	const Stage* stage_ = nullptr;    // 床の高さ・左右の端（借りるだけ）
 	const Player* player_ = nullptr;  // 狙う相手（借りるだけ）
@@ -190,6 +221,9 @@ private:
 	int32_t phase_ = 1;                                // 段階（1〜3）
 	bool isDeathFinished_ = false;                     // やられ演出が終わったか
 	float flashTimer_ = 0.0f;                          // ダメージの白い点滅の残り時間
+	float shieldFlashTimer_ = 0.0f;                    // 弾いたときの盾の点滅の残り時間
+	float staggerCooldownTimer_ = 0.0f;                // 次に怯むまでの残り時間
+	bool facePlayerRequest_ = false;                   // 殴られたので次の更新でプレイヤーの方を向く（当たり判定の途中で向きを変えない）
 	bool isAiEnabled_ = true;                          // 開発用：攻撃に移るか
 
 	std::vector<std::unique_ptr<Hazard>> hazards_;     // 出した攻撃物（衝撃波・岩・ビット）
@@ -225,6 +259,9 @@ private:
 	// 見た目の位置・色を状態に合わせる
 	void UpdateModels();
 
+	// 予備動作の印の位置・濃さを状態に合わせる（予備動作中だけ描く）
+	void UpdateMarks();
+
 	void TakeDamage(int32_t damage);
 
 	// 点が正面側（盾の側）にあるか
@@ -238,6 +275,9 @@ private:
 	float GetMaxX() const;
 
 	void SpawnShockwave();
+
+	// 落石の落下位置を決める（吠え始めに呼び、印を出してから SpawnRocks で落とす）
+	void PlanRocks();
 	void SpawnRocks();
 	void SpawnBits();
 	void KillAllHazards();

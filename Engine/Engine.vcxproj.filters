@@ -141,6 +141,9 @@
     <ClCompile Include="Rendering\Object3D.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\ParticleEmitter.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Rendering\ParticleSystem.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
@@ -303,6 +306,9 @@
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\Object3D.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\ParticleEmitter.h">
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\ParticleSystem.h">

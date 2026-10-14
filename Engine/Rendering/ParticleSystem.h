@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <list>
 #include <random>
 #include <string>
-#include <vector>
 
 #include "Engine/Math/Matrix4x4.h"
 #include "Engine/Math/Vector4.h"
@@ -15,16 +15,18 @@
 namespace Engine {
 
 class Mesh;
+struct ParticleEmitter;
 
 /// <summary>
 /// 同じメッシュ（板ポリなど）を、パーティクルごとに別のTransform・色で、
 /// 1回の描画命令（DrawInstanced）でまとめて描くパーティクル。
-///   Initialize : メッシュと、パーティクルの数を決め、全パーティクルを乱数で発生させる
+///   Initialize : メッシュと、パーティクルの最大数を決める（最初は1個も出ていない）
+///   Emit       : エミッタ（ParticleEmitter）の設定で、パーティクルを発生させる
 ///   Update     : 移動・生存時間の更新をし、ワールド行列と色をStructuredBufferへ書き込む（毎フレーム、Drawより前に呼ぶ）
 ///                ビルボードが有効なら、渡されたビュー行列を使ってパーティクルの表を常にカメラへ向ける
 ///   Draw       : パーティクル用のRootSignature・PSO（加算合成）で描画する（シーンのOnDrawの中で呼ぶ）
-/// パーティクルは発生時に位置・速度・色・生存時間（1～3秒）を乱数で決め、生存時間に近づくほど薄くなる。
-/// 生存時間を過ぎたものは消滅し、同じ数を保つようにすぐ新しく発生させる。
+/// パーティクルは発生時にエミッタの設定から位置・速度・色・生存時間を乱数で決め、生存時間に近づくほど薄くなる。
+/// 生存時間を過ぎたものは消滅する。数が増減するため、パーティクルはstd::listで管理する。
 /// パーティクルごとのワールド行列と色はStructuredBuffer（VSのt0）、ビュー射影は視点ごとの共有CBuffer（VSのb1）で渡す。
 /// マテリアル（色・UV変換）とテクスチャは全パーティクル共通で、ライティングはしない。
 /// </summary>
@@ -35,8 +37,14 @@ public:
     /// OBJファイルで初期化する（メッシュはMeshManagerが読み込み・共有する。テクスチャは最初のサブメッシュのmtl由来）
     /// </summary>
     /// <param name="objFilePath">実行ディレクトリからの相対パス（例: "resources/plane.obj"）</param>
-    /// <param name="particleCount">パーティクルの数（この数ぶんのGPUリソースを確保し、常にこの数を描く）</param>
-    void Initialize(const std::string& objFilePath, uint32_t particleCount);
+    /// <param name="maxParticleCount">パーティクルの最大数（この数ぶんのGPUリソースを確保する。これを超えては発生・描画しない）</param>
+    void Initialize(const std::string& objFilePath, uint32_t maxParticleCount);
+
+    // エミッタからパーティクルを発生させる（エミッタの「1回あたりの発生数」ぶん。最大数を超えるぶんは発生させない）
+    void Emit(const ParticleEmitter& emitter);
+
+    // 出ているパーティクルをすべて消す
+    void Clear() { particles_.clear(); }
 
     /// <summary>
     /// 各パーティクルを動かし、ワールド行列・色とマテリアルを書き込む（毎フレーム、Drawより前に呼ぶ）
@@ -48,8 +56,14 @@ public:
     // パーティクルごとの視錐台カリングはしない（全パーティクルをまとめて描く）
     void Draw() const;
 
-    // パーティクルの数（Initializeで決めた数）
+    // 今出ているパーティクルの数
     uint32_t GetParticleCount() const { return uint32_t(particles_.size()); }
+
+    // パーティクルの最大数（Initializeで決めた数）
+    uint32_t GetMaxParticleCount() const { return instancingBuffer_.GetElementCount(); }
+
+    // パーティクルが最大数まで出ているか（trueの間は、Emitを呼んでも発生しない）
+    bool IsFull() const { return GetParticleCount() >= GetMaxParticleCount(); }
 
     // ビルボード（パーティクルの表を常にカメラへ向ける）を使うか。既定は使う。
     // 使わないときは、各パーティクルのTransformの回転のままの向きで描く
@@ -91,8 +105,8 @@ private:
         Vector4 color;
     };
 
-    // パーティクルを1個生成する（位置・速度は[-1,1]、色はRGBそれぞれ[0,1]、生存時間は1～3秒の乱数で決める）
-    static Particle MakeNewParticle(std::mt19937& randomEngine);
+    // パーティクルを1個生成する（位置・速度・色・生存時間を、エミッタの設定の範囲から乱数で決める）
+    static Particle MakeNewParticle(std::mt19937& randomEngine, const ParticleEmitter& emitter);
 
 private:
 
@@ -107,8 +121,11 @@ private:
 
     ConstantBuffer<Material> materialCB_;
 
-    // パーティクルの配列
-    std::vector<Particle> particles_;
+    // 今出ているパーティクル（発生で末尾に足し、消滅で途中から抜くのでstd::listで持つ）
+    std::list<Particle> particles_;
+
+    // 描画するインスタンス数（UpdateでStructuredBufferへ書き込んだ数。最大数を超えない）
+    uint32_t instanceCount_ = 0;
 
     // 乱数生成器（Initializeで初期化する。パーティクルの生成に使う）
     std::mt19937 randomEngine_;
@@ -116,7 +133,7 @@ private:
     // ビルボードを使うか（trueなら、パーティクルの表が常にカメラを向く）
     bool isBillboardEnabled_ = true;
 
-    // Instancing用：パーティクルの数ぶんのワールド行列と色を格納するStructuredBuffer（VSのt0）
+    // Instancing用：パーティクルの最大数ぶんのワールド行列と色を格納するStructuredBuffer（VSのt0）
     StructuredBuffer<ParticleForGPU> instancingBuffer_;
 };
 

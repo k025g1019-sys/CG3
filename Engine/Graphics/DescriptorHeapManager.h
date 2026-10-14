@@ -2,13 +2,15 @@
 
 #include <d3d12.h>
 #include <cstdint>
+#include <vector>
 
 namespace Engine {
 
 /// <summary>
 /// ディスクリプタヒープの生成ヘルパと、SRVヒープのスロット割り当てを行う。
-/// SRVヒープのスロット（index）はAllocateSrvで払い出し、使用者（ImGui・各テクスチャ）が
+/// SRVヒープのスロット（index）はAllocateSrvで払い出し、使用者（ImGui・各テクスチャ・StructuredBuffer）が
 /// 自分のスロットを確保する。indexのハードコードによる衝突を防ぐ。
+/// シーンと一緒に破棄されるリソース（StructuredBufferなど）は、破棄するときにFreeSrvでスロットを返す。
 /// </summary>
 class DescriptorHeapManager {
 public:
@@ -18,8 +20,14 @@ public:
     // 割り当て対象のSRVヒープを登録する（DirectXCore初期化後に1回呼ぶ）
     void Initialize(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap);
 
-    // SRVヒープの空きスロットを1つ払い出し、そのindexを返す
+    // SRVヒープの空きスロットを1つ払い出し、そのindexを返す。
+    // FreeSrvで返されたスロットがあればそれを再利用する（そのため連続したスロットになるとは限らない。
+    // 連続スロットが必要なものは、まだ何も返されていない起動時に確保すること）
     uint32_t AllocateSrv();
+
+    // AllocateSrvで払い出したスロットを返し、次のAllocateSrvで再利用できるようにする。
+    // GPUがそのSRVを使い終わってから呼ぶこと（シーンはSceneManagerがGPUの完了を待ってから破棄する）
+    void FreeSrv(uint32_t index);
 
     // 指定スロットのCPU/GPUハンドルを取得する
     D3D12_CPU_DESCRIPTOR_HANDLE GetSrvCPUHandle(uint32_t index) const;
@@ -68,6 +76,8 @@ private:
     uint32_t capacity_ = 0;   // SRVヒープのスロット総数
 
     uint32_t nextIndex_ = 0;  // 次に払い出すスロット
+
+    std::vector<uint32_t> freeIndices_;  // FreeSrvで返されたスロット（AllocateSrvで優先して再利用する）
 };
 
 } // namespace Engine

@@ -50,8 +50,10 @@ public:
     // 1辺1・原点中心の立方体を生成する（面ごとに法線・UV 0..1を持つ24頂点＋36インデックス）
     void CreateCube(ID3D12Device* device);
 
-    // 頂点（インデックスがあればインデックス）バッファを設定して描画コマンドを積む
-    void Draw(ID3D12GraphicsCommandList* commandList) const;
+    // 頂点（インデックスがあればインデックス）バッファを設定して描画コマンドを積む。
+    // instanceCountを指定すると、同じメッシュをその数だけ1回の描画命令でまとめて描く
+    // （Instancing。VSのSV_InstanceIDに 0～instanceCount-1 が入る）
+    void Draw(ID3D12GraphicsCommandList* commandList, uint32_t instanceCount = 1) const;
 
     // 指定サブメッシュの頂点範囲だけ描画する（OBJ由来の非インデックスメッシュ専用）
     void DrawSubMesh(ID3D12GraphicsCommandList* commandList, uint32_t index) const;

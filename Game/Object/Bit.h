@@ -31,6 +31,8 @@ public:
 
 	void SetAnchor(const Engine::Vector3& anchor) override { anchor_ = anchor; }
 
+	bool IsBit() const override { return true; }
+
 	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
 	static void RegisterGlobalVariables();
 	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）

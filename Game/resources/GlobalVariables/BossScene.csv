@@ -1,2 +1,6 @@
 name,type,value
+CrushLandShakeAmplitude,float,0.1
+CrushLandShakeDuration,float,0.4
 DeathFreezeDuration,float,0.5
+ShotDownShakeAmplitude,float,0.25
+ShotDownShakeDuration,float,0.2

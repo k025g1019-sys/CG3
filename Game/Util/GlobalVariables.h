@@ -74,6 +74,14 @@ public:
 	/// 「Global Variables」ウィンドウに全グループ・全項目を表示して編集する（保存・再読込のボタン付き）
 	/// </summary>
 	void DrawImGui();
+
+	/// <summary>
+	/// 1 グループのうち、名前が prefix で始まる項目だけを表示して編集する（呼び出し側の ImGui ウィンドウの中に差し込む。
+	/// 項目が多いグループの一部だけを調整したいときに使う。prefix が空ならグループの全項目）
+	/// </summary>
+	/// <param name="groupName">グループ名</param>
+	/// <param name="prefix">項目名の先頭の文字列</param>
+	void DrawItemsImGui(const std::string& groupName, const std::string& prefix);
 #endif
 
 private:
@@ -85,4 +93,9 @@ private:
 
 	std::map<std::string, Group> datas_;  // 全データ（グループ名 → グループ）
 	std::string message_;                 // 直近の保存・読込の結果（ImGui に表示する）
+
+#ifdef USE_IMGUI
+	// 1 項目を型に合わせた Drag で表示して編集する
+	void DrawItemImGui(const std::string& itemName, Item& item);
+#endif
 };

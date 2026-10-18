@@ -1,6 +1,8 @@
 name,type,value
 CatchDistance,float,0.6
-Damage,int,2
+CurvePeakRate,float,1
+Damage,int,1
+DownCurveVerticalRate,float,1
 OutwardDuration,float,0.56
 Radius,float,0.5
 ReturnAcceleration,float,0.0096

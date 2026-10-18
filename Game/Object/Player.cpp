@@ -22,6 +22,7 @@ namespace {
 
 const Vector4 kBodyColor = { 1.0f, 0.4f, 0.3f, 1.0f };     // 通常の色
 const Vector4 kDamagedColor = { 1.0f, 0.85f, 0.8f, 1.0f };  // 無敵中の点滅色
+const int32_t kPredictionDivision = 32;                     // 予測線を描くときに曲線を分ける数
 
 } // namespace
 
@@ -55,11 +56,15 @@ void Player::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "GroundAttackOffsetX", kGroundAttackOffsetX);
 	globalVariables->AddItem(groupName, "AirAttackRadius", kAirAttackRadius);
 	globalVariables->AddItem(groupName, "CurveStepPerNotch", kCurveStepPerNotch);
+	globalVariables->AddItem(groupName, "WheelAwayCurvesUp", kWheelAwayCurvesUp);
 	globalVariables->AddItem(groupName, "MaxCurveOffset", kMaxCurveOffset);
 	globalVariables->AddItem(groupName, "ThrowOffsetY", kThrowOffsetY);
+	globalVariables->AddItem(groupName, "CatchCooldown", kCatchCooldown);
 	globalVariables->AddItem(groupName, "InvincibleDuration", kInvincibleDuration);
+	globalVariables->AddItem(groupName, "DamageHitStopDuration", kDamageHitStopDuration);
+	globalVariables->AddItem(groupName, "DamageShakeAmplitude", kDamageShakeAmplitude);
 	globalVariables->AddItem(groupName, "DamageKnockbackSpeed", kDamageKnockbackSpeed);
-	globalVariables->AddItem(groupName, "DamageKnockbackUpSpeed", kDamageKnockbackUpSpeed);
+	globalVariables->AddItem(groupName, "DamageKnockbackDuration", kDamageKnockbackDuration);
 }
 
 void Player::ApplyGlobalVariables() {
@@ -87,11 +92,15 @@ void Player::ApplyGlobalVariables() {
 	kGroundAttackOffsetX = globalVariables->GetFloatValue(groupName, "GroundAttackOffsetX");
 	kAirAttackRadius = globalVariables->GetFloatValue(groupName, "AirAttackRadius");
 	kCurveStepPerNotch = globalVariables->GetFloatValue(groupName, "CurveStepPerNotch");
+	kWheelAwayCurvesUp = globalVariables->GetIntValue(groupName, "WheelAwayCurvesUp");
 	kMaxCurveOffset = globalVariables->GetFloatValue(groupName, "MaxCurveOffset");
 	kThrowOffsetY = globalVariables->GetFloatValue(groupName, "ThrowOffsetY");
+	kCatchCooldown = globalVariables->GetFloatValue(groupName, "CatchCooldown");
 	kInvincibleDuration = globalVariables->GetFloatValue(groupName, "InvincibleDuration");
+	kDamageHitStopDuration = globalVariables->GetFloatValue(groupName, "DamageHitStopDuration");
+	kDamageShakeAmplitude = globalVariables->GetFloatValue(groupName, "DamageShakeAmplitude");
 	kDamageKnockbackSpeed = globalVariables->GetFloatValue(groupName, "DamageKnockbackSpeed");
-	kDamageKnockbackUpSpeed = globalVariables->GetFloatValue(groupName, "DamageKnockbackUpSpeed");
+	kDamageKnockbackDuration = globalVariables->GetFloatValue(groupName, "DamageKnockbackDuration");
 }
 
 #pragma endregion
@@ -110,8 +119,16 @@ void Player::Initialize(const Stage* stage) {
 	attackMark_.Initialize(Primitive::kSphere);
 	attackMark_.SetColor({ 1.0f, 0.9f, 0.2f, 0.35f });
 
+	// ブーメランは地面より下へ飛ばない
+	boomerang_.Initialize(stage_->GetGroundY());
+
+	Reset();
+}
+
+void Player::Reset() {
 	// ステージの左寄り、床の上に立たせる
 	model_.GetTransform().translate = { stage_->GetLeftEdge() + 6.0f, stage_->GetGroundY() + kHeight * 0.5f, 0.0f };
+	model_.SetColor(kBodyColor);
 	velocity_ = { 0.0f, 0.0f, 0.0f };
 	lrDirection_ = LRDirection::kRight;
 	isGrounded_ = true;
@@ -126,10 +143,15 @@ void Player::Initialize(const Stage* stage) {
 
 	isAiming_ = false;
 	curveOffset_ = 0.0f;
-	boomerang_.Initialize();
+	boomerang_.Reset();
+	catchCooldownTimer_ = 0.0f;
 
 	invincibleTimer_ = 0.0f;
 	life_ = kMaxLife;
+	hitStop_.Stop();
+	isKnockbackPending_ = false;
+	knockbackTimer_ = 0.0f;
+	isControllable_ = true;
 }
 
 #pragma endregion
@@ -137,6 +159,22 @@ void Player::Initialize(const Stage* stage) {
 #pragma region 更新
 
 void Player::Update() {
+	// ヒットストップ中は自分の動きを止める（移動も攻撃の時間も無敵時間も進めない）。
+	// 投げてあるブーメランは飛び続け、見た目は毎フレーム更新する（被弾のときは揺らす）
+	if (hitStop_.IsActive()) {
+		hitStop_.Update();
+		UpdateBoomerang();
+		UpdateBodyModel();
+		UpdateAttackMark();
+
+		// 狙っている最中なら、止まっている間も予測線を出し続ける（消すと点滅したように見える）
+		if (isAiming_) {
+			DrawAimLine();
+		}
+		return;
+	}
+
+	UpdateKnockback();
 	UpdateMove();
 	UpdateJump();
 	UpdatePhysics();
@@ -146,15 +184,64 @@ void Player::Update() {
 	UpdateDirection();
 	UpdateInvincible();
 
-	boomerang_.Update(GetPosition());
-	model_.Update();
+	UpdateBoomerang();
+	UpdateBodyModel();
 	UpdateAttackMark();
 }
 
+void Player::UpdateBoomerang() {
+	// キャッチ後のクールタイムを減らす
+	if (catchCooldownTimer_ > 0.0f) {
+		catchCooldownTimer_ -= kFrameTime;
+	}
+
+	// 飛んでいたブーメランが手元に戻った瞬間から、少しの間は次の攻撃を出せない
+	const bool wasFlying = boomerang_.IsFlying();
+	boomerang_.Update(GetPosition());
+	if (wasFlying && !boomerang_.IsFlying()) {
+		catchCooldownTimer_ = kCatchCooldown;
+	}
+}
+
+void Player::UpdateBodyModel() {
+	// 揺れは見た目だけに掛ける。位置はモデルの translate そのものなので、ずらして更新したらすぐ元に戻す
+	Vector3& translate = model_.GetTransform().translate;
+	const Vector3 position = translate;
+	translate += hitStop_.GetShakeOffset();
+	model_.Update();
+	translate = position;
+}
+
+void Player::UpdateKnockback() {
+	// ヒットストップが終わった最初のフレームで、ノックバックを始める
+	if (isKnockbackPending_) {
+		isKnockbackPending_ = false;
+		knockbackTimer_ = kDamageKnockbackDuration;
+	}
+	if (!IsKnockback()) {
+		return;
+	}
+
+	// 攻撃から離れる向きへ滑る。残り時間の割合を速さに掛けて、終わりにかけて遅くする（上には跳ねない）
+	const float rate = (kDamageKnockbackDuration > 0.0f) ? (knockbackTimer_ / kDamageKnockbackDuration) : 0.0f;
+	velocity_.x = knockbackDirection_ * kDamageKnockbackSpeed * rate;
+
+	knockbackTimer_ -= kFrameTime;
+	if (knockbackTimer_ < 0.0f) {
+		knockbackTimer_ = 0.0f;
+	}
+}
+
 void Player::UpdateMove() {
+	// ノックバックの最中は、ノックバックの速度のまま動く（入力で加速も減速もしない）
+	if (IsKnockback()) {
+		return;
+	}
+
+	// 操作を受け付けない間は、入力が無いものとして扱う（減速して止まる）
 	Input* input = Input::GetInstance();
-	const bool right = input->IsPress(DIK_D);
-	const bool left = input->IsPress(DIK_A);
+	const bool right = isControllable_ && input->IsPress(DIK_D);
+	const bool left = isControllable_ && input->IsPress(DIK_A);
 
 	// 同時押しは相殺し、どちらか一方のときだけ動く
 	if (right != left) {
@@ -185,7 +272,7 @@ void Player::UpdateJump() {
 	}
 
 	// 先行入力：押した瞬間を少しの間おぼえておき、跳べるようになった時点で跳ぶ
-	if (IsJumpTrigger()) {
+	if (CanControl() && IsJumpTrigger()) {
 		jumpBufferTimer_ = kJumpBufferTime;
 	} else if (jumpBufferTimer_ > 0.0f) {
 		jumpBufferTimer_ -= kFrameTime;
@@ -207,6 +294,11 @@ void Player::UpdateJump() {
 	}
 
 	if (isGrounded_) {
+		return;
+	}
+
+	// 操作できない間は、跳んでいる途中の高さの調整もゆっくり降下もしない（そのまま着地する）
+	if (!CanControl()) {
 		return;
 	}
 
@@ -280,8 +372,8 @@ void Player::UpdateAttack() {
 		}
 	}
 
-	// 左クリックで開始。攻撃中と、ブーメランが飛んでいる間は出せない
-	if (input->IsMouseTrigger(kMouseLeft) && !IsAttacking() && !boomerang_.IsFlying()) {
+	// 左クリックで開始（狙っている間でも出せる）。攻撃中・ブーメランが飛んでいる間・キャッチした直後は出せない
+	if (input->IsMouseTrigger(kMouseLeft) && !IsAttacking() && CanStartAttack()) {
 		if (isGrounded_) {
 			attackType_ = AttackType::kGround;
 			attackTimer_ = kGroundAttackDuration;
@@ -307,8 +399,9 @@ void Player::UpdateAttack() {
 void Player::UpdateAim() {
 	Input* input = Input::GetInstance();
 
-	// 右ボタンを押した瞬間に狙い始める（ブーメランが戻ってくるまでは投げられない）
-	if (!isAiming_ && input->IsMouseTrigger(kMouseRight) && !boomerang_.IsFlying()) {
+	// 右ボタンを押している間、狙える状態になったら狙い始める。
+	// 近接攻撃の最中・ブーメランが飛んでいる間・キャッチした直後は狙えない（押したままなら、狙えるようになった時点で始まる）
+	if (!isAiming_ && input->IsMousePress(kMouseRight) && !IsAttacking() && CanStartAttack()) {
 		isAiming_ = true;
 		curveOffset_ = 0.0f;  // 曲線は毎回直線から始める
 	}
@@ -316,26 +409,51 @@ void Player::UpdateAim() {
 		return;
 	}
 
-	// 離したら投げる（離した時点のカーソル位置が目標）
+	// 離したら投げる（離した時点のカーソル位置が目標）。
+	// 近接攻撃の最中とノックバックの最中は投げられないので、そのときに離したら投げずに狙いを取り消す
 	if (!input->IsMousePress(kMouseRight)) {
-		boomerang_.Throw(GetThrowOrigin(), cursorWorldPosition_, curveOffset_);
+		if (!IsAttacking() && CanControl()) {
+			boomerang_.Throw(GetThrowOrigin(), cursorWorldPosition_, curveOffset_);
+		}
 		isAiming_ = false;
 		curveOffset_ = 0.0f;
 		return;
 	}
 
-	// ホイールで予測線を曲げる（奥へ回すと上、手前へ回すと下。上限あり）
+	// ホイールで予測線を曲げる（上限あり）。回す向きと曲がる向きの対応は調整値で選べる
+	// （WheelAwayCurvesUp が 1 なら奥へ回すと上・手前へ回すと下、0 ならその逆）
 	const float wheel = input->GetWheel();
 	if (wheel != 0.0f) {
-		curveOffset_ += (wheel / kWheelNotch) * kCurveStepPerNotch;
+		const float direction = (kWheelAwayCurvesUp != 0) ? 1.0f : -1.0f;
+		curveOffset_ += direction * (wheel / kWheelNotch) * kCurveStepPerNotch;
 		curveOffset_ = std::clamp(curveOffset_, -kMaxCurveOffset, kMaxCurveOffset);
 	}
 
-	// 予測線（ブーメランが飛ぶ曲線）と目標点の印
+	DrawAimLine();
+}
+
+void Player::DrawAimLine() const {
+	// 予測線（ブーメランが飛ぶ曲線）。曲線を細かい線分でなぞり、地面に当たる所から先は飛ばないのでそこで止める
 	const std::array<Vector3, 3> controlPoints = Boomerang::MakeControlPoints(GetThrowOrigin(), cursorWorldPosition_, curveOffset_);
 	const Vector4 lineColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-	DebugDraw::DrawCurve(Curve(controlPoints[0], controlPoints[1], controlPoints[2]), lineColor, false);
-	DebugDraw::DrawSphere({ cursorWorldPosition_, 0.2f }, lineColor);
+	const float minY = stage_->GetGroundY() + Boomerang::GetRadius();
+	Vector3 previous = controlPoints[0];
+	for (int32_t i = 1; i <= kPredictionDivision; ++i) {
+		const float t = static_cast<float>(i) / static_cast<float>(kPredictionDivision);
+		Vector3 point = Bezier(controlPoints[0], controlPoints[1], controlPoints[2], t);
+		const bool hitsGround = point.y <= minY;
+		if (hitsGround) {
+			point.y = minY;
+		}
+		DebugDraw::DrawLine(previous, point, lineColor);
+		previous = point;
+		if (hitsGround) {
+			break;
+		}
+	}
+
+	// ブーメランが折り返す位置の印（地面に当たるならその位置、当たらなければカーソルの位置）
+	DebugDraw::DrawSphere({ previous, 0.2f }, lineColor);
 }
 
 void Player::UpdateDirection() {
@@ -366,12 +484,16 @@ bool Player::OnDamage(float knockbackDirectionX) {
 		return false;
 	}
 
-	// 開発用の無敵モードではライフを減らさない（吹き飛びと無敵の演出はそのまま）
+	// 開発用の無敵モードではライフを減らさない（ヒットストップと無敵の演出はそのまま）
 	if (!isInvincibleMode_) {
 		life_--;
 	}
 
-	// ライフが尽きたら、その場で止まる（吹き飛ばない。やられ演出はシーンが進める）
+	// 一瞬止まって揺れる（ヒットストップ）。止まっている間は白っぽい色にしておく
+	hitStop_.Start(kDamageHitStopDuration, kDamageShakeAmplitude);
+	model_.SetColor(kDamagedColor);
+
+	// ライフが尽きたら、その場で止まる（やられ演出はシーンが進める）
 	if (life_ <= 0) {
 		life_ = 0;
 		velocity_ = { 0.0f, 0.0f, 0.0f };
@@ -379,19 +501,32 @@ bool Player::OnDamage(float knockbackDirectionX) {
 		isAiming_ = false;
 		return true;
 	}
+
+	// 無敵時間。ヒットストップ中は UpdateInvincible を呼ばないので、ノックバックが始まってから減り始める
 	invincibleTimer_ = kInvincibleDuration;
 
-	// 相手から離れる向きに吹き飛ぶ（吹き飛び中に先行入力やコヨーテタイムで跳ばないよう、どちらも使い切る）
-	const float direction = (knockbackDirectionX >= 0.0f) ? 1.0f : -1.0f;
-	velocity_ = { direction * kDamageKnockbackSpeed, kDamageKnockbackUpSpeed, 0.0f };
-	isGrounded_ = false;
-	coyoteTimer_ = kCoyoteTime;
-	jumpBufferTimer_ = 0.0f;
+	// ヒットストップが終わったら、続けて攻撃から離れる向きへノックバックする
+	isKnockbackPending_ = true;
+	knockbackDirection_ = (knockbackDirectionX >= 0.0f) ? 1.0f : -1.0f;
+	jumpBufferTimer_ = 0.0f;  // ノックバック中に先行入力で跳ばないようにする
 	return true;
 }
 
+void Player::SetControllable(bool isControllable) {
+	isControllable_ = isControllable;
+
+	// 受け付けなくなったら、まだ始まっていない行動は取り消す（先行入力のジャンプ、狙っている途中の投擲）
+	if (!isControllable_) {
+		jumpBufferTimer_ = 0.0f;
+		isAiming_ = false;
+		curveOffset_ = 0.0f;
+	}
+}
+
 void Player::UpdateModel() {
-	model_.Update();
+	// やられた瞬間の揺れは、止めて見せている間もここで進める
+	hitStop_.Update();
+	UpdateBodyModel();
 	boomerang_.UpdateModel();
 	UpdateAttackMark();
 }
@@ -427,6 +562,10 @@ Sphere Player::GetAttackSphere() const {
 	return { CalcAttackCenter(), radius };
 }
 
+bool Player::CanStartAttack() const {
+	return CanControl() && !boomerang_.IsFlying() && catchCooldownTimer_ <= 0.0f;
+}
+
 bool Player::IsJumpTrigger() const {
 	Input* input = Input::GetInstance();
 	return input->IsTrigger(DIK_W) || input->IsTrigger(DIK_SPACE);
@@ -453,6 +592,16 @@ void Player::DrawEffect() const {
 }
 
 #ifdef USE_IMGUI
+void Player::DrawWheelDirectionImGui() {
+	// チェックを変えたら GlobalVariables の値を書き換える（調整値は毎フレームそこから読み直しているため、
+	// ここで kWheelAwayCurvesUp だけを変えても次のフレームに戻ってしまう）
+	bool isAwayUp = (kWheelAwayCurvesUp != 0);
+	if (ImGui::Checkbox("wheel away = curve up  (off: wheel toward = curve up)", &isAwayUp)) {
+		const int32_t value = isAwayUp ? 1 : 0;
+		GlobalVariables::GetInstance()->SetValue("Player", "WheelAwayCurvesUp", value);
+	}
+}
+
 void Player::DrawImGui() {
 	if (ImGui::TreeNode("Player")) {
 		const Vector3& position = GetPosition();
@@ -460,7 +609,8 @@ void Player::DrawImGui() {
 		ImGui::Text("velocity: %.3f, %.3f", velocity_.x, velocity_.y);
 		ImGui::Text("grounded: %s  gliding: %s  coyote: %.2f", isGrounded_ ? "true" : "false", isGliding_ ? "true" : "false", coyoteTimer_);
 		ImGui::Text("direction: %s  life: %d / %d  invincible: %.2f", (lrDirection_ == LRDirection::kRight) ? "right" : "left", life_, kMaxLife, invincibleTimer_);
-		ImGui::Text("jumpBuffer: %.2f  attackJumpLock: %.2f", jumpBufferTimer_, attackJumpLockTimer_);
+		ImGui::Text("jumpBuffer: %.2f  attackJumpLock: %.2f  catchCooldown: %.2f", jumpBufferTimer_, attackJumpLockTimer_, catchCooldownTimer_);
+		ImGui::Text("hitStop: %.2f  knockback: %.2f  controllable: %s", hitStop_.GetRemainingTime(), knockbackTimer_, isControllable_ ? "true" : "false");
 		ImGui::Checkbox("invincible mode (no damage, reactions on)", &isInvincibleMode_);
 
 		const char* attackName = "none";

@@ -29,6 +29,8 @@ void CameraController::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "OffsetX", kOffsetX);
 	globalVariables->AddItem(groupName, "FocusRate", kFocusRate);
 	globalVariables->AddItem(groupName, "MaxFocusOffset", kMaxFocusOffset);
+	globalVariables->AddItem(groupName, "FocusMargin", kFocusMargin);
+	globalVariables->AddItem(groupName, "TargetMargin", kTargetMargin);
 }
 
 void CameraController::ApplyGlobalVariables() {
@@ -40,6 +42,8 @@ void CameraController::ApplyGlobalVariables() {
 	kOffsetX = globalVariables->GetFloatValue(groupName, "OffsetX");
 	kFocusRate = globalVariables->GetFloatValue(groupName, "FocusRate");
 	kMaxFocusOffset = globalVariables->GetFloatValue(groupName, "MaxFocusOffset");
+	kFocusMargin = globalVariables->GetFloatValue(groupName, "FocusMargin");
+	kTargetMargin = globalVariables->GetFloatValue(groupName, "TargetMargin");
 }
 
 #pragma endregion
@@ -65,20 +69,49 @@ void CameraController::Initialize(Camera* camera, const Player* target, const St
 void CameraController::Update(float aspectRatio) {
 	Transform3D& transform = camera_->GetTransform();
 
-	// X だけ補間で追従し、ステージの端で止める
+	// X だけ補間で追従する。対象が画面の端に寄りすぎないようにしてから、ステージの端で止める
+	// （補間は揺れを足す前の位置から行う。揺れた位置から補間すると、揺れが追従の位置に残ってしまう）
 	const float halfViewWidth = CalcHalfViewWidth(aspectRatio);
-	float x = Lerp(transform.translate.x, CalcTargetX(), kFollowRate);
+	float x = Lerp(currentX_, CalcTargetX(halfViewWidth), kFollowRate);
+	x = ClampToKeepTarget(x, halfViewWidth);
 	x = ClampX(x, halfViewWidth);
+	currentX_ = x;
 
-	transform.translate = { x, kHeight, -kDistance };
+	// 揺れは見た目のカメラの位置にだけ足す
+	const Vector3 shake = UpdateShake();
+	transform.translate = { currentX_ + shake.x, kHeight + shake.y, -kDistance };
 	transform.rotate = { 0.0f, 0.0f, 0.0f };
+}
+
+void CameraController::StartShake(float amplitude, float duration) {
+	shakeAmplitude_ = amplitude;
+	shakeDuration_ = duration;
+	shakeTimer_ = duration;
+}
+
+Vector3 CameraController::UpdateShake() {
+	if (shakeTimer_ <= 0.0f || shakeDuration_ <= 0.0f) {
+		return { 0.0f, 0.0f, 0.0f };
+	}
+	shakeTimer_ -= kFrameTime;
+	if (shakeTimer_ < 0.0f) {
+		shakeTimer_ = 0.0f;
+	}
+
+	// 縦と横を少し違う速さで振り、残り時間の割合で小さくしていく
+	const float elapsed = shakeDuration_ - shakeTimer_;
+	const float rate = shakeTimer_ / shakeDuration_;
+	return { std::sin(elapsed * kShakeSpeedX) * shakeAmplitude_ * rate, std::cos(elapsed * kShakeSpeedY) * shakeAmplitude_ * rate, 0.0f };
 }
 
 void CameraController::Reset(float aspectRatio) {
 	Transform3D& transform = camera_->GetTransform();
 
 	const float halfViewWidth = CalcHalfViewWidth(aspectRatio);
-	transform.translate = { ClampX(CalcTargetX(), halfViewWidth), kHeight, -kDistance };
+	const float x = ClampToKeepTarget(CalcTargetX(halfViewWidth), halfViewWidth);
+	currentX_ = ClampX(x, halfViewWidth);
+	shakeTimer_ = 0.0f;
+	transform.translate = { currentX_, kHeight, -kDistance };
 	transform.rotate = { 0.0f, 0.0f, 0.0f };
 }
 
@@ -104,15 +137,45 @@ void CameraController::SetFocusPosition(const Vector3& position) {
 	focusPosition_ = position;
 }
 
-float CameraController::CalcTargetX() const {
+float CameraController::ClampToKeepTarget(float x, float halfViewWidth) const {
+	// 対象が画面の中央から離れてよい距離（画面の半分の幅から、端に空けておく幅を引く）
+	const float limit = halfViewWidth - kTargetMargin;
+	if (limit <= 0.0f) {
+		return target_->GetPosition().x;
+	}
+	const float targetX = target_->GetPosition().x;
+	return std::clamp(x, targetX - limit, targetX + limit);
+}
+
+float CameraController::CalcTargetX(float halfViewWidth) const {
 	float x = target_->GetPosition().x + kOffsetX;
 
-	// 注目点があれば、その方へ割合ぶん寄せる（寄せすぎて対象が画面から外れないよう上限あり）
 	if (hasFocus_) {
-		const float toFocus = (focusPosition_.x - target_->GetPosition().x) * kFocusRate;
-		x += std::clamp(toFocus, -kMaxFocusOffset, kMaxFocusOffset);
+		// 注目点の方へ割合ぶん寄せる（近いときの寄せ方。上限あり）
+		const float toFocus = focusPosition_.x - target_->GetPosition().x;
+		x += std::clamp(toFocus * kFocusRate, -kMaxFocusOffset, kMaxFocusOffset);
+
+		// 対象が注目点から離れていくとき（と止まっているとき）は、注目点が画面の外（端から FocusMargin より外側）へ出ないよう、
+		// 画面に入るところまでさらに寄せる。寄せすぎて対象が画面の端に寄りすぎる分は、あとで ClampToKeepTarget が止める（対象を映す方を優先）。
+		// 注目点へ向かって動いている間は、この補正をしない（近づけば自然に画面へ入ってくる。補正すると、近づく途中でカメラが止まって見える）
+		const float limit = halfViewWidth - kFocusMargin;
+		if (limit > 0.0f && !IsTargetApproachingFocus()) {
+			x = std::clamp(x, focusPosition_.x - limit, focusPosition_.x + limit);
+		}
 	}
 	return x;
+}
+
+bool CameraController::IsTargetApproachingFocus() const {
+	if (!hasFocus_) {
+		return false;
+	}
+
+	// 対象の速度のうち、注目点へ向かう向きの大きさ（離れる向きなら負）
+	const float velocityX = target_->GetVelocity().x;
+	const bool isFocusOnRight = focusPosition_.x >= target_->GetPosition().x;
+	const float approachSpeed = isFocusOnRight ? velocityX : -velocityX;
+	return approachSpeed > kApproachSpeedThreshold;
 }
 
 #pragma endregion
@@ -124,6 +187,7 @@ void CameraController::DrawImGui() {
 	if (ImGui::TreeNode("Camera")) {
 		const Vector3& position = camera_->GetTransform().translate;
 		ImGui::Text("position: %.2f, %.2f, %.2f", position.x, position.y, position.z);
+		ImGui::Text("keep focus in view: %s", IsTargetApproachingFocus() ? "off (approaching)" : "on");
 		ImGui::TreePop();
 	}
 }

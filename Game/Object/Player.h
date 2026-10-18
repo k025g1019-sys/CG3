@@ -4,6 +4,7 @@
 #include "Engine/Math/Vector3.h"
 #include "Engine/Rendering/Object3D.h"
 #include "Game/Object/Boomerang.h"
+#include "Game/Util/HitStop.h"
 
 #include <cstdint>
 
@@ -14,7 +15,10 @@ class Stage;
 /// 空中で W / Space を押し続けるとゆっくり降下する。
 /// 左クリックで近接攻撃（地上は正面の円、空中は自分を中心にした大きい円）。
 /// 右ボタンを押している間はカーソルを狙い、ホイールで予測線を曲げ、離すとブーメランを投げる。
-/// ライフは調整値（既定 6）。被弾すると吹き飛んでしばらく無敵になり、尽きるとその場で止まる（やられ演出はシーンが進める）。
+/// 狙っている間も近接攻撃は出せるが、近接攻撃の最中はブーメランを投げられない。
+/// ブーメランをキャッチした直後は少しの間、近接攻撃も狙いも出せない。
+/// ライフは調整値（既定 6）。被弾すると一瞬止まって揺れ（ヒットストップ）、続けて攻撃から離れる向きへ少しずれ（ノックバック）、しばらく無敵になる。
+/// ライフが尽きるとその場で止まる（やられ演出はシーンが進める）。
 /// 位置はモデルの translate で持ち（Z は常に 0）、速度は 1 フレームあたりの移動量。
 /// </summary>
 class Player {
@@ -47,6 +51,11 @@ public:
 	void Initialize(const Stage* stage);
 
 	/// <summary>
+	/// 最初の状態に戻す（位置・ライフ・攻撃など。リトライで使う。モデルは作り直さない）
+	/// </summary>
+	void Reset();
+
+	/// <summary>
 	/// 入力・移動・ジャンプ・攻撃・投擲の処理（毎フレーム呼ぶ）
 	/// </summary>
 	void Update();
@@ -73,25 +82,43 @@ public:
 	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
 	static void ApplyGlobalVariables();
 
+#ifdef USE_IMGUI
+	/// <summary>
+	/// ホイールを回す向きと曲線が曲がる向きの対応を切り替えるチェックボックス（呼び出し側の ImGui ウィンドウの中に差し込む）。
+	/// 遊びながらすぐ切り替えて比べるためのもので、値は GlobalVariables の Player / WheelAwayCurvesUp に入る（Save で CSV に保存される）
+	/// </summary>
+	static void DrawWheelDirectionImGui();
+#endif
+
 	/// <summary>
 	/// カーソルのワールド座標（Z=0 平面）を渡す。狙いと投擲に使うので Update の前に毎フレーム呼ぶ
 	/// </summary>
 	void SetCursorWorldPosition(const Engine::Vector3& position) { cursorWorldPosition_ = position; }
 
 	/// <summary>
-	/// ダメージを受けた（無敵中とやられた後は無視）。ライフを 1 減らし、相手から離れる向きに吹き飛んでしばらく無敵になる。
-	/// ライフが尽きたら吹き飛ばずにその場で止まる。開発用の無敵モードではライフを減らさない
+	/// ダメージを受けた（無敵中とやられた後は無視）。ライフを 1 減らし、一瞬止まって揺れ（ヒットストップ）、
+	/// 続けて攻撃から離れる向きへ少しずれる（ノックバック。その間は操作できない）。そのあとしばらく無敵になる。
+	/// 無敵時間は止まっている間は減らず、ノックバックが始まってから数え始める。
+	/// ライフが尽きたらその場で止まる（ノックバックしない）。開発用の無敵モードではライフを減らさない
 	/// </summary>
-	/// <param name="knockbackDirectionX">吹き飛ぶ向き（+1 で右、-1 で左）</param>
+	/// <param name="knockbackDirectionX">ノックバックでずれる向き（+1 で右、-1 で左。攻撃から離れる向きを渡す）</param>
 	/// <returns>ダメージの処理をしたら true（無敵中などで無視したら false）</returns>
 	bool OnDamage(float knockbackDirectionX);
+
+	/// <summary>
+	/// 操作を受け付けるかを切り替える。false にすると新しい行動（移動・ジャンプ・近接・狙い）を始めなくなる。
+	/// 進行中の行動は最後まで行う（移動は減速して止まり、空中なら着地し、近接は終わりまで、投げたブーメランは戻ってくる）。
+	/// 勝敗がついた後に使う
+	/// </summary>
+	void SetControllable(bool isControllable);
+	bool IsControllable() const { return isControllable_; }
 
 	/// <summary>
 	/// 見た目だけを更新する（止めて見せる間も毎フレーム呼ぶ。描くものは毎フレーム Update が必要なため）
 	/// </summary>
 	void UpdateModel();
 
-	// 開発用の無敵モード（ダメージを受けないが、吹き飛びと無敵の演出はする）
+	// 開発用の無敵モード（ダメージを受けないが、ヒットストップと無敵の演出はする）
 	void SetInvincibleMode(bool enabled) { isInvincibleMode_ = enabled; }
 	bool IsInvincibleMode() const { return isInvincibleMode_; }
 
@@ -156,14 +183,18 @@ private:
 
 	// --- 狙い・投擲の調整値 ---
 	static inline float kCurveStepPerNotch = 1.0f;     // ホイール 1 目盛りで曲線の膨らみが変わる量
+	static inline int32_t kWheelAwayCurvesUp = 0;      // ホイールを奥へ回したときに曲がる向き（1 で上向き、0 で下向き。手前へ回すとその逆）
 	static inline float kMaxCurveOffset = 4.0f;        // 曲線の膨らみの上限
 	static inline float kThrowOffsetY = 0.2f;          // 投げ始める位置を中心から上にずらす量
+	static inline float kCatchCooldown = 0.25f;        // ブーメランをキャッチしてから、次の攻撃（近接・狙い）ができるまでの時間（秒）
 
 	// --- 被弾の調整値 ---
 	static inline int32_t kMaxLife = 6;                 // ライフの最大値
-	static inline float kInvincibleDuration = 1.0f;     // 被弾後の無敵時間（秒）
-	static inline float kDamageKnockbackSpeed = 0.25f;  // 被弾で吹き飛ぶ横の初速
-	static inline float kDamageKnockbackUpSpeed = 0.2f; // 被弾で吹き飛ぶ上の初速
+	static inline float kInvincibleDuration = 1.0f;     // 被弾後の無敵時間（秒。ヒットストップが終わってから数える）
+	static inline float kDamageHitStopDuration = 0.15f; // 被弾したときに止まる時間（秒）
+	static inline float kDamageShakeAmplitude = 0.12f;  // 被弾したときの揺れ幅
+	static inline float kDamageKnockbackSpeed = 0.2f;   // ノックバックの初速（1 フレームあたり。終わりにかけて 0 へ落ちる）
+	static inline float kDamageKnockbackDuration = 0.2f;  // ノックバックの時間（秒。その間は操作できない）
 
 	// --- 固定値 ---
 	static inline const float kWidth = 1.0f;              // 当たり判定の幅
@@ -192,13 +223,22 @@ private:
 	bool isAiming_ = false;                               // 右ボタンを押して狙っている最中か
 	float curveOffset_ = 0.0f;                            // 予測線の曲がり具合（線の中点からの膨らみ）
 	Boomerang boomerang_;                                 // ブーメラン（同時に 1 つ）
+	float catchCooldownTimer_ = 0.0f;                     // キャッチ後、次の攻撃ができるまでの残り時間（秒）
 
 	float invincibleTimer_ = 0.0f;                        // 被弾後の無敵の残り時間（秒）
 	int32_t life_ = kMaxLife;                             // 残りライフ（0 でやられ）
-	bool isInvincibleMode_ = false;                       // 開発用：ダメージを受けない（吹き飛びと無敵の演出はする）
+	bool isInvincibleMode_ = false;                       // 開発用：ダメージを受けない（ヒットストップと無敵の演出はする）
+	HitStop hitStop_;                                     // ヒットストップ（被弾したとき）
+	bool isKnockbackPending_ = false;                     // ヒットストップが終わったらノックバックを始めるか
+	float knockbackDirection_ = 1.0f;                     // ノックバックでずれる向き（+1 で右、-1 で左）
+	float knockbackTimer_ = 0.0f;                         // ノックバックの残り時間（秒）
+	bool isControllable_ = true;                          // 操作を受け付けるか（勝敗がついた後は false）
 
 	// 左右の入力で加速・減速する
 	void UpdateMove();
+
+	// ノックバック：攻撃から離れる向きへ滑る（始まりの判定と、時間の経過も行う）
+	void UpdateKnockback();
 
 	// ジャンプの開始・高さの調整・ゆっくり降下
 	void UpdateJump();
@@ -221,14 +261,32 @@ private:
 	// 無敵時間の経過と点滅
 	void UpdateInvincible();
 
+	// ブーメランの更新と、キャッチした瞬間のクールタイム開始
+	void UpdateBoomerang();
+
+	// 本体のモデルを更新する（ヒットストップ中は揺れのぶん見た目だけずらす）
+	void UpdateBodyModel();
+
 	// 攻撃エフェクトの位置と大きさを判定に合わせる
 	void UpdateAttackMark();
+
+	// 狙いの予測線と、ブーメランが折り返す位置の印を描く（狙っている間は毎フレーム呼ぶ）
+	void DrawAimLine() const;
 
 	// 投げ始める位置
 	Engine::Vector3 GetThrowOrigin() const;
 
 	// 近接攻撃の判定の中心
 	Engine::Vector3 CalcAttackCenter() const;
+
+	// 新しく攻撃（近接・狙い）を始められるか（操作できて、ブーメランが手元にあり、キャッチ直後でない）
+	bool CanStartAttack() const;
+
+	// ノックバックの最中か
+	bool IsKnockback() const { return knockbackTimer_ > 0.0f; }
+
+	// 操作できるか（勝敗がついた後と、ノックバックの最中はできない）
+	bool CanControl() const { return isControllable_ && !IsKnockback(); }
 
 	// ジャンプ入力（W または Space）
 	bool IsJumpTrigger() const;

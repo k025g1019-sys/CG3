@@ -2,10 +2,26 @@
 
 #include "Engine/Core/WinApp.h"
 #include "Engine/Graphics/TextureManager.h"
+#include "Game/Util/GlobalVariables.h"
 
 #include <algorithm>
 
 using namespace Engine;
+
+void Fade::RegisterGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Fade";
+	globalVariables->CreateGroup(groupName);
+
+	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
+	globalVariables->AddItem(groupName, "Duration", kDefaultDuration);
+}
+
+void Fade::ApplyGlobalVariables() {
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+	const char* groupName = "Fade";
+	kDefaultDuration = globalVariables->GetFloatValue(groupName, "Duration");
+}
 
 void Fade::Initialize() {
 	// 1x1 の白いテクスチャを黒く塗り、画面全体に引き伸ばす（スプライトの大きさは 1280x720 基準の px）

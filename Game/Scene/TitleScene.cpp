@@ -20,7 +20,7 @@ void TitleScene::OnInitialize() {
 
 	// フェードインから始める
 	fade_.Initialize();
-	fade_.Start(Fade::Status::kFadeIn, kFadeDuration);
+	fade_.Start(Fade::Status::kFadeIn, Fade::GetDefaultDuration());
 	phase_ = Phase::kFadeIn;
 }
 
@@ -30,6 +30,8 @@ void TitleScene::OnUpdate() {
 	logo_.GetTransform().rotate.y += 0.02f;
 	logo_.Update();
 
+	// フェードの時間の調整値を反映（ImGui での変更をこのシーンでも反映する）
+	Fade::ApplyGlobalVariables();
 	fade_.Update(GetRenderAreaWidth(), GetRenderAreaHeight());
 
 	Input* input = Input::GetInstance();
@@ -44,7 +46,7 @@ void TitleScene::OnUpdate() {
 	case Phase::kMain:
 		// Enter / Space でフェードアウトを始める
 		if (input->IsTrigger(DIK_RETURN) || input->IsTrigger(DIK_SPACE)) {
-			fade_.Start(Fade::Status::kFadeOut, kFadeDuration);
+			fade_.Start(Fade::Status::kFadeOut, Fade::GetDefaultDuration());
 			phase_ = Phase::kFadeOut;
 		}
 		break;

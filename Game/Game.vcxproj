@@ -79,9 +79,11 @@
     <ClCompile Include="Stage\CameraController.cpp" />
     <ClCompile Include="Stage\Stage.cpp" />
     <ClCompile Include="UI\Fade.cpp" />
+    <ClCompile Include="UI\GameOverMenu.cpp" />
     <ClCompile Include="UI\Gauge.cpp" />
     <ClCompile Include="Util\Easing.cpp" />
     <ClCompile Include="Util\GlobalVariables.cpp" />
+    <ClCompile Include="Util\HitStop.cpp" />
     <ClCompile Include="Util\ScreenToWorld.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -103,9 +105,11 @@
     <ClInclude Include="Stage\CameraController.h" />
     <ClInclude Include="Stage\Stage.h" />
     <ClInclude Include="UI\Fade.h" />
+    <ClInclude Include="UI\GameOverMenu.h" />
     <ClInclude Include="UI\Gauge.h" />
     <ClInclude Include="Util\Easing.h" />
     <ClInclude Include="Util\GlobalVariables.h" />
+    <ClInclude Include="Util\HitStop.h" />
     <ClInclude Include="Util\ScreenToWorld.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -11,6 +11,7 @@
 #include "Game/Stage/CameraController.h"
 #include "Game/Stage/Stage.h"
 #include "Game/UI/Fade.h"
+#include "Game/UI/GameOverMenu.h"
 #include "Game/UI/Gauge.h"
 
 #include <memory>
@@ -19,7 +20,10 @@
 /// <summary>
 /// ボス戦のシーン。ステージ・プレイヤー・ボス・カメラ・UI を持ち、オブジェクト同士の当たり判定をまとめて行う。
 /// カーソルの位置をゲームの平面（Z=0）上のワールド座標に直してプレイヤーへ渡す。
-/// プレイヤーのライフが尽きると やられ演出 → フェードアウト → タイトルへ、ボスを倒すと フェードアウト → クリア画面へ。
+/// プレイヤーのライフが尽きると やられ演出 → その場でゲームオーバーの選択肢（リトライ / タイトルへ）。
+/// リトライは暗転なしですぐに最初からやり直し、タイトルへはフェードアウトしてから戻る。
+/// ボスを倒すと フェードアウト → クリア画面へ。
+/// 勝敗がついた後は、プレイヤーもボスも進行中の行動を最後に、新しい行動を始めない。
 /// 開発中は Esc でタイトルへ、C でクリアへ、P でボスの AI の ON / OFF、H でプレイヤーにダメージ。
 /// </summary>
 class BossScene : public Engine::BaseScene {
@@ -48,14 +52,18 @@ private:
 	/// シーンの段階
 	/// </summary>
 	enum class Phase {
-		kPlay,   // 戦闘中（開始時のフェードインも含む）
-		kDeath,  // プレイヤーのやられ演出（止まる → パーティクル → フェードアウト → タイトル）
-		kClear,  // ボスを倒した（フェードアウト → クリア画面）
+		kPlay,      // 戦闘中（開始時のフェードインも含む）
+		kDeath,     // プレイヤーのやられ演出（止まる → パーティクル）
+		kGameOver,  // ゲームオーバーの選択肢（リトライ → その場でやり直し / タイトルへ → フェードアウト → タイトル）
+		kClear,     // ボスを倒した（フェードアウト → クリア画面）
 	};
 
 	// --- 調整値 ---
-	static inline const float kFadeDuration = 1.0f;       // フェードにかける時間（秒）
 	static inline float kDeathFreezeDuration = 0.5f;      // やられた瞬間に止まって見せる時間（秒）
+	static inline float kCrushLandShakeAmplitude = 0.1f;  // 押しつぶしでボスが床に落ちたときのカメラの揺れ幅（弱め）
+	static inline float kCrushLandShakeDuration = 0.4f;   // 押しつぶしで落ちたときに揺らす時間（秒。普通の長さ）
+	static inline float kShotDownShakeAmplitude = 0.25f;  // 打ち落としたボスが床に落ちたときのカメラの揺れ幅（普通）
+	static inline float kShotDownShakeDuration = 0.2f;    // 打ち落としたボスが落ちたときに揺らす時間（秒。短め）
 	static inline const float kFrameTime = 1.0f / 60.0f;  // 1 フレームの秒数
 
 	// --- UI の配置（1280x720 基準の px。左上の角）---
@@ -72,6 +80,7 @@ private:
 	Gauge playerGauge_;                   // プレイヤーのライフ（左上）
 	Gauge bossGauge_;                     // ボスの HP（下）
 	Fade fade_;                           // シーンの出入りのフェード
+	GameOverMenu gameOverMenu_;           // ゲームオーバーの選択肢（リトライ / タイトルへ）
 	std::unique_ptr<DeathParticles> deathParticles_;  // やられ演出（やられたときに作る）
 	std::vector<std::unique_ptr<BaseEffect>> effects_;  // ヒットや弾きのエフェクト（終わったものは取り除く）
 
@@ -83,14 +92,22 @@ private:
 	// 段階ごとの更新
 	void UpdatePlay();
 	void UpdateDeath();
+	void UpdateGameOver();
 	void UpdateClear();
 
 	// 段階の切り替え
 	void StartDeath();
+	void StartGameOver();
 	void StartClear();
+
+	// 暗転を挟まず、その場で最初の状態に戻す（リトライ）
+	void Restart();
 
 	// カーソルの位置をワールド座標に直してプレイヤーへ渡し、ステージ・プレイヤー・ボスを更新する
 	void UpdateObjects();
+
+	// ボスを更新し、床に落ちたフレームならカメラを揺らす（押しつぶしは弱く長め、打ち落としは強く短め）
+	void UpdateBoss();
 
 	// カーソルのスクリーン座標をゲームの平面上のワールド座標に変換する
 	Engine::Vector3 CalcCursorWorldPosition() const;

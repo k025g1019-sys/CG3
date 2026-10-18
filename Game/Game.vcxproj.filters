@@ -68,10 +68,16 @@
     <ClCompile Include="UI\Fade.cpp">
       <Filter>UI</Filter>
     </ClCompile>
+    <ClCompile Include="UI\GameOverMenu.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
     <ClCompile Include="UI\Gauge.cpp">
       <Filter>UI</Filter>
     </ClCompile>
     <ClCompile Include="Util\Easing.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Util\HitStop.cpp">
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="Util\GlobalVariables.cpp">
@@ -134,10 +140,16 @@
     <ClInclude Include="UI\Fade.h">
       <Filter>UI</Filter>
     </ClInclude>
+    <ClInclude Include="UI\GameOverMenu.h">
+      <Filter>UI</Filter>
+    </ClInclude>
     <ClInclude Include="UI\Gauge.h">
       <Filter>UI</Filter>
     </ClInclude>
     <ClInclude Include="Util\Easing.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\HitStop.h">
       <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="Util\GlobalVariables.h">

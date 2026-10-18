@@ -42,6 +42,10 @@ void BossScene::RegisterGlobalVariables() {
 
 	// 項目の追加（ファイルから読み込み済みの項目は既定値で上書きされない）
 	globalVariables->AddItem(groupName, "DeathFreezeDuration", kDeathFreezeDuration);
+	globalVariables->AddItem(groupName, "CrushLandShakeAmplitude", kCrushLandShakeAmplitude);
+	globalVariables->AddItem(groupName, "CrushLandShakeDuration", kCrushLandShakeDuration);
+	globalVariables->AddItem(groupName, "ShotDownShakeAmplitude", kShotDownShakeAmplitude);
+	globalVariables->AddItem(groupName, "ShotDownShakeDuration", kShotDownShakeDuration);
 
 	// このシーンが持つオブジェクトの分
 	Player::RegisterGlobalVariables();
@@ -54,12 +58,17 @@ void BossScene::RegisterGlobalVariables() {
 	Stage::RegisterGlobalVariables();
 	DeathParticles::RegisterGlobalVariables();
 	Gauge::RegisterGlobalVariables();
+	Fade::RegisterGlobalVariables();
 }
 
 void BossScene::ApplyGlobalVariables() {
 	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
 	const char* groupName = "BossScene";
 	kDeathFreezeDuration = globalVariables->GetFloatValue(groupName, "DeathFreezeDuration");
+	kCrushLandShakeAmplitude = globalVariables->GetFloatValue(groupName, "CrushLandShakeAmplitude");
+	kCrushLandShakeDuration = globalVariables->GetFloatValue(groupName, "CrushLandShakeDuration");
+	kShotDownShakeAmplitude = globalVariables->GetFloatValue(groupName, "ShotDownShakeAmplitude");
+	kShotDownShakeDuration = globalVariables->GetFloatValue(groupName, "ShotDownShakeDuration");
 
 	// このシーンが持つオブジェクトの分
 	Player::ApplyGlobalVariables();
@@ -72,6 +81,7 @@ void BossScene::ApplyGlobalVariables() {
 	Stage::ApplyGlobalVariables();
 	DeathParticles::ApplyGlobalVariables();
 	Gauge::ApplyGlobalVariables();
+	Fade::ApplyGlobalVariables();
 }
 
 #pragma endregion
@@ -94,9 +104,12 @@ void BossScene::OnInitialize() {
 	playerGauge_.Initialize(kPlayerGaugePosition, kPlayerGaugeSize, kPlayerGaugeColor);
 	bossGauge_.Initialize(kBossGaugePosition, kBossGaugeSize, kBossGaugeColor);
 
+	// ゲームオーバーの選択肢（やられるまでは閉じておく）
+	gameOverMenu_.Initialize();
+
 	// フェードインから始める
 	fade_.Initialize();
-	fade_.Start(Fade::Status::kFadeIn, kFadeDuration);
+	fade_.Start(Fade::Status::kFadeIn, Fade::GetDefaultDuration());
 
 	phase_ = Phase::kPlay;
 	deathTimer_ = 0.0f;
@@ -125,7 +138,9 @@ void BossScene::OnUpdate() {
 		boss_.SetAiEnabled(!boss_.IsAiEnabled());
 	}
 	if (input->IsTrigger(DIK_H) && phase_ == Phase::kPlay) {
-		if (player_.OnDamage(1.0f)) {
+		// ボスから離れる向きへノックバックさせる
+		const float direction = (player_.GetPosition().x >= boss_.GetPosition().x) ? 1.0f : -1.0f;
+		if (player_.OnDamage(direction)) {
 			SpawnHitEffect(player_.GetPosition(), kPlayerHitColor);
 		}
 	}
@@ -138,6 +153,9 @@ void BossScene::OnUpdate() {
 	case Phase::kDeath:
 		UpdateDeath();
 		break;
+	case Phase::kGameOver:
+		UpdateGameOver();
+		break;
 	case Phase::kClear:
 		UpdateClear();
 		break;
@@ -145,6 +163,9 @@ void BossScene::OnUpdate() {
 
 	// エフェクトはどの段階でも進める
 	UpdateEffects();
+
+	// ゲームオーバーの選択肢（開いている間だけ入力を受け付けて描く）
+	gameOverMenu_.Update(GetRenderAreaWidth(), GetRenderAreaHeight());
 
 	// カメラはプレイヤーが動いた後に追従させる。ボスが生きている間はボスの方へ少し寄せる
 	if (boss_.IsAlive()) {
@@ -175,7 +196,12 @@ void BossScene::UpdatePlay() {
 		return;
 	}
 
-	// ボスを倒してやられ演出が終わったらクリアへ
+	// ボスを倒したら、プレイヤーは今の行動を最後に操作を受け付けなくなる（移動キーを押したままでも止まる）
+	if (!boss_.IsAlive() && player_.IsControllable()) {
+		player_.SetControllable(false);
+	}
+
+	// ボスのやられ演出が終わったらクリアへ
 	if (boss_.IsDeathFinished()) {
 		StartClear();
 	}
@@ -183,27 +209,51 @@ void BossScene::UpdatePlay() {
 
 void BossScene::UpdateDeath() {
 	deathTimer_ += kFrameTime;
-
-	// 止めて見せている間も見た目は毎フレーム更新する（Update を止めると描画が前のフレームの位置と交互になってガタつく）
 	stage_.Update();
-	player_.UpdateModel();
-	boss_.UpdateModel();
 
-	// 一瞬止まって見せてから、プレイヤーの位置にパーティクルを出す（プレイヤーは消す）
-	if (deathTimer_ >= kDeathFreezeDuration && !deathParticles_) {
+	if (deathTimer_ < kDeathFreezeDuration) {
+		// 一瞬止まって見せる。止めている間も見た目は毎フレーム更新する
+		// （Update を止めると描画が前のフレームの位置と交互になってガタつく）
+		player_.UpdateModel();
+		boss_.UpdateModel();
+		return;
+	}
+
+	// 止まり終わったら、プレイヤーの位置にパーティクルを出す（プレイヤーは消す）
+	if (!deathParticles_) {
 		deathParticles_ = std::make_unique<DeathParticles>();
 		deathParticles_->Initialize(player_.GetPosition());
 	}
-	if (deathParticles_) {
-		deathParticles_->Update();
+	deathParticles_->Update();
 
-		// パーティクルが消えたらフェードアウトを始める
-		if (deathParticles_->IsFinished() && fade_.GetStatus() == Fade::Status::kNone) {
-			fade_.Start(Fade::Status::kFadeOut, kFadeDuration);
-		}
+	// ボスは今の行動を最後まで行う（新しい攻撃は始めない）
+	UpdateBoss();
+
+	// パーティクルが消えたら、ゲームオーバーの選択肢を出す
+	if (deathParticles_->IsFinished()) {
+		StartGameOver();
+	}
+}
+
+void BossScene::UpdateGameOver() {
+	// 選んでいる間も、ステージとボスは動かしておく（ボスは今の行動を終えたら待機のまま）
+	stage_.Update();
+	UpdateBoss();
+
+	if (!gameOverMenu_.IsDecided()) {
+		return;
 	}
 
-	// フェードアウトが終わったらタイトルへ
+	// リトライ：暗転を挟まず、すぐにやり直す
+	if (gameOverMenu_.GetChoice() == GameOverMenu::Choice::kRetry) {
+		Restart();
+		return;
+	}
+
+	// タイトルへ：フェードアウトしてから戻る
+	if (fade_.GetStatus() == Fade::Status::kNone) {
+		fade_.Start(Fade::Status::kFadeOut, Fade::GetDefaultDuration());
+	}
 	if (fade_.GetStatus() == Fade::Status::kFadeOut && fade_.IsFinished()) {
 		ChangeScene<TitleScene>();
 	}
@@ -222,11 +272,44 @@ void BossScene::UpdateClear() {
 void BossScene::StartDeath() {
 	phase_ = Phase::kDeath;
 	deathTimer_ = 0.0f;
+
+	// ボスは今の行動を最後に、新しい攻撃を始めない
+	boss_.StopAttacking();
+}
+
+void BossScene::StartGameOver() {
+	phase_ = Phase::kGameOver;
+	gameOverMenu_.Open();
 }
 
 void BossScene::StartClear() {
 	phase_ = Phase::kClear;
-	fade_.Start(Fade::Status::kFadeOut, kFadeDuration);
+
+	// プレイヤーは今の行動を最後に操作を受け付けない（開発用の C キーで来たときのためにここでも止める）
+	player_.SetControllable(false);
+	fade_.Start(Fade::Status::kFadeOut, Fade::GetDefaultDuration());
+}
+
+void BossScene::Restart() {
+	// モデルは作り直さず、状態だけを最初に戻す（前のフレームに描いたものを壊さないため）。
+	// ボスが出していた攻撃物は消える。ヒットや弾きのエフェクトは短いので、出ていれば終わるまで残す
+	player_.Reset();
+	boss_.Reset();
+
+	// このフレームも描くので、戻した位置を見た目に反映しておく
+	player_.UpdateModel();
+	boss_.UpdateModel();
+
+	// カメラは補間なしで開始位置へ合わせる（注目点は戻したボスの位置にしてから。前のフレームの位置のままだと、直後に横へ滑る）
+	cameraController_.SetFocusPosition(boss_.GetPosition());
+	cameraController_.Reset(GetAspectRatio());
+
+	gameOverMenu_.Close();
+	fade_.Stop();
+	deathParticles_.reset();
+
+	phase_ = Phase::kPlay;
+	deathTimer_ = 0.0f;
 }
 
 void BossScene::UpdateObjects() {
@@ -236,7 +319,24 @@ void BossScene::UpdateObjects() {
 
 	stage_.Update();
 	player_.Update();
+	UpdateBoss();
+}
+
+void BossScene::UpdateBoss() {
 	boss_.Update();
+
+	// ボスが床に落ちたフレームはカメラを揺らす
+	switch (boss_.GetLanding()) {
+	case Boss::Landing::kCrush:
+		cameraController_.StartShake(kCrushLandShakeAmplitude, kCrushLandShakeDuration);
+		break;
+	case Boss::Landing::kShotDown:
+		cameraController_.StartShake(kShotDownShakeAmplitude, kShotDownShakeDuration);
+		break;
+	case Boss::Landing::kNone:
+	default:
+		break;
+	}
 }
 
 Vector3 BossScene::CalcCursorWorldPosition() const {
@@ -254,6 +354,9 @@ bool BossScene::IsPlayerVisible() const {
 	if (phase_ == Phase::kDeath) {
 		return deathTimer_ < kDeathFreezeDuration;
 	}
+	if (phase_ == Phase::kGameOver) {
+		return false;
+	}
 	return true;
 }
 
@@ -263,6 +366,8 @@ const char* BossScene::GetPhaseName() const {
 		return "play";
 	case Phase::kDeath:
 		return "death";
+	case Phase::kGameOver:
+		return "gameover";
 	case Phase::kClear:
 		return "clear";
 	}
@@ -279,7 +384,7 @@ void BossScene::CheckAllCollisions() {
 	// --- プレイヤーの近接攻撃 → ボス（1 回の攻撃で 1 ヒット）---
 	if (player_.IsAttacking() && !player_.HasAttackHit()) {
 		const Sphere attackSphere = player_.GetAttackSphere();
-		const Boss::HitResult result = boss_.ApplyAttack(attackSphere, Player::kMeleeDamage, player_.GetPosition());
+		const Boss::HitResult result = boss_.ApplyAttack(attackSphere, Player::kMeleeDamage, player_.GetPosition(), true);
 		if (result != Boss::HitResult::kNone) {
 			player_.MarkAttackHit();
 			SpawnBossHitEffect(result, attackSphere.center);
@@ -289,7 +394,7 @@ void BossScene::CheckAllCollisions() {
 	// --- ブーメラン → ボス（往路・復路で 1 回ずつ。盾に当たれば弾かれて戻る）---
 	if (boomerang.CanHit()) {
 		const Sphere boomerangSphere = boomerang.GetHitSphere();
-		const Boss::HitResult result = boss_.ApplyAttack(boomerangSphere, Boomerang::kDamage, boomerangSphere.center);
+		const Boss::HitResult result = boss_.ApplyAttack(boomerangSphere, Boomerang::kDamage, boomerangSphere.center, false);
 		if (result == Boss::HitResult::kBlocked) {
 			boomerang.Repel();
 		}
@@ -313,15 +418,15 @@ void BossScene::CheckAllCollisions() {
 		}
 	}
 
-	// --- ボスの攻撃物 → プレイヤー ---
+	// --- ボスの攻撃物 → プレイヤー（ボスを倒した後は、消える前の攻撃物に当たってもダメージを受けない）---
 	const Sphere playerBody = player_.GetBodySphere();
 	for (const std::unique_ptr<Hazard>& hazard : boss_.GetHazards()) {
-		if (!hazard->IsAlive()) {
+		if (!boss_.IsAlive() || !hazard->IsAlive()) {
 			continue;
 		}
 		const Sphere hazardSphere = hazard->GetHitSphere();
 		if (IsCollision(hazardSphere, playerBody)) {
-			// 攻撃物から離れる向きに吹き飛ばす
+			// 攻撃物から離れる向きへノックバックさせる
 			const float direction = (playerBody.center.x >= hazardSphere.center.x) ? 1.0f : -1.0f;
 			if (player_.OnDamage(direction)) {
 				SpawnHitEffect(playerBody.center, kPlayerHitColor);
@@ -329,12 +434,17 @@ void BossScene::CheckAllCollisions() {
 		}
 	}
 
-	// --- ボスの体 → プレイヤー（突進中はダメージ、それ以外は重ならないよう押し出す）---
+	// --- ボスの体 → プレイヤー（突進中と押しつぶしの落下中はダメージ、それ以外は重ならないよう押し出す）---
 	if (boss_.IsAlive()) {
 		const AABB3D bodyBox = boss_.GetBodyBox();
 		if (IsCollision(bodyBox, playerBody)) {
 			if (boss_.IsBodyDamaging()) {
-				if (player_.OnDamage(boss_.GetFacing())) {
+				// 突進はボスの進む向きへ、押しつぶしはボスの体の中心から離れる向きへノックバックさせる
+				float direction = boss_.GetFacing();
+				if (boss_.GetBehavior() == Boss::Behavior::kCrush) {
+					direction = (playerBody.center.x >= boss_.GetPosition().x) ? 1.0f : -1.0f;
+				}
+				if (player_.OnDamage(direction)) {
 					SpawnHitEffect(playerBody.center, kPlayerHitColor);
 				}
 			} else {
@@ -425,12 +535,16 @@ void BossScene::OnDraw() {
 	// UI とフェードはスプライトなので一番最後（フェードが最前面）
 	playerGauge_.Draw();
 	bossGauge_.Draw();
+	gameOverMenu_.Draw();
 	fade_.Draw();
 }
 
 #ifdef USE_IMGUI
 void BossScene::OnDrawImGui() {
 	ImGui::Begin("Boss Scene");
+
+	// ホイールで曲がる向きの切り替え（遊びながら比べられるよう、ウィンドウの一番上に置く。決めたら Global Variables の Player を Save する）
+	Player::DrawWheelDirectionImGui();
 	ImGui::Text("A/D: move  W/Space: jump (hold: higher / glide)");
 	ImGui::Text("LMB: melee  RMB hold: aim, wheel: curve, release: throw");
 	ImGui::Text("Esc: Title  C: Clear  P: boss AI on/off  H: damage player  (development only)");
@@ -450,6 +564,12 @@ void BossScene::OnDrawImGui() {
 	}
 	ImGui::Text("phase: %s  fade: %s  deathTimer: %.2f  particles: %s  effects: %d",
 		GetPhaseName(), fadeName, deathTimer_, particlesName, static_cast<int>(effects_.size()));
+
+	// ゲームオーバーの選択肢（画像ができるまでは色付きの板なので、ここに文字で出しておく）
+	if (gameOverMenu_.IsOpen()) {
+		ImGui::Text("GAME OVER  A/D: select (left = Retry, right = Title)  Space/Enter: decide  selected: %s%s",
+			gameOverMenu_.GetChoiceName(), gameOverMenu_.IsDecided() ? " (decided)" : "");
+	}
 
 	// プレイヤーとボスの状態を一目で見られるようにしておく（詳細は下のツリー）
 	const Vector3& playerPosition = player_.GetPosition();

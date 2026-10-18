@@ -9,6 +9,9 @@ class Stage;
 /// <summary>
 /// 横視点のカメラ制御。プレイヤーの X に軽く追従し、ステージの端で止まる。
 /// 注目点（ボス）が渡されていれば、その方へ少し寄せてボスが画面に入りやすくする。
+/// プレイヤーがボスから離れていくとき（と止まっているとき）は、ボスが画面に入るところまでカメラを寄せる（カメラの距離は変えず、横移動だけ）。
+/// 離れすぎて両方は映せないときは、プレイヤーが画面の端に寄りすぎないことを優先し、ボスが画面の外へ出る。
+/// ボスへ向かって動いている間は、この補正をしない（プレイヤーを追い、ボスの方へ少し寄せるだけ）。
 /// Y と Z は固定で、回転 0（+Z 向き）のまま使う。
 /// </summary>
 class CameraController {
@@ -40,6 +43,13 @@ public:
 	/// </summary>
 	void ClearFocus() { hasFocus_ = false; }
 
+	/// <summary>
+	/// カメラを揺らす（ボスが床に落ちたときなど）。揺れは終わりにかけて小さくなる。揺れている途中で呼ぶと始め直す
+	/// </summary>
+	/// <param name="amplitude">揺れ幅（ワールドの長さ）</param>
+	/// <param name="duration">揺れる時間（秒）</param>
+	void StartShake(float amplitude, float duration);
+
 #ifdef USE_IMGUI
 	/// <summary>
 	/// カメラの位置を表示する（呼び出し側の ImGui ウィンドウの中に差し込む。調整値の編集は Global Variables ウィンドウで行う）
@@ -61,10 +71,24 @@ private:
 	static inline float kOffsetX = 0.0f;      // 目標位置を対象からずらす量
 	static inline float kFocusRate = 0.3f;    // 注目点の方へ寄せる割合（0 で対象だけ、1 で注目点）
 	static inline float kMaxFocusOffset = 5.0f;  // 注目点の方へ寄せる量の上限（対象が画面から外れないように）
+	static inline float kFocusMargin = 2.0f;     // 注目点（ボスの中心）を、画面の端からこれだけ内側に映す（体の半分の幅より大きくしておく。
+	                                             // 対象が注目点から離れていくときと、止まっているときだけ働く）
+	static inline float kTargetMargin = 3.0f;    // 対象（プレイヤー）を、画面の端から最低これだけ内側に保つ（注目点を映すことより優先する）
+
+	// --- 固定値 ---
+	static inline const float kApproachSpeedThreshold = 0.01f;  // 対象が注目点へ向かう速さがこれより大きい間は「近づいている」とみなす
+	static inline const float kFrameTime = 1.0f / 60.0f;        // 1 フレームの秒数
+	static inline const float kShakeSpeedX = 70.0f;             // 揺れの速さ（横。ラジアン / 秒）
+	static inline const float kShakeSpeedY = 55.0f;             // 揺れの速さ（縦。横と少しずらして単調に見えないようにする）
 
 	Engine::Camera* camera_ = nullptr;        // シーンのカメラ（借りるだけ）
 	const Player* target_ = nullptr;          // 追従する対象（借りるだけ）
 	const Stage* stage_ = nullptr;            // 端の座標を参照するステージ（借りるだけ）
+
+	float currentX_ = 0.0f;                               // 追従している X（揺れを足す前の位置。補間はこの値から行う）
+	float shakeTimer_ = 0.0f;                             // 揺れの残り時間（秒）
+	float shakeDuration_ = 0.0f;                          // 今回揺らす時間（秒）
+	float shakeAmplitude_ = 0.0f;                         // 今回の揺れ幅
 
 	bool hasFocus_ = false;                               // 注目点があるか
 	Engine::Vector3 focusPosition_ = { 0.0f, 0.0f, 0.0f };  // 注目点（ボスの位置）
@@ -75,6 +99,15 @@ private:
 	// ステージの外が画面に入らないよう X を制限する
 	float ClampX(float x, float halfViewWidth) const;
 
+	// 対象（プレイヤー）が画面の端に寄りすぎないよう X を制限する
+	float ClampToKeepTarget(float x, float halfViewWidth) const;
+
 	// 追従の目標 X
-	float CalcTargetX() const;
+	float CalcTargetX(float halfViewWidth) const;
+
+	// 対象が注目点へ向かって動いているか
+	bool IsTargetApproachingFocus() const;
+
+	// 揺れの時間を進め、今の揺れの量を返す（揺れていなければ 0）
+	Engine::Vector3 UpdateShake();
 };

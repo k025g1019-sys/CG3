@@ -1,18 +1,22 @@
 #include "Game/Object/Boss.h"
 
 #include "Engine/Math/Collision.h"
+#include "Engine/Math/Matrix4x4.h"
 #include "Engine/Rendering/DebugDraw.h"
 #include "Game/Object/Bit.h"
 #include "Game/Object/FallingRock.h"
 #include "Game/Object/Player.h"
 #include "Game/Object/Shockwave.h"
 #include "Game/Stage/Stage.h"
+#include "Game/Util/Easing.h"
 #include "Game/Util/GlobalVariables.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstring>
 #include <numbers>
+#include <string>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -35,8 +39,35 @@ const Vector4 kShieldColor = { 0.75f, 0.78f, 0.85f, 1.0f }; // 盾
 const Vector4 kChargeMarkColor = { 1.0f, 0.3f, 0.2f, 0.4f };  // 突進の進路
 const Vector4 kSlamMarkColor = { 1.0f, 0.6f, 0.2f, 0.4f };    // 叩きつけの範囲
 const Vector4 kRockMarkColor = { 1.0f, 0.7f, 0.3f, 0.4f };    // 落石の落下位置
+const Vector4 kCrushMarkColor = { 1.0f, 0.2f, 0.4f, 0.4f };   // 押しつぶしの落下位置
+const float kCrushMarkMargin = 0.6f;                          // 押しつぶしの印を体の幅より広げる量
 const float kMarkHeight = 0.06f;                              // 印を床から浮かせる高さ（床と重なってちらつかないように）
 const float kRockMarkSize = 1.4f;                             // 落石の印の直径
+
+// 開発用：ImGui で調整項目を絞り込むときの 1 件（GlobalVariables のグループ名と、項目名の先頭の文字列。空ならグループの全項目）
+struct TuningEntry {
+	const char* group;
+	const char* prefix;
+};
+
+// 開発用：ImGui で選べる行動（並びは表示の順番）と、その行動に関係する調整項目
+struct SelectableBehavior {
+	Boss::Behavior behavior;
+	const char* name;
+	TuningEntry tunings[4];  // group が nullptr の所で終わり
+};
+
+const SelectableBehavior kSelectableBehaviors[] = {
+	{ Boss::Behavior::kCharge, "charge", { { "Boss", "Charge" }, { "Boss", "Tired" }, { nullptr, nullptr }, { nullptr, nullptr } } },
+	{ Boss::Behavior::kSlam, "slam", { { "Boss", "Slam" }, { "Shockwave", "" }, { "Boss", "Bit" }, { "Bit", "" } } },
+	{ Boss::Behavior::kRockFall, "rockfall", { { "Boss", "Rock" }, { "FallingRock", "" }, { nullptr, nullptr }, { nullptr, nullptr } } },
+	{ Boss::Behavior::kCrush, "crush", { { "Boss", "Crush" }, { "Boss", "ShotDown" }, { "Boss", "Rock" }, { "FallingRock", "" } } },
+	{ Boss::Behavior::kTired, "tired", { { "Boss", "Tired" }, { nullptr, nullptr }, { nullptr, nullptr }, { nullptr, nullptr } } },
+	{ Boss::Behavior::kStagger, "stagger", { { "Boss", "Stagger" }, { "Boss", "ShotDown" }, { nullptr, nullptr }, { nullptr, nullptr } } },
+	{ Boss::Behavior::kIdle, "idle", { { "Boss", "Idle" }, { "Boss", "FirstIdle" }, { "Boss", "TurnDelay" }, { nullptr, nullptr } } },
+};
+const int32_t kSelectableBehaviorCount = static_cast<int32_t>(sizeof(kSelectableBehaviors) / sizeof(kSelectableBehaviors[0]));
+const int32_t kMaxTuningEntries = 4;  // SelectableBehavior::tunings の数
 
 } // namespace
 
@@ -64,7 +95,6 @@ void Boss::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "ChargeWindup", kChargeWindup);
 	globalVariables->AddItem(groupName, "ChargeSpeed", kChargeSpeed);
 	globalVariables->AddItem(groupName, "ChargeDistance", kChargeDistance);
-	globalVariables->AddItem(groupName, "ChargeMinDistance", kChargeMinDistance);
 	globalVariables->AddItem(groupName, "TiredDuration", kTiredDuration);
 	globalVariables->AddItem(groupName, "SlamWindup", kSlamWindup);
 	globalVariables->AddItem(groupName, "SlamRecover", kSlamRecover);
@@ -74,6 +104,26 @@ void Boss::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "RockSpawnHeight", kRockSpawnHeight);
 	globalVariables->AddItem(groupName, "RockHeightStep", kRockHeightStep);
 	globalVariables->AddItem(groupName, "RockSpreadX", kRockSpreadX);
+	globalVariables->AddItem(groupName, "CrushCrouch", kCrushCrouch);
+	globalVariables->AddItem(groupName, "CrushRiseDuration", kCrushRiseDuration);
+	globalVariables->AddItem(groupName, "CrushRiseMaxDistance", kCrushRiseMaxDistance);
+	globalVariables->AddItem(groupName, "CrushHoverHeight", kCrushHoverHeight);
+	globalVariables->AddItem(groupName, "CrushHoverDuration", kCrushHoverDuration);
+	globalVariables->AddItem(groupName, "CrushTrackSpeed", kCrushTrackSpeed);
+	globalVariables->AddItem(groupName, "CrushLockDuration", kCrushLockDuration);
+	globalVariables->AddItem(groupName, "CrushDropAcceleration", kCrushDropAcceleration);
+	globalVariables->AddItem(groupName, "CrushDropMaxSpeed", kCrushDropMaxSpeed);
+	globalVariables->AddItem(groupName, "CrushRecover", kCrushRecover);
+	globalVariables->AddItem(groupName, "CrushRockDelay", kCrushRockDelay);
+	globalVariables->AddItem(groupName, "ShotDownFallAcceleration", kShotDownFallAcceleration);
+	globalVariables->AddItem(groupName, "ShotDownFallMaxSpeed", kShotDownFallMaxSpeed);
+	globalVariables->AddItem(groupName, "ShotDownTiltSpeed", kShotDownTiltSpeed);
+	globalVariables->AddItem(groupName, "ShotDownMaxTilt", kShotDownMaxTilt);
+	globalVariables->AddItem(groupName, "HitStopDuration", kHitStopDuration);
+	globalVariables->AddItem(groupName, "CoreHitStopDuration", kCoreHitStopDuration);
+	globalVariables->AddItem(groupName, "HitShakeAmplitude", kHitShakeAmplitude);
+	globalVariables->AddItem(groupName, "HitStopResistHitCount", kHitStopResistHitCount);
+	globalVariables->AddItem(groupName, "HitStopResistResetTime", kHitStopResistResetTime);
 	globalVariables->AddItem(groupName, "StaggerDuration", kStaggerDuration);
 	globalVariables->AddItem(groupName, "StaggerCooldown", kStaggerCooldown);
 	globalVariables->AddItem(groupName, "DeathDuration", kDeathDuration);
@@ -102,7 +152,6 @@ void Boss::ApplyGlobalVariables() {
 	kChargeWindup = globalVariables->GetFloatValue(groupName, "ChargeWindup");
 	kChargeSpeed = globalVariables->GetFloatValue(groupName, "ChargeSpeed");
 	kChargeDistance = globalVariables->GetFloatValue(groupName, "ChargeDistance");
-	kChargeMinDistance = globalVariables->GetFloatValue(groupName, "ChargeMinDistance");
 	kTiredDuration = globalVariables->GetFloatValue(groupName, "TiredDuration");
 	kSlamWindup = globalVariables->GetFloatValue(groupName, "SlamWindup");
 	kSlamRecover = globalVariables->GetFloatValue(groupName, "SlamRecover");
@@ -112,6 +161,26 @@ void Boss::ApplyGlobalVariables() {
 	kRockSpawnHeight = globalVariables->GetFloatValue(groupName, "RockSpawnHeight");
 	kRockHeightStep = globalVariables->GetFloatValue(groupName, "RockHeightStep");
 	kRockSpreadX = globalVariables->GetFloatValue(groupName, "RockSpreadX");
+	kCrushCrouch = globalVariables->GetFloatValue(groupName, "CrushCrouch");
+	kCrushRiseDuration = globalVariables->GetFloatValue(groupName, "CrushRiseDuration");
+	kCrushRiseMaxDistance = globalVariables->GetFloatValue(groupName, "CrushRiseMaxDistance");
+	kCrushHoverHeight = globalVariables->GetFloatValue(groupName, "CrushHoverHeight");
+	kCrushHoverDuration = globalVariables->GetFloatValue(groupName, "CrushHoverDuration");
+	kCrushTrackSpeed = globalVariables->GetFloatValue(groupName, "CrushTrackSpeed");
+	kCrushLockDuration = globalVariables->GetFloatValue(groupName, "CrushLockDuration");
+	kCrushDropAcceleration = globalVariables->GetFloatValue(groupName, "CrushDropAcceleration");
+	kCrushDropMaxSpeed = globalVariables->GetFloatValue(groupName, "CrushDropMaxSpeed");
+	kCrushRecover = globalVariables->GetFloatValue(groupName, "CrushRecover");
+	kCrushRockDelay = globalVariables->GetFloatValue(groupName, "CrushRockDelay");
+	kShotDownFallAcceleration = globalVariables->GetFloatValue(groupName, "ShotDownFallAcceleration");
+	kShotDownFallMaxSpeed = globalVariables->GetFloatValue(groupName, "ShotDownFallMaxSpeed");
+	kShotDownTiltSpeed = globalVariables->GetFloatValue(groupName, "ShotDownTiltSpeed");
+	kShotDownMaxTilt = globalVariables->GetFloatValue(groupName, "ShotDownMaxTilt");
+	kHitStopDuration = globalVariables->GetFloatValue(groupName, "HitStopDuration");
+	kCoreHitStopDuration = globalVariables->GetFloatValue(groupName, "CoreHitStopDuration");
+	kHitShakeAmplitude = globalVariables->GetFloatValue(groupName, "HitShakeAmplitude");
+	kHitStopResistHitCount = globalVariables->GetIntValue(groupName, "HitStopResistHitCount");
+	kHitStopResistResetTime = globalVariables->GetFloatValue(groupName, "HitStopResistResetTime");
 	kStaggerDuration = globalVariables->GetFloatValue(groupName, "StaggerDuration");
 	kStaggerCooldown = globalVariables->GetFloatValue(groupName, "StaggerCooldown");
 	kDeathDuration = globalVariables->GetFloatValue(groupName, "DeathDuration");
@@ -146,12 +215,23 @@ void Boss::Initialize(const Stage* stage, const Player* player) {
 	for (Object3D& mark : rockMarks_) {
 		mark.Initialize(Primitive::kSphere, LightingMode::kNone);
 	}
+
+	std::random_device seed;
+	randomEngine_.seed(seed());
+
+	isAiEnabled_ = true;
+	hazards_.clear();
+
+	Reset();
+}
+
+void Boss::Reset() {
 	isAttackMarkVisible_ = false;
 	visibleRockMarkCount_ = 0;
 	rockTargetsX_.clear();
 
 	// ステージの右寄りに置き、プレイヤーのいる左を向く
-	position_ = { stage_->GetRightEdge() - 8.0f, stage_->GetGroundY() + kBodyHalfHeight, 0.0f };
+	position_ = { stage_->GetRightEdge() - 8.0f, GetStandY(), 0.0f };
 	facing_ = -1.0f;
 
 	hp_ = kMaxHp;
@@ -162,11 +242,18 @@ void Boss::Initialize(const Stage* stage, const Player* player) {
 	staggerCooldownTimer_ = 0.0f;
 	facePlayerRequest_ = false;
 	attackCycle_ = 0;
-	isAiEnabled_ = true;
-	hazards_.clear();
+	fallSpeed_ = 0.0f;
+	isShotDown_ = false;
+	bodyTilt_ = 0.0f;
+	landing_ = Landing::kNone;
+	isAttackEnabled_ = true;
+	hitStop_.Stop();
+	isHitStopFreezing_ = true;
+	meleeHitCount_ = 0;
+	meleeHitTimer_ = 0.0f;
 
-	std::random_device seed;
-	randomEngine_.seed(seed());
+	// 出ている攻撃物は消す（その場では壊さず、次の更新で取り除く。前のフレームに描いたものの定数バッファを壊さないため）
+	KillAllHazards();
 
 	// 最初だけ長めに待つ
 	behaviorRequest_.reset();
@@ -182,6 +269,28 @@ void Boss::Initialize(const Stage* stage, const Player* player) {
 #pragma region 更新
 
 void Boss::Update() {
+	// 床へ着いたかはフレームごとの出来事なので、毎回いったん戻す
+	landing_ = Landing::kNone;
+
+	// 近接攻撃を受けてからの時間を数え、間が空いたら「続けて受けた回数」を 0 に戻す（ヒットストップへの耐性が消える）
+	meleeHitTimer_ += kFrameTime;
+	if (meleeHitTimer_ > kHitStopResistResetTime) {
+		meleeHitCount_ = 0;
+	}
+
+	// ヒットストップ中は自分の動きだけ止める（行動の時間も進めないので、攻撃のタイミングが少し遅れる。行動は打ち切らない）。
+	// 出してある攻撃物は動き続け、見た目は毎フレーム更新して揺らす。怯みややられへの切り替えは、止まり終わってから行う。
+	// ヒットストップに耐性があるときは、揺れるだけで行動はそのまま進める
+	if (hitStop_.IsActive()) {
+		hitStop_.Update();
+		if (isHitStopFreezing_) {
+			UpdateHazards();
+			UpdateModels();
+			UpdateMarks();
+			return;
+		}
+	}
+
 	// 殴られたときの向き直り（当たり判定の中で向きを変えると、同じフレームのコアの位置がずれるので次の更新で行う）
 	if (facePlayerRequest_) {
 		FacePlayer();
@@ -210,6 +319,9 @@ void Boss::Update() {
 	case Behavior::kRockFall:
 		UpdateRockFall();
 		break;
+	case Behavior::kCrush:
+		UpdateCrush();
+		break;
 	case Behavior::kStagger:
 		UpdateStagger();
 		break;
@@ -218,6 +330,12 @@ void Boss::Update() {
 		break;
 	default:
 		break;
+	}
+
+	// 宙にいたら床まで落とす（押しつぶしの途中で怯んだ・倒されたとき、開発用に宙から行動を切り替えたとき）。
+	// 押しつぶしで跳び上がってから落ちるまでは、UpdateCrush が高さを動かすので落とさない
+	if (!IsCrushAirborne()) {
+		UpdateFall();
 	}
 
 	UpdatePhase();
@@ -248,6 +366,12 @@ void Boss::StartBehavior(Behavior next) {
 	behavior_ = next;
 	timer_ = 0.0f;
 
+	// 打ち落とされた状態（ゆっくり落ちる・傾き）は、怯みとやられの間だけ続ける
+	if (next != Behavior::kStagger && next != Behavior::kDead) {
+		isShotDown_ = false;
+		bodyTilt_ = 0.0f;
+	}
+
 	switch (next) {
 	case Behavior::kIdle:
 		idleDuration_ = kIdleDuration;
@@ -264,6 +388,11 @@ void Boss::StartBehavior(Behavior next) {
 		rockFallStep_ = RockFallStep::kRoar;
 		PlanRocks();  // 落下位置を先に決め、吠えている間は印を出す
 		break;
+	case Behavior::kCrush:
+		crushStep_ = CrushStep::kCrouch;
+		fallSpeed_ = 0.0f;
+		rockTargetsX_.clear();
+		break;
 	case Behavior::kDead:
 		KillAllHazards();
 		break;
@@ -278,13 +407,22 @@ void Boss::UpdateIdle() {
 	timer_ += kFrameTime;
 	UpdateTurnToPlayer();
 
-	if (isAiEnabled_ && timer_ >= idleDuration_) {
+	// プレイヤーがやられた後は、新しい攻撃を始めない（待機のまま）
+	if (isAiEnabled_ && isAttackEnabled_ && timer_ >= idleDuration_) {
 		ChooseNextAttack();
+	}
+
+	// 開発用：AI が無効で「繰り返す」にしているときは、待ち時間が過ぎたら選んでいる行動をもう一度出す
+	if (!isAiEnabled_ && isLoopSelected_ && isAttackEnabled_ && timer_ >= idleDuration_) {
+		const Behavior selected = GetSelectedBehavior();
+		if (selected != Behavior::kIdle) {
+			ForceBehavior(selected);
+		}
 	}
 }
 
 void Boss::ChooseNextAttack() {
-	// 突進 → 叩きつけ → 落石 の順に出す
+	// 突進 → 叩きつけ → 落石 → 押しつぶし の順に出す（距離による差し替えはしない。叩きつけの衝撃波は遠くまで届く）
 	Behavior next = Behavior::kCharge;
 	switch (attackCycle_ % kAttackPatternCount) {
 	case 0:
@@ -293,19 +431,31 @@ void Boss::ChooseNextAttack() {
 	case 1:
 		next = Behavior::kSlam;
 		break;
-	default:
+	case 2:
 		next = Behavior::kRockFall;
+		break;
+	default:
+		next = Behavior::kCrush;
 		break;
 	}
 	attackCycle_++;
 
-	// 距離に合わないものは差し替える（遠いのに叩きつけ、近いのに突進 は不自然なため）
-	const float distance = std::fabs(player_->GetPosition().x - position_.x);
-	if (next == Behavior::kSlam && distance > kSlamRange) {
+	// 開発用：攻撃を固定しているときは、順番や距離に関係なくその攻撃を出す
+	switch (fixedAttackIndex_) {
+	case 1:
 		next = Behavior::kCharge;
-	}
-	if (next == Behavior::kCharge && distance < kChargeMinDistance) {
+		break;
+	case 2:
 		next = Behavior::kSlam;
+		break;
+	case 3:
+		next = Behavior::kRockFall;
+		break;
+	case 4:
+		next = Behavior::kCrush;
+		break;
+	default:
+		break;
 	}
 
 	// 攻撃の前にプレイヤーの方を向く
@@ -377,6 +527,10 @@ void Boss::UpdateSlam() {
 		break;
 	case SlamStep::kRecover:
 		if (timer_ >= kSlamRecover) {
+			// 第 2 段階（HP 半分以下）では、叩きつけのあとに浮遊ビットを呼ぶ（まだ残っているうちは呼ばない）
+			if (IsEnraged() && !HasAliveBits()) {
+				SpawnBits();
+			}
 			behaviorRequest_ = Behavior::kIdle;
 		}
 		break;
@@ -406,8 +560,157 @@ void Boss::UpdateRockFall() {
 	}
 }
 
-void Boss::UpdateStagger() {
+void Boss::UpdateCrush() {
 	timer_ += kFrameTime;
+
+	// 浮いているときの体の中心の高さ
+	const float hoverY = stage_->GetGroundY() + kCrushHoverHeight + kBodyHalfHeight;
+
+	switch (crushStep_) {
+	case CrushStep::kCrouch:
+		// しゃがんで溜めたら、その時点のプレイヤーの頭上を目指して跳ぶ
+		if (timer_ >= kCrushCrouch) {
+			crushStartPosition_ = position_;
+
+			// 跳び上がる動作で横に進める距離には上限がある（プレイヤーが遠いと、頭上までは届かず手前で浮く）
+			float targetX = player_->GetPosition().x;
+			if (targetX > position_.x + kCrushRiseMaxDistance) {
+				targetX = position_.x + kCrushRiseMaxDistance;
+			} else if (targetX < position_.x - kCrushRiseMaxDistance) {
+				targetX = position_.x - kCrushRiseMaxDistance;
+			}
+			crushTargetX_ = std::clamp(targetX, GetMinX(), GetMaxX());
+			crushStep_ = CrushStep::kRise;
+			timer_ = 0.0f;
+		}
+		break;
+
+	case CrushStep::kRise: {
+		// 終わりにかけて減速しながら、頭上の高さまで跳び上がる
+		const float t = std::clamp(timer_ / kCrushRiseDuration, 0.0f, 1.0f);
+		const float eased = EaseOutQuad(t);
+		position_.x = Lerp(crushStartPosition_.x, crushTargetX_, eased);
+		position_.y = Lerp(crushStartPosition_.y, hoverY, eased);
+		if (t >= 1.0f) {
+			crushStep_ = CrushStep::kHover;
+			timer_ = 0.0f;
+		}
+		break;
+	}
+
+	case CrushStep::kHover: {
+		// 浮いたまま、プレイヤーの頭上へ少しずつ寄っていく（走って逃げれば引き離せる速さ）
+		const float toPlayer = player_->GetPosition().x - position_.x;
+		if (std::fabs(toPlayer) <= kCrushTrackSpeed) {
+			position_.x = player_->GetPosition().x;
+		} else {
+			position_.x += (toPlayer > 0.0f) ? kCrushTrackSpeed : -kCrushTrackSpeed;
+		}
+		position_.x = std::clamp(position_.x, GetMinX(), GetMaxX());
+		position_.y = hoverY;
+		if (timer_ >= kCrushHoverDuration) {
+			crushStep_ = CrushStep::kLock;
+			timer_ = 0.0f;
+		}
+		break;
+	}
+
+	case CrushStep::kLock:
+		// 位置を決めて溜める（ここから先は追いかけない。落ちる直前の合図）
+		if (timer_ >= kCrushLockDuration) {
+			crushStep_ = CrushStep::kDrop;
+			timer_ = 0.0f;
+			fallSpeed_ = 0.0f;
+		}
+		break;
+
+	case CrushStep::kDrop:
+		// 加速しながら真下へ落ちる。床に着いたら余韻へ
+		fallSpeed_ += kCrushDropAcceleration;
+		if (fallSpeed_ > kCrushDropMaxSpeed) {
+			fallSpeed_ = kCrushDropMaxSpeed;
+		}
+		position_.y -= fallSpeed_;
+		if (position_.y <= GetStandY()) {
+			position_.y = GetStandY();
+			fallSpeed_ = 0.0f;
+			crushStep_ = CrushStep::kRecover;
+			timer_ = 0.0f;
+			landing_ = Landing::kCrush;
+
+			// 第 2 段階（HP 半分以下）では、着地のあとに岩を降らせる。落下位置をここで決め、少しの間は印を出す
+			if (IsEnraged()) {
+				PlanRocks();
+			}
+		}
+		break;
+
+	case CrushStep::kRecover: {
+		// 印を出してから少しして岩を降らせる（待つ時間を余韻より長くしても、余韻の終わりには降らせる）
+		const bool isRecoverEnd = timer_ >= kCrushRecover;
+		if (!rockTargetsX_.empty() && (timer_ >= kCrushRockDelay || isRecoverEnd)) {
+			SpawnRocks();
+		}
+		if (isRecoverEnd) {
+			behaviorRequest_ = Behavior::kIdle;
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+void Boss::UpdateFall() {
+	// 床に立っている（または、やられて沈んでいる）ときは落とさない
+	const float standY = GetStandY();
+	if (position_.y <= standY) {
+		// 床の上では打ち落とされた状態を残さない（残ると着地の処理を通らず、怯みが終わらなくなる）
+		isShotDown_ = false;
+		return;
+	}
+
+	// 加速しながら落ち、床に着いたら止まる。打ち落とされたときは、ゆっくり落とす
+	const float acceleration = isShotDown_ ? kShotDownFallAcceleration : kCrushDropAcceleration;
+	const float maxSpeed = isShotDown_ ? kShotDownFallMaxSpeed : kCrushDropMaxSpeed;
+	fallSpeed_ += acceleration;
+	if (fallSpeed_ > maxSpeed) {
+		fallSpeed_ = maxSpeed;
+	}
+	position_.y -= fallSpeed_;
+	if (position_.y <= standY) {
+		position_.y = standY;
+		fallSpeed_ = 0.0f;
+
+		// 打ち落とされて着いた（ここから怯みの時間を数える）
+		if (isShotDown_) {
+			isShotDown_ = false;
+			landing_ = Landing::kShotDown;
+		}
+	}
+}
+
+void Boss::UpdateStagger() {
+	// 打ち落とされて落ちている間は、体を前のめりに傾けていく。怯みの時間は床に着いてから数える
+	if (isShotDown_) {
+		bodyTilt_ += kShotDownTiltSpeed;
+		if (bodyTilt_ > kShotDownMaxTilt) {
+			bodyTilt_ = kShotDownMaxTilt;
+		}
+		return;
+	}
+
+	timer_ += kFrameTime;
+
+	// 傾いていたら、怯んでいる間に起き上がる（怯みが終わるころに真っすぐに戻る）
+	if (bodyTilt_ > 0.0f && kStaggerDuration > 0.0f) {
+		bodyTilt_ -= kShotDownMaxTilt * kFrameTime / kStaggerDuration;
+		if (bodyTilt_ < 0.0f) {
+			bodyTilt_ = 0.0f;
+		}
+	}
+
 	if (timer_ >= kStaggerDuration) {
 		// 立ち直ったらすぐプレイヤーの方を向く（背中を殴られ続けないように）
 		FacePlayer();
@@ -423,6 +726,47 @@ void Boss::UpdateDead() {
 	if (timer_ >= kDeathDuration) {
 		isDeathFinished_ = true;
 	}
+}
+
+void Boss::StopAttacking() {
+	isAttackEnabled_ = false;
+
+	// このフレームに選んで次の更新で始まるはずだった攻撃も取り消す（怯みややられの予約はそのまま）
+	if (behaviorRequest_ && IsAttackBehavior(*behaviorRequest_)) {
+		behaviorRequest_.reset();
+	}
+}
+
+bool Boss::IsAttackBehavior(Behavior behavior) {
+	switch (behavior) {
+	case Behavior::kCharge:
+	case Behavior::kSlam:
+	case Behavior::kRockFall:
+	case Behavior::kCrush:
+		return true;
+	default:
+		return false;
+	}
+}
+
+void Boss::ForceBehavior(Behavior next) {
+	// やられた後は切り替えない
+	if (!IsAlive()) {
+		return;
+	}
+
+	// 攻撃はプレイヤーの方を向いてから始める（AI が選んだときと同じ）
+	if (IsAttackBehavior(next)) {
+		FacePlayer();
+	}
+	behaviorRequest_ = next;
+}
+
+Boss::Behavior Boss::GetSelectedBehavior() const {
+	if (selectedBehaviorIndex_ < 0 || selectedBehaviorIndex_ >= kSelectableBehaviorCount) {
+		return Behavior::kIdle;
+	}
+	return kSelectableBehaviors[selectedBehaviorIndex_].behavior;
 }
 
 void Boss::FacePlayer() {
@@ -444,10 +788,11 @@ void Boss::UpdateTurnToPlayer() {
 }
 
 void Boss::UpdatePhase() {
-	if (phase_ == 1 && hp_ <= kMaxHp * 2 / 3) {
+	// HP が半分以下で第 2 段階（叩きつけのあとのビット、押しつぶしの着地のあとの落石が加わる）
+	if (phase_ == 1 && hp_ * 2 <= kMaxHp) {
 		phase_ = 2;
-		SpawnBits();
 	}
+	// 1/3 以下で第 3 段階（突進が 2 連続）
 	if (phase_ == 2 && hp_ <= kMaxHp / 3) {
 		phase_ = 3;
 	}
@@ -503,15 +848,31 @@ void Boss::UpdateModels() {
 			color = kWindupColor;
 		}
 		break;
+	case Behavior::kCrush:
+		if (crushStep_ == CrushStep::kCrouch) {
+			// しゃがんで溜める（足元を床に付けたまま縮む）
+			body.scale.y *= 0.8f;
+			body.translate.y -= kBodyHalfHeight * 0.2f;
+			color = kWindupColor;
+		} else if (crushStep_ == CrushStep::kLock) {
+			// 落ちる直前に震える
+			body.translate.x += std::sin(timer_ * 60.0f) * 0.08f;
+			color = kWindupColor;
+		} else if (crushStep_ == CrushStep::kDrop) {
+			color = kWindupColor;
+		}
+		break;
 	case Behavior::kTired:
 		color = kTiredColor;
 		break;
 	case Behavior::kStagger:
+		// 打ち落とされたときは前のめりに傾く（着地後の怯みの間に起き上がる）
+		body.rotate.z = CalcTiltRotateZ();
 		color = kStaggerColor;
 		break;
 	case Behavior::kDead:
-		// 倒れていく
-		body.rotate.z = -facing_ * (timer_ / kDeathDuration) * 0.8f;
+		// 倒れていく（打ち落とされて傾いていたら、その傾きから倒れる）
+		body.rotate.z = CalcTiltRotateZ() - facing_ * (timer_ / kDeathDuration) * 0.8f;
 		color = kDeadColor;
 		break;
 	case Behavior::kIdle:
@@ -521,13 +882,17 @@ void Boss::UpdateModels() {
 	if (flashTimer_ > 0.0f) {
 		color = kFlashColor;
 	}
+
+	// ヒットストップ中は見た目だけ揺らす（体・盾・コアを同じだけずらす。判定の位置は動かさない）
+	const Vector3 shake = hitStop_.GetShakeOffset();
+	body.translate += shake;
 	body_.SetColor(color);
 	body_.Update();
 
 	// --- 盾（正面）。弾いた直後は白く光る ---
 	Transform3D& shield = shield_.GetTransform();
 	shield.scale = { 0.3f, kBodyHalfHeight * 2.0f + 0.2f, kBodyHalfWidth * 2.0f + 0.2f };
-	shield.translate = GetShieldPosition();
+	shield.translate = GetShieldPosition() + shake;
 	shield_.SetColor((shieldFlashTimer_ > 0.0f) ? kFlashColor : kShieldColor);
 	shield_.Update();
 
@@ -535,7 +900,7 @@ void Boss::UpdateModels() {
 	const Sphere core = GetCoreSphere();
 	const float pulse = 1.0f + 0.1f * std::sin(timer_ * 6.0f);
 	Transform3D& coreTransform = core_.GetTransform();
-	coreTransform.translate = core.center;
+	coreTransform.translate = core.center + shake;
 	coreTransform.scale = { core.radius * 2.0f * pulse, core.radius * 2.0f * pulse, core.radius * 2.0f * pulse };
 	core_.Update();
 }
@@ -543,28 +908,38 @@ void Boss::UpdateModels() {
 void Boss::UpdateMarks() {
 	const float groundY = stage_->GetGroundY();
 
-	// --- 突進・叩きつけの予備動作：これから進む範囲を床の上の半透明の帯で示す ---
+	// --- 突進・叩きつけ・押しつぶしの予備動作：これから攻撃が来る範囲を床の上の半透明の帯で示す ---
 	isAttackMarkVisible_ = false;
 	float length = 0.0f;
+	float centerX = position_.x;
 	float progress = 0.0f;
 	Vector4 color = kChargeMarkColor;
 	if (behavior_ == Behavior::kCharge && chargeStep_ == ChargeStep::kWindup) {
-		// 走る距離（壁までの方が短ければそちら）
+		// 走る距離（壁までの方が短ければそちら）。体の正面から先へ伸ばす
 		const float toWall = (facing_ > 0.0f) ? (GetMaxX() - position_.x) : (position_.x - GetMinX());
 		length = (toWall < kChargeDistance) ? toWall : kChargeDistance;
+		centerX = position_.x + facing_ * (kBodyHalfWidth + length * 0.5f);
 		progress = timer_ / kChargeWindup;
 		isAttackMarkVisible_ = true;
 	} else if (behavior_ == Behavior::kSlam && slamStep_ == SlamStep::kWindup) {
 		length = kSlamRange;
+		centerX = position_.x + facing_ * (kBodyHalfWidth + length * 0.5f);
 		progress = timer_ / kSlamWindup;
 		color = kSlamMarkColor;
+		isAttackMarkVisible_ = true;
+	} else if (behavior_ == Behavior::kCrush && crushStep_ != CrushStep::kCrouch && crushStep_ != CrushStep::kRecover) {
+		// 押しつぶし：落ちてくる位置（体の真下）。浮いて追いかけている間は薄く、止まって溜めたら濃くする
+		length = kBodyHalfWidth * 2.0f + kCrushMarkMargin;
+		centerX = position_.x;
+		progress = (crushStep_ == CrushStep::kLock || crushStep_ == CrushStep::kDrop) ? 1.0f : 0.3f;
+		color = kCrushMarkColor;
 		isAttackMarkVisible_ = true;
 	}
 	if (isAttackMarkVisible_ && length > 0.0f) {
 		// 予備動作が進むほど濃くする
 		color.w = 0.15f + 0.35f * std::clamp(progress, 0.0f, 1.0f);
 		Transform3D& mark = attackMark_.GetTransform();
-		mark.translate = { position_.x + facing_ * (kBodyHalfWidth + length * 0.5f), groundY + kMarkHeight, 0.0f };
+		mark.translate = { centerX, groundY + kMarkHeight, 0.0f };
 		mark.scale = { length, kMarkHeight * 2.0f, kBodyHalfWidth * 2.0f };
 		attackMark_.SetColor(color);
 		attackMark_.Update();
@@ -574,7 +949,9 @@ void Boss::UpdateMarks() {
 
 	// --- 落石の予備動作：落ちる位置に半透明の円盤を置き、点滅させる ---
 	visibleRockMarkCount_ = 0;
-	if (behavior_ == Behavior::kRockFall && rockFallStep_ == RockFallStep::kRoar) {
+	const bool isRockFallRoar = (behavior_ == Behavior::kRockFall) && (rockFallStep_ == RockFallStep::kRoar);
+	const bool isCrushRockWait = (behavior_ == Behavior::kCrush) && (crushStep_ == CrushStep::kRecover) && !rockTargetsX_.empty();
+	if (isRockFallRoar || isCrushRockWait) {
 		const float blink = 0.5f + 0.5f * std::sin(timer_ * 25.0f);
 		Vector4 rockColor = kRockMarkColor;
 		rockColor.w = 0.2f + 0.3f * blink;
@@ -591,6 +968,8 @@ void Boss::UpdateMarks() {
 }
 
 void Boss::UpdateModel() {
+	// 止めて見せている間もヒットストップの揺れは進める（進めないと、揺れでずれた位置のまま固まって見える）
+	hitStop_.Update();
 	UpdateModels();
 	UpdateMarks();
 	for (std::unique_ptr<Hazard>& hazard : hazards_) {
@@ -604,7 +983,7 @@ void Boss::UpdateModel() {
 
 #pragma region 当たり判定・ダメージ
 
-Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, const Vector3& attackerPosition) {
+Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, const Vector3& attackerPosition, bool isMelee) {
 	if (!IsAlive()) {
 		return HitResult::kNone;
 	}
@@ -620,11 +999,19 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 		return HitResult::kBlocked;
 	}
 
-	// 弱点のコア：ダメージ 2 倍。怯みは間隔を空ける（連続で怯ませて封じられないように）
+	// 弱点のコア：ダメージ 2 倍。怯むのは攻撃していないときと、押しつぶしで浮いている間だけ（ほかの攻撃は続ける）。
+	// 怯みは間隔を空ける（連続で怯ませて封じられないように）
 	if (touchesCore) {
 		TakeDamage(damage * kWeakPointMultiplier);
+		StartHitStop(kCoreHitStopDuration, isMelee);
 		if (IsAlive()) {
-			if (staggerCooldownTimer_ <= 0.0f) {
+			if (CanStagger() && staggerCooldownTimer_ <= 0.0f) {
+				// 押しつぶしで浮いている間なら打ち落とす（体を傾けながらゆっくり落ち、着地してから怯む）。
+				// 跳び上がる瞬間でまだ床にいるときは、打ち落とさずにその場で怯む（床の上で打ち落とすと着地しないので、怯みが終わらない）
+				if (behavior_ == Behavior::kCrush && position_.y > GetStandY()) {
+					isShotDown_ = true;
+					fallSpeed_ = 0.0f;
+				}
 				behaviorRequest_ = Behavior::kStagger;
 				staggerCooldownTimer_ = kStaggerCooldown;
 			} else if (behavior_ == Behavior::kIdle) {
@@ -636,10 +1023,39 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 
 	// 体（背後からか、盾が下がっている間）。待機中に殴られたら、その方へ向き直る（次の更新で）
 	TakeDamage(damage);
+	StartHitStop(kHitStopDuration, isMelee);
 	if (IsAlive() && behavior_ == Behavior::kIdle) {
 		facePlayerRequest_ = true;
 	}
 	return HitResult::kDamaged;
+}
+
+void Boss::StartHitStop(float duration, bool isMelee) {
+	// 近接攻撃を続けて受けた回数を数える（前の近接から間が空いていたら 1 から数え直す）
+	if (isMelee) {
+		if (meleeHitCount_ > 0 && meleeHitTimer_ <= kHitStopResistResetTime) {
+			meleeHitCount_++;
+		} else {
+			meleeHitCount_ = 1;
+		}
+		meleeHitTimer_ = 0.0f;
+	}
+
+	// 耐性があるときは揺れるだけで止めない（攻撃のタイミングが遅れない）
+	isHitStopFreezing_ = !IsHitStopResistant();
+	hitStop_.Start(duration, kHitShakeAmplitude);
+}
+
+bool Boss::CanStagger() const {
+	// 攻撃していないとき
+	if (behavior_ == Behavior::kIdle || behavior_ == Behavior::kTired) {
+		return true;
+	}
+	// 押しつぶしで浮いている間（跳び上がり〜溜め）。怯むとそのまま床へ落ちる
+	if (behavior_ == Behavior::kCrush) {
+		return crushStep_ == CrushStep::kRise || crushStep_ == CrushStep::kHover || crushStep_ == CrushStep::kLock;
+	}
+	return false;
 }
 
 void Boss::TakeDamage(int32_t damage) {
@@ -656,7 +1072,20 @@ AABB3D Boss::GetBodyBox() const {
 }
 
 Sphere Boss::GetCoreSphere() const {
-	return { { position_.x - facing_ * kCoreOffsetX, position_.y + kCoreOffsetY, 0.0f }, kCoreRadius };
+	// 背中側の位置。打ち落とされて体が傾いているときは、体と一緒に回す
+	Vector3 offset = { -facing_ * kCoreOffsetX, kCoreOffsetY, 0.0f };
+	const float rotateZ = CalcTiltRotateZ();
+	if (rotateZ != 0.0f) {
+		const float c = std::cos(rotateZ);
+		const float s = std::sin(rotateZ);
+		offset = { offset.x * c - offset.y * s, offset.x * s + offset.y * c, 0.0f };
+	}
+	return { position_ + offset, kCoreRadius };
+}
+
+float Boss::CalcTiltRotateZ() const {
+	// 体の正面の側へ倒れる向き（向きが左なら反時計回り）
+	return -facing_ * bodyTilt_;
 }
 
 Vector3 Boss::GetShieldPosition() const {
@@ -671,7 +1100,9 @@ bool Boss::IsGuarding() const {
 }
 
 bool Boss::IsBodyDamaging() const {
-	return behavior_ == Behavior::kCharge && chargeStep_ == ChargeStep::kDash;
+	const bool isDashing = (behavior_ == Behavior::kCharge) && (chargeStep_ == ChargeStep::kDash);
+	const bool isDropping = (behavior_ == Behavior::kCrush) && (crushStep_ == CrushStep::kDrop);
+	return isDashing || isDropping;
 }
 
 bool Boss::IsInFront(const Vector3& point) const {
@@ -688,6 +1119,17 @@ float Boss::GetMinX() const {
 
 float Boss::GetMaxX() const {
 	return stage_->GetRightEdge() - kBodyHalfWidth;
+}
+
+float Boss::GetStandY() const {
+	return stage_->GetGroundY() + kBodyHalfHeight;
+}
+
+bool Boss::IsCrushAirborne() const {
+	if (behavior_ != Behavior::kCrush) {
+		return false;
+	}
+	return crushStep_ != CrushStep::kCrouch && crushStep_ != CrushStep::kRecover;
 }
 
 #pragma endregion
@@ -742,6 +1184,15 @@ void Boss::SpawnBits() {
 	}
 }
 
+bool Boss::HasAliveBits() const {
+	for (const std::unique_ptr<Hazard>& hazard : hazards_) {
+		if (hazard->IsAlive() && hazard->IsBit()) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void Boss::KillAllHazards() {
 	for (std::unique_ptr<Hazard>& hazard : hazards_) {
 		hazard->Kill();
@@ -787,6 +1238,22 @@ const char* Boss::GetBehaviorName() const {
 		return "slam";
 	case Behavior::kRockFall:
 		return "rockfall";
+	case Behavior::kCrush:
+		switch (crushStep_) {
+		case CrushStep::kCrouch:
+			return "crush(crouch)";
+		case CrushStep::kRise:
+			return "crush(rise)";
+		case CrushStep::kHover:
+			return "crush(hover)";
+		case CrushStep::kLock:
+			return "crush(lock)";
+		case CrushStep::kDrop:
+			return "crush(drop)";
+		case CrushStep::kRecover:
+		default:
+			return "crush(recover)";
+		}
 	case Behavior::kStagger:
 		return "stagger";
 	case Behavior::kDead:
@@ -797,13 +1264,69 @@ const char* Boss::GetBehaviorName() const {
 }
 
 #ifdef USE_IMGUI
+void Boss::DrawSelectedTuningImGui() {
+	if (selectedBehaviorIndex_ < 0 || selectedBehaviorIndex_ >= kSelectableBehaviorCount) {
+		return;
+	}
+	const SelectableBehavior& selected = kSelectableBehaviors[selectedBehaviorIndex_];
+	GlobalVariables* globalVariables = GlobalVariables::GetInstance();
+
+	// 関係する調整項目を並べる（ボス以外のグループは見出しを付ける）
+	for (int32_t i = 0; i < kMaxTuningEntries && selected.tunings[i].group != nullptr; ++i) {
+		const TuningEntry& entry = selected.tunings[i];
+		if (std::strcmp(entry.group, "Boss") != 0) {
+			ImGui::TextDisabled("%s", entry.group);
+		}
+		globalVariables->DrawItemsImGui(entry.group, entry.prefix);
+	}
+
+	// 表示しているグループを CSV に保存する（同じグループは 1 回だけ）
+	if (ImGui::Button("save shown groups")) {
+		for (int32_t i = 0; i < kMaxTuningEntries && selected.tunings[i].group != nullptr; ++i) {
+			bool isSaved = false;
+			for (int32_t j = 0; j < i; ++j) {
+				if (std::strcmp(selected.tunings[j].group, selected.tunings[i].group) == 0) {
+					isSaved = true;
+				}
+			}
+			if (!isSaved) {
+				globalVariables->SaveFile(selected.tunings[i].group);
+			}
+		}
+	}
+}
+
 void Boss::DrawImGui() {
 	if (ImGui::TreeNode("Boss")) {
 		ImGui::Text("hp: %d / %d  phase: %d  behavior: %s", hp_, kMaxHp, phase_, GetBehaviorName());
 		ImGui::Text("position: %.2f, %.2f  facing: %s  guarding: %s  hazards: %d",
 			position_.x, position_.y, (facing_ > 0.0f) ? "right" : "left", IsGuarding() ? "true" : "false", static_cast<int>(hazards_.size()));
-		ImGui::Text("staggerCooldown: %.2f  rockTargets: %d", staggerCooldownTimer_, static_cast<int>(rockTargetsX_.size()));
+		ImGui::Text("staggerCooldown: %.2f  rockTargets: %d  hitStop: %.2f%s  attackEnabled: %s",
+			staggerCooldownTimer_, static_cast<int>(rockTargetsX_.size()), hitStop_.GetRemainingTime(),
+			isHitStopFreezing_ ? "" : " (shake only)", isAttackEnabled_ ? "true" : "false");
+		ImGui::Text("meleeHits: %d  hitStopResist: %s  enraged (phase 2+): %s",
+			meleeHitCount_, IsHitStopResistant() ? "on" : "off", IsEnraged() ? "true" : "false");
 		ImGui::Checkbox("AI enabled", &isAiEnabled_);
+
+		// AI が選ぶ攻撃を 1 つに固定する（同じ攻撃を繰り返し見たいとき。AI が有効な間だけ意味がある）
+		const char* fixedAttackItems[] = { "cycle (charge > slam > rockfall > crush)", "charge", "slam", "rockfall", "crush" };
+		ImGui::Combo("AI attack", &fixedAttackIndex_, fixedAttackItems, IM_ARRAYSIZE(fixedAttackItems));
+
+		// 行動を選ぶ。選んだ行動を今すぐ出す・繰り返す（AI が無効のとき）、選んだ行動の調整項目だけを下に並べる
+		ImGui::SeparatorText("behavior");
+		const char* behaviorNames[kSelectableBehaviorCount];
+		for (int32_t i = 0; i < kSelectableBehaviorCount; ++i) {
+			behaviorNames[i] = kSelectableBehaviors[i].name;
+		}
+		ImGui::Combo("behavior", &selectedBehaviorIndex_, behaviorNames, kSelectableBehaviorCount);
+		if (ImGui::Button("do now")) {
+			ForceBehavior(GetSelectedBehavior());
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("loop (when AI is off)", &isLoopSelected_);
+
+		ImGui::SeparatorText("tuning (selected behavior)");
+		DrawSelectedTuningImGui();
 		ImGui::TreePop();
 	}
 }

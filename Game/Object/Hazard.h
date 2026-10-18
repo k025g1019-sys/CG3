@@ -31,6 +31,9 @@ public:
 	// 追従する基準点を受け取る（ボスの周りを回るビットが使う。他は無視）
 	virtual void SetAnchor(const Engine::Vector3& /*anchor*/) {}
 
+	// ボスの周りを回るビットか（ボスが新しくビットを呼ぶかどうかの判断に使う）
+	virtual bool IsBit() const { return false; }
+
 	bool IsAlive() const { return isAlive_; }
 
 	// 消す（ボスが倒れたときなど）

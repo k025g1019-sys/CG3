@@ -264,8 +264,10 @@ void GlobalVariables::LoadFile(const std::string& groupName) {
 
 #ifdef USE_IMGUI
 void GlobalVariables::DrawImGui() {
-	// 項目名が切れないよう、中身に合わせて大きさを変えるウィンドウにする
-	ImGui::Begin("Global Variables", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+	// 端をドラッグして大きさを変えられるウィンドウにする（項目が多くて入りきらない分はスクロールする）。
+	// 最初に開いたときだけ、項目名が切れにくい大きさにしておく（その後は変えた大きさが imgui.ini に保存される）
+	ImGui::SetNextWindowSize(ImVec2(420.0f, 480.0f), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Global Variables");
 	ImGui::Text("Save writes %s<group>%s", kDirectoryPath.c_str(), kExtension.c_str());
 	if (ImGui::Button("Save All")) {
 		SaveAllFiles();
@@ -287,19 +289,7 @@ void GlobalVariables::DrawImGui() {
 		}
 
 		for (std::map<std::string, Item>::iterator itItem = group.begin(); itItem != group.end(); ++itItem) {
-			const std::string& itemName = itItem->first;
-			Item& item = itItem->second;
-
-			if (std::holds_alternative<int32_t>(item)) {
-				int32_t* ptr = std::get_if<int32_t>(&item);
-				ImGui::DragInt(itemName.c_str(), ptr, 1.0f);
-			} else if (std::holds_alternative<float>(item)) {
-				float* ptr = std::get_if<float>(&item);
-				ImGui::DragFloat(itemName.c_str(), ptr, 0.01f, 0.0f, 0.0f, "%.4f");
-			} else if (std::holds_alternative<Vector3>(item)) {
-				Vector3* ptr = std::get_if<Vector3>(&item);
-				ImGui::DragFloat3(itemName.c_str(), reinterpret_cast<float*>(ptr), 0.01f);
-			}
+			DrawItemImGui(itItem->first, itItem->second);
 		}
 
 		// グループごとの保存と再読込
@@ -313,6 +303,38 @@ void GlobalVariables::DrawImGui() {
 	}
 
 	ImGui::End();
+}
+
+void GlobalVariables::DrawItemsImGui(const std::string& groupName, const std::string& prefix) {
+	std::map<std::string, Group>::iterator itGroup = datas_.find(groupName);
+	if (itGroup == datas_.end()) {
+		return;
+	}
+
+	// 同じ名前の項目が別のウィンドウにもあるので、グループ名で ID を分けておく
+	ImGui::PushID(groupName.c_str());
+	Group& group = itGroup->second;
+	for (std::map<std::string, Item>::iterator itItem = group.begin(); itItem != group.end(); ++itItem) {
+		// 名前が prefix で始まる項目だけ
+		if (itItem->first.compare(0, prefix.size(), prefix) != 0) {
+			continue;
+		}
+		DrawItemImGui(itItem->first, itItem->second);
+	}
+	ImGui::PopID();
+}
+
+void GlobalVariables::DrawItemImGui(const std::string& itemName, Item& item) {
+	if (std::holds_alternative<int32_t>(item)) {
+		int32_t* ptr = std::get_if<int32_t>(&item);
+		ImGui::DragInt(itemName.c_str(), ptr, 1.0f);
+	} else if (std::holds_alternative<float>(item)) {
+		float* ptr = std::get_if<float>(&item);
+		ImGui::DragFloat(itemName.c_str(), ptr, 0.01f, 0.0f, 0.0f, "%.4f");
+	} else if (std::holds_alternative<Vector3>(item)) {
+		Vector3* ptr = std::get_if<Vector3>(&item);
+		ImGui::DragFloat3(itemName.c_str(), reinterpret_cast<float*>(ptr), 0.01f);
+	}
 }
 #endif
 

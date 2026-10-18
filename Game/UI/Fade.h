@@ -4,7 +4,8 @@
 
 /// <summary>
 /// フェード。画面全体を覆う黒いスプライトを最前面に重ね、黒 → 透明（フェードイン）・透明 → 黒（フェードアウト）と変化させる。
-/// シーンの開始でフェードイン、次のシーンへ移る前にフェードアウトを使う
+/// シーンの開始でフェードイン、次のシーンへ移る前にフェードアウトを使う。
+/// かける時間は全シーン共通の調整値（GetDefaultDuration）を使う
 /// </summary>
 class Fade {
 public:
@@ -55,8 +56,17 @@ public:
 
 	Status GetStatus() const { return status_; }
 
+	// シーンの出入りのフェードにかける時間（秒。全シーン共通の調整値）
+	static float GetDefaultDuration() { return kDefaultDuration; }
+
+	// 調整項目を登録（既定値を GlobalVariables へ追加する。ファイル読み込み後に一度呼ぶ）
+	static void RegisterGlobalVariables();
+	// 調整項目を適用（GlobalVariables の現在値を調整項目へ反映する。毎フレーム呼ぶ）
+	static void ApplyGlobalVariables();
+
 private:
 
+	static inline float kDefaultDuration = 0.6f;          // シーンの出入りのフェードにかける時間（秒。調整値）
 	static inline const float kFrameTime = 1.0f / 60.0f;  // 1 フレームの秒数
 
 	Engine::Sprite sprite_;          // 画面全体を覆う黒い板

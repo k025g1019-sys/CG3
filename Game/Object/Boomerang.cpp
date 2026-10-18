@@ -29,6 +29,8 @@ void Boomerang::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "CatchDistance", kCatchDistance);
 	globalVariables->AddItem(groupName, "Radius", kRadius);
 	globalVariables->AddItem(groupName, "SpinSpeed", kSpinSpeed);
+	globalVariables->AddItem(groupName, "CurvePeakRate", kCurvePeakRate);
+	globalVariables->AddItem(groupName, "DownCurveVerticalRate", kDownCurveVerticalRate);
 }
 
 void Boomerang::ApplyGlobalVariables() {
@@ -42,18 +44,25 @@ void Boomerang::ApplyGlobalVariables() {
 	kCatchDistance = globalVariables->GetFloatValue(groupName, "CatchDistance");
 	kRadius = globalVariables->GetFloatValue(groupName, "Radius");
 	kSpinSpeed = globalVariables->GetFloatValue(groupName, "SpinSpeed");
+	kCurvePeakRate = globalVariables->GetFloatValue(groupName, "CurvePeakRate");
+	kDownCurveVerticalRate = globalVariables->GetFloatValue(groupName, "DownCurveVerticalRate");
 }
 
 #pragma endregion
 
 #pragma region 初期化
 
-void Boomerang::Initialize() {
+void Boomerang::Initialize(float groundY) {
 	// 仮モデル（細長い立方体を回して見せる）。モデルができたら差し替える
 	model_.Initialize(Primitive::kCube);
 	model_.SetColor({ 1.0f, 0.85f, 0.3f, 1.0f });
 	model_.GetTransform().scale = { 1.0f, 0.2f, 0.2f };
 
+	groundY_ = groundY;
+	Reset();
+}
+
+void Boomerang::Reset() {
 	phase_ = Phase::kIdle;
 	position_ = { 0.0f, 0.0f, 0.0f };
 	timer_ = 0.0f;
@@ -123,8 +132,16 @@ std::array<Vector3, 3> Boomerang::MakeControlPoints(const Vector3& start, const 
 		}
 	}
 
-	// 2 次ベジェ曲線の中点は制御点の方へ半分だけ寄るので、制御点は 2 倍ずらして曲線の膨らみを curveOffset にそろえる
-	const Vector3 middle = (start + target) * 0.5f + normal * (curveOffset * 2.0f);
+	// 2 次ベジェ曲線は制御点の方へ半分だけ寄るので、制御点は 2 倍ずらして曲線の膨らみを curveOffset にそろえる。
+	// ずらす元の点を線の真ん中から目標点寄りにすると、曲線の山も目標点寄りになる（最初はまっすぐ気味、最後に回り込む）
+	Vector3 middle = start + chord * kCurvePeakRate + normal * (curveOffset * 2.0f);
+
+	// 下向きに曲げたときは、制御点を目標点の真下へ寄せる。2 次ベジェ曲線の終わりの向きは「制御点 → 目標点」なので、
+	// 真下に置くと最後は真上へ上がって目標点に入る（線に垂直に膨らませるだけだと、終わりが横へそれて入る）
+	if (curveOffset < 0.0f) {
+		const Vector3 below = { target.x, target.y + curveOffset * 2.0f, 0.0f };
+		middle = Lerp(middle, below, kDownCurveVerticalRate);
+	}
 	return std::array<Vector3, 3>{ start, middle, target };
 }
 
@@ -135,10 +152,26 @@ void Boomerang::UpdateOutward() {
 	// 終わりにかけて減速しながら曲線をなぞる
 	position_ = Bezier(controlPoints_[0], controlPoints_[1], controlPoints_[2], EaseOutQuad(t));
 
+	// 地面に触れたら、そこで折り返す（盾に弾かれたときと同じ）
+	if (ResolveGroundCollision()) {
+		StartReturn();
+		return;
+	}
+
 	// 目標点に着いたら復路へ
 	if (t >= 1.0f) {
 		StartReturn();
 	}
+}
+
+bool Boomerang::ResolveGroundCollision() {
+	// 判定の球の下端が地面に届いたら、地面の上へ押し戻す
+	const float minY = groundY_ + kRadius;
+	if (position_.y <= minY) {
+		position_.y = minY;
+		return true;
+	}
+	return false;
 }
 
 void Boomerang::StartReturn() {
@@ -162,6 +195,9 @@ void Boomerang::UpdateReturn(const Vector3& ownerPosition) {
 	speed_ = std::clamp(speed_ + kReturnAcceleration, 0.0f, kReturnMaxSpeed);
 	const float step = (speed_ < distance) ? speed_ : distance;
 	position_ += Normalize(toOwner) * step;
+
+	// 復路でも地面にはもぐらない（高さだけ止めて、そのまま持ち主へ向かう）
+	ResolveGroundCollision();
 }
 
 #pragma endregion

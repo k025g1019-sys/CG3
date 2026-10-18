@@ -4,6 +4,7 @@
 #include "Engine/Math/Vector3.h"
 #include "Engine/Rendering/Object3D.h"
 #include "Game/Object/Hazard.h"
+#include "Game/Util/HitStop.h"
 
 #include <array>
 #include <cstdint>
@@ -17,9 +18,14 @@ class Stage;
 
 /// <summary>
 /// ボス「盾持ちの守護像」。正面に盾を構え、背中に弱点のコアを持つ。
-/// 待機 → 攻撃（突進 / 叩きつけ / 落石 の順）→ 待機 … を繰り返し、突進のあとは疲れて盾が下がる。
-/// 正面からの攻撃は盾に弾かれ、背後からの攻撃とコアへの攻撃（ダメージ 2 倍）が通る。コアに当たると怯む。
-/// HP が 2/3 以下で浮遊ビットを呼び、1/3 以下で突進が 2 連続になる。
+/// 待機 → 攻撃（突進 / 叩きつけ / 落石 / 押しつぶし の順）→ 待機 … を繰り返し、突進のあとは疲れて盾が下がる。
+/// 正面からの攻撃は盾に弾かれ、背後からの攻撃とコアへの攻撃（ダメージ 2 倍）が通る。
+/// コアに当たると怯むが、攻撃の途中は怯まない（怯むのは 待機中・疲れ中・押しつぶしで浮いている間 だけ）。
+/// 押しつぶしはプレイヤーの頭上へ跳んで浮いてから落ちてくる。浮いている間も盾は正面にあるので、
+/// 下向きに曲げたブーメランで下から回り込むとコアを狙える（浮いている間に怯むと、体を傾けながらゆっくり床へ落ち、着地してから怯む）。
+/// ダメージを受けると一瞬止まって揺れる（ヒットストップ。行動は止まるだけで打ち切られない）。
+/// 近接攻撃を短い間隔で続けて受けるとヒットストップに耐性がつき、揺れるだけで止まらなくなる（しばらく近接を受けなければ戻る）。
+/// HP が半分以下（第 2 段階）で、叩きつけのあとに浮遊ビットを呼び、押しつぶしの着地のあとに岩を降らせる。1/3 以下（第 3 段階）で突進が 2 連続になる。
 /// </summary>
 class Boss {
 public:
@@ -33,8 +39,18 @@ public:
 		kTired,     // 突進後の疲れ（盾が下がる）
 		kSlam,      // 叩きつけ（衝撃波を出す）
 		kRockFall,  // 落石（上空から岩を落とす）
+		kCrush,     // 押しつぶし（プレイヤーの頭上へ跳び、浮いてから落ちる）
 		kStagger,   // 怯み（コアに攻撃を受けた）
 		kDead,      // やられ
+	};
+
+	/// <summary>
+	/// このフレームに床へ着いたか（シーンがカメラを揺らすのに使う）
+	/// </summary>
+	enum class Landing {
+		kNone,      // 着いていない
+		kCrush,     // 押しつぶしで落ちてきて着いた
+		kShotDown,  // 押しつぶしの途中で打ち落とされて着いた
 	};
 
 	/// <summary>
@@ -53,6 +69,11 @@ public:
 	/// <param name="stage">床の高さと左右の端を参照するステージ（所有しない）</param>
 	/// <param name="player">狙う相手（所有しない）</param>
 	void Initialize(const Stage* stage, const Player* player);
+
+	/// <summary>
+	/// 最初の状態に戻す（位置・HP・行動など。リトライで使う。モデルは作り直さず、出ている攻撃物は消す）
+	/// </summary>
+	void Reset();
 
 	/// <summary>
 	/// 状態機械と攻撃物の更新（毎フレーム呼ぶ）
@@ -93,7 +114,8 @@ public:
 	/// <param name="damage">基本ダメージ（コアに当たると 2 倍）</param>
 	/// <param name="attackerPosition">攻撃してきた側の位置（近接はプレイヤー、ブーメランはブーメラン自身）。正面か背後かの判定に使う。
 	/// 近接の判定は大きく正面から体越しにコアへ届くことがあるので、判定の中心ではなく攻撃した側の位置で見る</param>
-	HitResult ApplyAttack(const Engine::Sphere& attackSphere, int32_t damage, const Engine::Vector3& attackerPosition);
+	/// <param name="isMelee">近接攻撃か（近接を続けて受けると、ヒットストップに耐性がつく）</param>
+	HitResult ApplyAttack(const Engine::Sphere& attackSphere, int32_t damage, const Engine::Vector3& attackerPosition, bool isMelee);
 
 	// 体の判定（箱）
 	Engine::AABB3D GetBodyBox() const;
@@ -107,8 +129,22 @@ public:
 	// 盾が有効か（疲れ・怯み・やられの間は無効）
 	bool IsGuarding() const;
 
-	// 体に触れるとダメージを受ける状態か（突進で走っている間）
+	// 体に触れるとダメージを受ける状態か（突進で走っている間と、押しつぶしで落ちている間）
 	bool IsBodyDamaging() const;
+
+	/// <summary>
+	/// 新しい攻撃を始めないようにする（プレイヤーがやられた後。今の行動は最後まで行い、終わったら待機のままになる）
+	/// </summary>
+	void StopAttacking();
+
+	// このフレームに床へ着いたか（Update のたびに kNone に戻る）
+	Landing GetLanding() const { return landing_; }
+
+	// HP が半分以下か（第 2 段階以降。叩きつけのあとのビット、押しつぶしの着地のあとの落石が加わる）
+	bool IsEnraged() const { return phase_ >= 2; }
+
+	// ヒットストップに耐性がついているか（近接攻撃を続けて受けた。揺れるだけで止まらない）
+	bool IsHitStopResistant() const { return meleeHitCount_ >= kHitStopResistHitCount; }
 
 	bool IsAlive() const { return hp_ > 0; }
 	bool IsDeathFinished() const { return isDeathFinished_; }
@@ -145,8 +181,18 @@ private:
 		kRecover,  // 余韻
 	};
 
+	// 押しつぶしの段階
+	enum class CrushStep {
+		kCrouch,   // しゃがむ（予備動作）
+		kRise,     // プレイヤーの頭上へ跳び上がる
+		kHover,    // 浮いたままプレイヤーを追いかける
+		kLock,     // 止まって溜める（落ちる直前の合図）
+		kDrop,     // 真下へ落ちる
+		kRecover,  // 着地の余韻
+	};
+
 	// --- 固定値 ---
-	static inline const int32_t kAttackPatternCount = 3;   // 攻撃の種類（突進 / 叩きつけ / 落石）
+	static inline const int32_t kAttackPatternCount = 4;   // 攻撃の種類（突進 / 叩きつけ / 落石 / 押しつぶし）
 	static inline const int32_t kMaxRockMarkers = 8;       // 落石の印の数の上限（RockCount もここまで）
 	static inline const float kFrameTime = 1.0f / 60.0f;   // 1 フレームの秒数
 
@@ -171,16 +217,35 @@ private:
 	static inline float kChargeWindup = 0.75f;      // 突進の予備動作
 	static inline float kChargeSpeed = 0.24f;       // 突進の速さ
 	static inline float kChargeDistance = 14.0f;    // 突進で走る距離の上限（壁に着いても止まる）
-	static inline float kChargeMinDistance = 3.0f;  // これより近いと突進ではなく叩きつけにする
 	static inline float kTiredDuration = 1.9f;      // 突進後の疲れ（盾が下がる時間）
 	static inline float kSlamWindup = 0.9f;         // 叩きつけの振りかぶり
 	static inline float kSlamRecover = 1.0f;        // 叩きつけの余韻
-	static inline float kSlamRange = 5.0f;          // これより遠いと叩きつけではなく突進にする
+	static inline float kSlamRange = 5.0f;          // 叩きつけの予備動作で、正面に示す範囲の長さ（衝撃波そのものはステージの端まで走る）
 	static inline float kRockRoar = 0.6f;           // 落石の予備動作
 	static inline float kRockRecover = 1.25f;       // 落石の余韻
 	static inline float kRockSpawnHeight = 11.0f;   // 岩の出現する高さ
 	static inline float kRockHeightStep = 2.0f;     // 岩ごとの高さの差（落ちる時間をずらす）
-	static inline float kRockSpreadX = 3.0f;        // 岩を散らす横幅（プレイヤーの左右）
+	static inline float kRockSpreadX = 6.0f;        // 岩を散らす横幅（プレイヤーの左右。広いほど岩と岩の間に入って避けやすい）
+	static inline float kCrushCrouch = 0.5f;        // 押しつぶしの予備動作（しゃがむ時間）
+	static inline float kCrushRiseDuration = 0.45f; // 押しつぶしで頭上へ跳び上がるのにかける時間
+	static inline float kCrushRiseMaxDistance = 5.0f;  // 跳び上がる動作で横に進める距離の上限（プレイヤーがこれより遠いと、頭上までは届かない）
+	static inline float kCrushHoverHeight = 6.0f;   // 浮く高さ（体の下端の、床からの高さ。プレイヤーのジャンプでは体に触れない高さにしておく）
+	static inline float kCrushHoverDuration = 0.7f; // 浮いたままプレイヤーを追いかける時間
+	static inline float kCrushTrackSpeed = 0.1f;    // 浮いている間に追いかける速さ（プレイヤーの走る速さより遅くしておく）
+	static inline float kCrushLockDuration = 0.25f; // 止まって溜める時間（落ちる直前の合図）
+	static inline float kCrushDropAcceleration = 0.04f;  // 落ちるときの加速度（1 フレームあたり）
+	static inline float kCrushDropMaxSpeed = 0.6f;  // 落ちる速さの上限
+	static inline float kCrushRecover = 0.9f;       // 着地の余韻
+	static inline float kCrushRockDelay = 0.5f;     // 第 2 段階：着地してから岩を降らせるまで（その間は落下位置の印を出す。余韻より短くする）
+	static inline float kShotDownFallAcceleration = 0.01f;  // 押しつぶしの途中で打ち落とされたときの落ちる加速度（1 フレームあたり。ゆっくり落とす）
+	static inline float kShotDownFallMaxSpeed = 0.2f;       // 打ち落とされたときの落ちる速さの上限
+	static inline float kShotDownTiltSpeed = 0.03f;         // 打ち落とされて落ちる間に体が傾いていく速さ（ラジアン / フレーム）
+	static inline float kShotDownMaxTilt = 0.5f;            // 打ち落とされたときの体の傾きの上限（ラジアン。着地後の怯みの間に起き上がる）
+	static inline float kHitStopDuration = 0.08f;      // 体にダメージを受けたときに止まる時間（秒）
+	static inline float kCoreHitStopDuration = 0.12f;  // コアにダメージを受けたときに止まる時間（秒）
+	static inline float kHitShakeAmplitude = 0.12f;    // ダメージを受けたときの揺れ幅
+	static inline int32_t kHitStopResistHitCount = 3;  // 近接攻撃を続けてこの回数受けると、ヒットストップに耐性がつく（揺れるだけで止まらない）
+	static inline float kHitStopResistResetTime = 1.0f;  // 近接攻撃の間隔がこれ以内なら「続けて」とみなす。これだけ近接を受けなければ耐性が消える（秒）
 	static inline float kStaggerDuration = 0.6f;    // 怯みの時間
 	static inline float kStaggerCooldown = 2.0f;    // 怯んだ後、次に怯むまでの間隔（連続で怯ませて封じられないように）
 	static inline float kDeathDuration = 1.5f;      // やられ演出の時間
@@ -215,6 +280,13 @@ private:
 	float chargeStartX_ = 0.0f;                        // 走り始めた X
 	SlamStep slamStep_ = SlamStep::kWindup;            // 叩きつけの段階
 	RockFallStep rockFallStep_ = RockFallStep::kRoar;  // 落石の段階
+	CrushStep crushStep_ = CrushStep::kCrouch;         // 押しつぶしの段階
+	Engine::Vector3 crushStartPosition_ = { 0.0f, 0.0f, 0.0f };  // 跳び上がる前の位置
+	float crushTargetX_ = 0.0f;                        // 跳び上がる先の X（跳ぶ瞬間のプレイヤーの位置。遠ければ進める上限まで）
+	float fallSpeed_ = 0.0f;                           // 落ちる速さ（押しつぶしの落下と、空中で怯んだときの落下）
+	bool isShotDown_ = false;                          // 押しつぶしの途中で打ち落とされて、床へ落ちている最中か
+	float bodyTilt_ = 0.0f;                            // 打ち落とされたときの体の傾き（ラジアン。0 で真っすぐ）
+	Landing landing_ = Landing::kNone;                 // このフレームに床へ着いたか
 	int32_t attackCycle_ = 0;                          // 攻撃の順番（突進 → 叩きつけ → 落石 → …）
 
 	int32_t hp_ = kMaxHp;                              // 残り HP
@@ -225,6 +297,14 @@ private:
 	float staggerCooldownTimer_ = 0.0f;                // 次に怯むまでの残り時間
 	bool facePlayerRequest_ = false;                   // 殴られたので次の更新でプレイヤーの方を向く（当たり判定の途中で向きを変えない）
 	bool isAiEnabled_ = true;                          // 開発用：攻撃に移るか
+	int32_t fixedAttackIndex_ = 0;                     // 開発用：AI が選ぶ攻撃を 1 つに固定する（0 で順番どおり、1 から 突進 / 叩きつけ / 落石 / 押しつぶし）
+	int32_t selectedBehaviorIndex_ = 0;                // 開発用：ImGui で選んでいる行動（kSelectableBehaviors の番号。今すぐ出す・繰り返す・調整項目の表示に使う）
+	bool isLoopSelected_ = false;                      // 開発用：AI が無効のとき、選んでいる行動を繰り返すか
+	int32_t meleeHitCount_ = 0;                        // 近接攻撃を続けて受けた回数（間隔が空くと 0 に戻る）
+	float meleeHitTimer_ = 0.0f;                       // 前に近接攻撃を受けてからの時間（秒）
+	bool isHitStopFreezing_ = true;                    // 今のヒットストップで行動を止めるか（耐性があるときは揺れるだけ）
+	bool isAttackEnabled_ = true;                      // 新しい攻撃を始めるか（プレイヤーがやられた後は false）
+	HitStop hitStop_;                                  // ヒットストップ（ダメージを受けたとき）
 
 	std::vector<std::unique_ptr<Hazard>> hazards_;     // 出した攻撃物（衝撃波・岩・ビット）
 	std::mt19937 randomEngine_;                        // 岩の位置を散らす乱数
@@ -238,11 +318,32 @@ private:
 	void UpdateTired();
 	void UpdateSlam();
 	void UpdateRockFall();
+	void UpdateCrush();
 	void UpdateStagger();
 	void UpdateDead();
 
 	// 次の攻撃を選ぶ（順番に出し、距離に合わないものは差し替える）
 	void ChooseNextAttack();
+
+	// 攻撃の振る舞いか（突進 / 叩きつけ / 落石 / 押しつぶし）
+	static bool IsAttackBehavior(Behavior behavior);
+
+	// 開発用：指定した振る舞いへ今すぐ切り替える（ImGui のボタンから呼ぶ。攻撃ならプレイヤーの方を向いてから始める）
+	void ForceBehavior(Behavior next);
+
+	// 開発用：ImGui で選んでいる行動
+	Behavior GetSelectedBehavior() const;
+
+#ifdef USE_IMGUI
+	// 開発用：選んでいる行動に関係する調整項目だけを並べて編集する（全項目は Global Variables ウィンドウにある）
+	void DrawSelectedTuningImGui();
+#endif
+
+	// ダメージを受けたときのヒットストップを始める（近接を続けて受けていたら、止めずに揺らすだけにする）
+	void StartHitStop(float duration, bool isMelee);
+
+	// コアに当たったときに怯むか（待機中・疲れ中・押しつぶしで浮いている間だけ。ほかの攻撃の途中は怯まず続ける）
+	bool CanStagger() const;
 
 	// すぐにプレイヤーの方を向く
 	void FacePlayer();
@@ -252,6 +353,18 @@ private:
 
 	// HP に応じて段階を進める
 	void UpdatePhase();
+
+	// 押しつぶし以外で宙にいるとき（空中で怯んだ・倒されたとき）、床まで落とす
+	void UpdateFall();
+
+	// 床に立っているときの体の中心の高さ
+	float GetStandY() const;
+
+	// 押しつぶしで自分から宙に出ている間か（跳び上がり〜落下。高さは UpdateCrush が動かす）
+	bool IsCrushAirborne() const;
+
+	// 打ち落とされたときの体の傾きを、Z 軸回りの回転にしたもの（前のめりに傾く向き。傾いていなければ 0）
+	float CalcTiltRotateZ() const;
 
 	// 攻撃物の更新と、消えたものの削除
 	void UpdateHazards();
@@ -281,4 +394,7 @@ private:
 	void SpawnRocks();
 	void SpawnBits();
 	void KillAllHazards();
+
+	// 浮遊ビットがまだ残っているか（残っていれば新しく呼ばない）
+	bool HasAliveBits() const;
 };

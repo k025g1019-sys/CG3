@@ -16,6 +16,9 @@ public:
 
     void Initialize();
 
+    // ウィンドウを閉じ、ウィンドウクラスの登録を解除する
+    void Finalize();
+
     bool ProcessMessage();
 
     int32_t GetClientWidth() const { return clientWidth_; }
@@ -40,6 +43,11 @@ public:
 
     HWND GetHwnd() const {
         return hwnd_;
+    }
+
+    // DirectInputの初期化などで使うインスタンスハンドル
+    HINSTANCE GetHInstance() const {
+        return wc_.hInstance;
     }
 
 private:

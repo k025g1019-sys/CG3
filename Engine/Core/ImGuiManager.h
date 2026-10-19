@@ -13,6 +13,8 @@ struct ImDrawCmd;
 
 namespace Engine {
 
+class WinApp;
+
 /// <summary>
 /// ImGuiの初期化・フレーム処理・描画・終了処理をまとめたシングルトン。
 /// Debug・Developmentビルド限定（USE_IMGUI）。Releaseではこのクラスごとビルドから除外される。
@@ -35,7 +37,7 @@ public:
 
     // ImGuiコンテキストとWin32/DX12バックエンドを初期化する
     // （WinApp・DirectXCore・DescriptorHeapManagerの初期化後に呼ぶ）
-    void Initialize();
+    void Initialize(WinApp* winApp);
 
     // 保存済みレイアウトが無い初回起動時に組むデフォルトドッキング配置を登録する
     // （最初のBeginFrameより前に呼ぶ。左＝ゲーム、右上・右下に各ウィンドウ名で配置する）。

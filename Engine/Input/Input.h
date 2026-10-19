@@ -12,6 +12,8 @@
 
 namespace Engine {
 
+class WinApp;
+
 // マウスボタンのインデックス（IsMousePress等に渡す）
 enum MouseButton {
     kMouseLeft = 0,
@@ -50,7 +52,7 @@ public:
     static Input* GetInstance();
 
     // DirectInput本体とキーボードデバイスを生成する
-    void Initialize(HWND hwnd);
+    void Initialize(WinApp* winApp);
 
     // キーボードデバイスを解放する（CoUninitializeより前に呼ぶこと）
     void Finalize();

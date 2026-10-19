@@ -1,8 +1,7 @@
 #include "Engine/Core/WinApp.h"
 #ifdef USE_IMGUI
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
-#include "externals/imgui/imgui_impl_win32.h"
+#include "externals/imgui/imgui.h"  // IMGUI_IMPL_API
+// imgui_impl_win32.h では宣言が #if 0 で無効になっているため、ここで宣言する
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM LParam);
 #endif
 
@@ -92,6 +91,11 @@ void WinApp::Initialize() {
     );
 
     ShowWindow(hwnd_, SW_SHOW);
+}
+
+void WinApp::Finalize() {
+    CloseWindow(hwnd_);
+    UnregisterClass(wc_.lpszClassName, wc_.hInstance);
 }
 
 void WinApp::SetTitle(const std::wstring& title) {

@@ -50,13 +50,13 @@ D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetSrvGPUHandle(uint32_t inde
     return GetGPUDescriptorHandle(srvHeap_, descriptorSize_, index);
 }
 
-ID3D12DescriptorHeap* DescriptorHeapManager::CreateDescriptorHeap(
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DescriptorHeapManager::CreateDescriptorHeap(
     ID3D12Device* device,
     D3D12_DESCRIPTOR_HEAP_TYPE heapType,
     UINT numDescriptors,
     bool shaderVisible
 ) {
-    ID3D12DescriptorHeap* descriptorHeap = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 
     D3D12_DESCRIPTOR_HEAP_DESC desc{};
     desc.Type = heapType;

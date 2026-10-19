@@ -18,16 +18,16 @@
 
 ## ブランチ
 
-`master` を主軸にして進めます。
+`main` を主軸にして進めます。
 
 | ブランチ | 役割 |
 |---|---|
-| `master` | 主軸。動作確認の済んだエンジン（Engine / Shaders / Sandbox など）。ここでは直接作業せず、`feature/〇〇` をマージして更新する |
-| `feature/〇〇` | エンジンの機能を作るブランチ（例: `feature/Input`）。`master` から分岐し、Sandbox で動作確認できたら `master` へマージする |
-| `AL4_develop` | ゲーム制作（`Game/` だけを編集する）。エンジンは `master` から取り込む |
+| `main` | 主軸。動作確認の済んだエンジン（Engine / Shaders / Sandbox など）。ここでは直接作業せず、`feature/〇〇` をマージして更新する |
+| `feature/〇〇` | エンジンの機能を作るブランチ（例: `feature/Input`）。`main` から分岐し、Sandbox で動作確認できたら `main` へマージする |
+| `AL4_develop` | ゲーム制作（`Game/` だけを編集する）。エンジンは `main` から取り込む |
 
-`master` と `feature/〇〇` がエンジン制作ブランチ（`Sandbox/` がある）、`AL4_develop` がゲーム制作ブランチ（`Game/` がある）です。
-変更の取り込みは **エンジン（`master`）→ ゲーム の一方通行** です。ゲームのブランチを `master` や `feature/〇〇` へマージしないでください。
+`main` と `feature/〇〇` がエンジン制作ブランチ（`Sandbox/` がある）、`AL4_develop` がゲーム制作ブランチ（`Game/` がある）です。
+変更の取り込みは **エンジン（`main`）→ ゲーム の一方通行** です。ゲームのブランチを `main` や `feature/〇〇` へマージしないでください。
 
 ## 最初に1回だけ
 
@@ -43,9 +43,9 @@ git config core.hooksPath .githooks
 
 ## エンジンの機能を作る
 
-1. `master` から `feature/〇〇` を作る（`git switch -c feature/〇〇 master`）
+1. `main` から `feature/〇〇` を作る（`git switch -c feature/〇〇 main`）
 2. Engine / Sandbox を編集し、Sandbox で動作確認しながらコミットする
-3. できあがったら `master` へマージする（`git switch master` → `git merge --no-ff feature/〇〇`）
+3. できあがったら `main` へマージする（`git switch main` → `git merge --no-ff feature/〇〇`）
 4. ゲームで使うときは、ゲーム制作ブランチで `tools/MergeEngine.ps1` を実行して取り込む（次の節）
 
 ## エンジンの変更をゲームに取り込む
@@ -56,9 +56,9 @@ git config core.hooksPath .githooks
 powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1
 ```
 
-`master` をマージし、ゲームに不要な `Sandbox/` は自動で取り除きます。
+`main` をマージし、ゲームに不要な `Sandbox/` は自動で取り除きます。
 コンフリクトが残ったときは表示されたファイルを直して `git add` → `git commit` してください。
-`master` にまだマージしていない機能を先に使いたいときは、末尾に `-EngineBranch feature/〇〇` を付けるとそのブランチから取り込めます。
+`main` にまだマージしていない機能を先に使いたいときは、末尾に `-EngineBranch feature/〇〇` を付けるとそのブランチから取り込めます。
 
 > Visual Studio のマージ機能や `git merge` を直接使わず、このスクリプトを使ってください。
 > git は `Game/Game.vcxproj` や `Game/main.cpp` を「Sandbox のファイルを名前変更したもの」とみなすことがあり、
@@ -68,8 +68,8 @@ powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1
 ## ゲーム制作中にエンジンの修正が必要になったら
 
 1. ゲーム側の作業をコミット（または `git stash`）する
-2. `master` から `feature/〇〇` を作ってエンジンを修正し、Sandbox で動作確認してコミットする
-3. `feature/〇〇` を `master` へマージする
+2. `main` から `feature/〇〇` を作ってエンジンを修正し、Sandbox で動作確認してコミットする
+3. `feature/〇〇` を `main` へマージする
 4. `AL4_develop` に戻り、`tools/MergeEngine.ps1` で取り込む
 
 2つのブランチを別々のフォルダに同時に出しておくと、切り替えのたびの再ビルドが要らなくなります。

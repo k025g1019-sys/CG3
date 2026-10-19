@@ -5,6 +5,7 @@
 
 #include <d3d12sdklayers.h>
 
+#include "Engine/Core/WinApp.h"
 #include "Engine/Diagnostics/Log.h"
 #include "Engine/Graphics/GpuResource.h"
 
@@ -22,11 +23,13 @@ DirectXCore* DirectXCore::GetInstance() {
     return &instance;
 }
 
-void DirectXCore::Initialize(
-    HWND hwnd,
-    int32_t width,
-    int32_t height
-) {
+void DirectXCore::Initialize(WinApp* winApp) {
+
+    assert(winApp);
+
+    HWND hwnd = winApp->GetHwnd();
+    int32_t width = winApp->GetClientWidth();
+    int32_t height = winApp->GetClientHeight();
 
     InitializeDXGIDevice();
 

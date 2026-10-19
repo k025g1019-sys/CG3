@@ -6,6 +6,8 @@
 #include "Engine/Core/Time.h"
 #include "Engine/Graphics/PipelineManager.h"
 #include "Engine/Graphics/TextureManager.h"
+#include "Engine/Math/Collision.h"
+#include "Engine/Rendering/AccelerationField.h"
 #include "Engine/Rendering/Mesh.h"
 #include "Engine/Rendering/MeshManager.h"
 #include "Engine/Rendering/ParticleEmitter.h"
@@ -80,6 +82,17 @@ void ParticleSystem::Emit(const ParticleEmitter& emitter) {
 		}
 
 		particles_.push_back(MakeNewParticle(randomEngine_, emitter));
+	}
+}
+
+void ParticleSystem::ApplyField(const AccelerationField& field) {
+	const float deltaTime = Time::GetDeltaTime();
+
+	for (Particle& particle : particles_) {
+		// 場の範囲内にいるパーティクルだけ、加速度ぶん速度を変える（加速度は1秒あたりなので経過時間を掛ける）
+		if (IsCollision(field.area, particle.transform_.translate)) {
+			particle.velocity_ += field.acceleration * deltaTime;
+		}
 	}
 }
 

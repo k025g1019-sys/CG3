@@ -15,6 +15,7 @@
 namespace Engine {
 
 class Mesh;
+struct AccelerationField;
 struct ParticleEmitter;
 
 /// <summary>
@@ -22,7 +23,8 @@ struct ParticleEmitter;
 /// 1回の描画命令（DrawInstanced）でまとめて描くパーティクル。
 ///   Initialize : メッシュと、パーティクルの最大数を決める（最初は1個も出ていない）
 ///   Emit       : エミッタ（ParticleEmitter）の設定で、パーティクルを発生させる
-///   Update     : 移動・生存時間の更新をし、ワールド行列と色をStructuredBufferへ書き込む（毎フレーム、Drawより前に呼ぶ）
+///   ApplyField : 場（AccelerationFieldなど）の範囲内にいるパーティクルの速度を変える（使うときだけ、Updateより前に呼ぶ）
+///   Update     :移動・生存時間の更新をし、ワールド行列と色をStructuredBufferへ書き込む（毎フレーム、Drawより前に呼ぶ）
 ///                ビルボードが有効なら、渡されたビュー行列を使ってパーティクルの表を常にカメラへ向ける
 ///   Draw       : パーティクル用のRootSignature・PSO（加算合成）で描画する（シーンのOnDrawの中で呼ぶ）
 /// パーティクルは発生時にエミッタの設定から位置・速度・色・生存時間を乱数で決め、生存時間に近づくほど薄くなる。
@@ -42,6 +44,10 @@ public:
 
     // エミッタからパーティクルを発生させる（エミッタの「1回あたりの発生数」ぶん。最大数を超えるぶんは発生させない）
     void Emit(const ParticleEmitter& emitter);
+
+    // 加速度場（風など）を適用する：範囲内にいるパーティクルだけ、速度に「加速度 × 経過時間」を足す。
+    // 毎フレーム、Updateより前に呼ぶ（呼ばなかったフレームは場の影響を受けない。複数の場を順に適用してもよい）
+    void ApplyField(const AccelerationField& field);
 
     // 出ているパーティクルをすべて消す
     void Clear() { particles_.clear(); }

@@ -178,10 +178,7 @@ void Framework::Initialize() {
 
 	// --- DirectX12初期化 ---
 	DirectXCore* dxCore = DirectXCore::GetInstance();
-	dxCore->Initialize(
-		winApp->GetHwnd(),
-		WinApp::kClientWidth,
-		WinApp::kClientHeight);
+	dxCore->Initialize(winApp);
 
 	Log("Complete create D3D12Device!!!");
 
@@ -194,10 +191,10 @@ void Framework::Initialize() {
 	StereoRenderer::GetInstance()->Initialize(
 		dxCore->GetDevice(), winApp->GetClientWidth(), winApp->GetClientHeight());
 	Audio::GetInstance()->Initialize();
-	Input::GetInstance()->Initialize(winApp->GetHwnd());
+	Input::GetInstance()->Initialize(winApp);
 
 #ifdef USE_IMGUI
-	ImGuiManager::GetInstance()->Initialize();
+	ImGuiManager::GetInstance()->Initialize(winApp);
 	// スプライトエディタ（Debug・Development限定。ウィンドウは SpriteEditor::SetOpen(true) で開く）
 	SpriteEditor::GetInstance()->Initialize();
 #endif
@@ -224,7 +221,7 @@ void Framework::Finalize() {
 	ShaderCompiler::GetInstance()->Finalize();
 	DirectXCore::GetInstance()->Finalize();
 
-	CloseWindow(WinApp::GetInstance()->GetHwnd());
+	WinApp::GetInstance()->Finalize();
 
 	// --- リソースリークチェック ---
 	ComPtr<IDXGIDebug1> debug;

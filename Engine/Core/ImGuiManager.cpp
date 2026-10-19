@@ -72,13 +72,15 @@ ImGuiManager* ImGuiManager::GetInstance() {
 	return &instance;
 }
 
-void ImGuiManager::Initialize() {
+void ImGuiManager::Initialize(WinApp* winApp) {
+	assert(winApp);
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	ImGui::StyleColorsDark();
 
-	ImGui_ImplWin32_Init(WinApp::GetInstance()->GetHwnd());
+	ImGui_ImplWin32_Init(winApp->GetHwnd());
 
 	// フォント用にSRVヒープのスロットを1つ確保して使う
 	DescriptorHeapManager* heapManager = DescriptorHeapManager::GetInstance();

@@ -265,6 +265,7 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
   </p>
   <div class="meta">
     <span>作成元 <b>CG3_develop</b> <code>16bb434</code>（2026-09-30）</span>
+    <span>最終更新 <b>main</b> <code>d37ff3a</code>（2026-10-19）</span>
     <span>インクルード <code>#include "Engine/…"</code>（ルートはリポジトリ直下）</span>
     <span>名前空間 <code>Engine</code>（<code>using namespace Engine;</code> で省略可）</span>
   </div>
@@ -315,6 +316,9 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
           <li><a class="mono" href="#Sprite">Sprite</a></li>
           <li><a class="mono" href="#SpriteEditor">SpriteEditor</a></li>
           <li><a class="mono" href="#SpriteCanvas">SpriteCanvas</a></li>
+          <li><a class="mono" href="#ParticleSystem">ParticleSystem</a></li>
+          <li><a class="mono" href="#ParticleEmitter">ParticleEmitter</a></li>
+          <li><a class="mono" href="#AccelerationField">AccelerationField</a></li>
           <li><a class="mono" href="#Camera">Camera</a></li>
           <li><a class="mono" href="#Light">DirectionalLight / PointLight</a></li>
           <li><a class="mono" href="#DebugDraw">DebugDraw</a></li>
@@ -373,6 +377,7 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
           <li><a class="mono" href="#ShaderCompiler">ShaderCompiler</a></li>
           <li><a class="mono" href="#DescriptorHeapManager">DescriptorHeapManager</a></li>
           <li><a class="mono" href="#ConstantBuffer">ConstantBuffer&lt;T&gt;</a></li>
+          <li><a class="mono" href="#StructuredBuffer">StructuredBuffer&lt;T&gt;</a></li>
           <li><a class="mono" href="#RenderContext">RenderContext</a></li>
           <li><a class="mono" href="#GpuResource">GpuResource</a></li>
           <li><a class="mono" href="#GeometryGenerator">GeometryGenerator</a></li>
@@ -450,7 +455,7 @@ void TitleScene::OnDraw() {
   <div class="tbl"><table>
     <thead><tr><th>場所</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td class="m">Engine/</td><td>エンジン本体（静的ライブラリ）。変更は master から分岐した <code>feature/〇〇</code> で行って master へマージし、<code>tools/MergeEngine.ps1</code> でゲームのブランチへ取り込む。</td></tr>
+      <tr><td class="m">Engine/</td><td>エンジン本体（静的ライブラリ）。変更は main から分岐した <code>feature/〇〇</code> で行って main へマージし、<code>tools/MergeEngine.ps1</code> でゲームのブランチへ取り込む。</td></tr>
       <tr><td class="m">Game/</td><td>ゲーム本体（AL4_develop）。実行時のカレントディレクトリもここになる。</td></tr>
       <tr><td class="m">Game/resources/</td><td>モデル・画像・音。コードでは <code>"resources/player.obj"</code> のように Game/ からの相対パスで書く。</td></tr>
       <tr><td class="m">Shaders/</td><td>エンジンのシェーダー。実行時に <code>Shaders/</code> → <code>../Shaders/</code> の順で探される。</td></tr>
@@ -472,7 +477,7 @@ void TitleScene::OnDraw() {
     <li>ゲームの描画先矩形をシーンへ渡す（Debug・Development では ImGui のドッキングで空いた中央領域）</li>
     <li class="hook"><code>Update</code> → シーンの <code>OnUpdate</code> → カメラの確定（ビュー・射影・視錐台）→ 光源を定数バッファへ</li>
     <li>画面をクリアする（<code>BeginFrame</code>）→ 動的テクスチャの転送コマンドを積む（<code>TextureManager::BeginFrame</code>）→ <code>PreDraw</code> フック</li>
-    <li class="hook"><code>Draw</code> → ルートシグネチャ・カメラ・光源・標準PSOを設定 → シーンの <code>OnDraw</code> → <code>DebugDraw</code> の線</li>
+    <li class="hook"><code>Draw</code> → ルートシグネチャ・カメラ・光源・標準PSOを設定（<code>RenderContext::BindStandardState</code>）→ シーンの <code>OnDraw</code> → <code>DebugDraw</code> の線</li>
     <li>[Debug・Development] ImGui を画面全体へ描く</li>
     <li>画面に表示する（<code>EndFrame</code>。垂直同期あり）→ このフレームの <code>DebugDraw</code> の線を消す</li>
     <li>1/60 秒が経つまで待ち、次のフレームの経過時間を確定する<span class="who">Time::WaitForNextFrame</span></li>
@@ -559,6 +564,8 @@ void TitleScene::OnDraw() {
       <tr><td>陰影を付けない（ベタ塗り）</td><td><code>obj.Initialize(Primitive::kCube, LightingMode::kNone);</code></td><td><a href="#Material">LightingMode</a></td></tr>
       <tr><td>16進数で色を指定する</td><td><code>obj.SetColor(0xFF6650FF);</code>（<code>0xRRGGBBAA</code> の8桁。Sprite・光源も同じ）</td><td><a href="#Color">ColorFromHex</a></td></tr>
       <tr><td>半透明にする</td><td><code>obj.SetColor({1, 1, 1, 0.5f});</code>（不透明な物の後に描く）</td><td><a href="#pitfalls">つまずきやすい点</a></td></tr>
+      <tr><td>パーティクル（煙・火花など）を出す</td><td><code>particles_.Initialize("resources/plane.obj", 100);</code> → 毎フレーム <code>if (emitter_.Update()) { particles_.Emit(emitter_); }</code> → <code>particles_.Update(CalcViewMatrix());</code> → <code>OnDraw</code> で <code>Draw()</code></td><td><a href="#ParticleSystem">ParticleSystem</a></td></tr>
+      <tr><td>パーティクルに風を当てる</td><td><code>field_.acceleration = {2, 0, 0};</code> <code>field_.area = MakeAABB(...);</code> → <code>Update</code> の前に <code>particles_.ApplyField(field_);</code></td><td><a href="#AccelerationField">AccelerationField</a></td></tr>
       <tr><td>2D の画像・UI を出す</td><td><code>sprite.Initialize("resources/title.png", {640, 360});</code></td><td><a href="#Sprite">Sprite</a></td></tr>
       <tr><td>画像をその場で描いて試す（開発中）</td><td><code>SpriteEditor::GetInstance()-&gt;SetOpen(true);</code> → <code>sprite.SetTextureHandle(SpriteEditor::GetInstance()-&gt;GetTextureHandle());</code>（<code>#ifdef USE_IMGUI</code>）</td><td><a href="#SpriteEditor">SpriteEditor</a></td></tr>
       <tr><td>カメラを動かす・見下ろす</td><td><code>camera_.GetTransform().translate = {0, 3, -12};</code> <code>rotate.x = 0.15f;</code></td><td><a href="#Camera">Camera</a></td></tr>
@@ -591,9 +598,10 @@ void TitleScene::OnDraw() {
     <li><b>半透明は描く順番が大事。</b>アルファブレンドは有効ですが深度も書き込むので、半透明の物は不透明な物をすべて描いた後に、奥から手前の順で描きます。</li>
     <li><b>テクスチャのアルファが 0.8 未満のピクセルは描かれない</b>（シェーダーで切り抜き）。フェンスのような抜きは簡単ですが、ぼかした半透明の縁は欠けます。全体を薄くしたいときはテクスチャではなく <code>SetColor</code> のアルファを使います。</li>
     <li><b>スプライトは <code>OnDraw</code> の最後に描く。</b>スプライトは深度 0 で書かれるので、3D より常に手前に表示されます。先に描くと、スプライトの半透明部分の下に後から描いた 3D が見えなくなります。</li>
+    <li><b>パーティクルは加算合成で、深度を書き込まない。</b>重なるほど明るくなり、黒は見えません。不透明な物には隠れますが、パーティクルが後ろの物を隠すことはないので、不透明な物をすべて描いた後に <code>Draw()</code> します。パーティクルごとの視錐台カリングもありません。</li>
     <li><b><code>Primitive::kPlane</code> は上からしか見えない。</b>裏面カリングがあるので、下から見ると消えます。</li>
     <li><b>遠くの物が消える。</b>カメラの描画距離は既定で 100 まで。広いステージでは <code>camera_.SetClipPlanes(0.1f, 500.0f)</code> などで伸ばします。</li>
-    <li><b>テクスチャは 120 枚弱まで。</b>SRV ヒープが 128 枠で、ImGui と立体視も使います。読み込んだテクスチャはアプリ終了まで解放されません（同じパスはキャッシュされるので、何度 Load しても増えません）。</li>
+    <li><b>テクスチャは 120 枚弱まで。</b>SRV ヒープが 128 枠で、ImGui と立体視も使います。<code>ParticleSystem</code> も1つにつき 2 枠使います（こちらはシーンを破棄すると返されます）。読み込んだテクスチャはアプリ終了まで解放されません（同じパスはキャッシュされるので、何度 Load しても増えません）。</li>
   </ul>
   <h3>リソース</h3>
   <ul>
@@ -1219,6 +1227,168 @@ bool Load(const std::string&amp; path, std::string&amp; error);</code>
     </div>
   </section>
 
+  <!-- ---------------------------------------------------------- ParticleSystem -->
+  <section class="cls" id="ParticleSystem">
+    <div class="cls-head"><h3>ParticleSystem</h3><span class="path">Engine/Rendering/ParticleSystem.h</span></div>
+    <p class="lead">同じメッシュ（板ポリなど）を、パーティクルごとに違う位置・大きさ・色で、1回の描画命令（インスタンシング）でまとめて描くパーティクルです。パーティクルは <a href="#ParticleEmitter">ParticleEmitter</a> の設定で発生し、速度で動き、生存時間に近づくほど薄くなって消えます。既定ではビルボードが有効で、板ポリの表が常にカメラを向きます。描画は加算合成・深度の書き込みなし・陰影なしです。</p>
+    <div class="ex">
+      <p class="ex-label">例: 0.5 秒ごとに 3 個ずつ出し、範囲内では右へ流す</p>
+<pre class="code">#include "Engine/Rendering/AccelerationField.h"
+#include "Engine/Rendering/ParticleEmitter.h"
+#include "Engine/Rendering/ParticleSystem.h"
+
+// メンバー: Engine::ParticleSystem particles_;  Engine::ParticleEmitter emitter_;  Engine::AccelerationField wind_;
+void GameScene::OnInitialize() {
+    particles_.Initialize("resources/plane.obj", 100);   // 板ポリ、最大 100 個
+    particles_.SetTexture("resources/circle.png");
+
+    emitter_.translate = { 0.0f, 1.0f, 0.0f };           // ここを中心に
+    emitter_.range = { 0.5f, 0.5f, 0.5f };               // ±0.5 の箱の中に発生
+    emitter_.count = 3;                                  // 1回に 3 個
+    emitter_.frequency = 0.5f;                           // 0.5 秒ごと
+
+    wind_.acceleration = { 3.0f, 0.0f, 0.0f };           // 右向きに加速（1秒あたり）
+    wind_.area = MakeAABB({ 2.0f, 1.0f, 0.0f }, { 1.0f, 2.0f, 2.0f });
+}
+
+void GameScene::OnUpdate() {
+    if (emitter_.Update()) {             // 発生のタイミングが来たフレームだけ true
+        particles_.Emit(emitter_);
+    }
+    particles_.ApplyField(wind_);        // 使うなら Update より前
+    particles_.Update(CalcViewMatrix()); // カメラを動かした後、Draw より前に毎フレーム
+}
+
+void GameScene::OnDraw() {
+    // 不透明な物を先に描いてから
+    particles_.Draw();
+}</pre>
+    </div>
+    <div class="note"><span class="note-label">モデルと画像</span>板ポリの OBJ（Sandbox の <code>resources/plane.obj</code> など。表が −Z 向き＝カメラ側）と画像は、ゲーム側の <code>Game/resources/</code> にも用意します。Sandbox の素材はゲームのブランチには入りません。</div>
+    <p class="sub">初期化</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Initialize(const std::string&amp; objFilePath, uint32_t maxParticleCount);</code>
+        <div class="d">メッシュを読み込み、最大数ぶんの GPU のバッファを作ります。メッシュは <code>MeshManager</code> が読み込んで共有し、テクスチャは最初のサブメッシュの mtl の <code>map_Kd</code>（無ければ白）になります。この時点ではパーティクルは 1 個も出ていません。乱数の種は起動のたびに変わります。</div>
+        <dl class="pr">
+          <dt>objFilePath</dt><dd>Game/ からの相対パス。例 <code>"resources/plane.obj"</code></dd>
+          <dt>maxParticleCount</dt><dd>同時に出せる数の上限（1 以上）。これを超えては発生も描画もしない</dd>
+        </dl>
+      </div>
+    </div>
+    <p class="sub">毎フレーム</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">void Emit(const ParticleEmitter&amp; emitter);</code>
+        <div class="d">エミッタの <code>count</code> 個だけパーティクルを発生させます。位置・速度・色・生存時間はエミッタの「基準 ± 幅」から乱数で決まります。最大数に達したぶんは発生しません。タイミングに関係なく呼べるので、当たった瞬間に一度だけ出す、といった使い方もできます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void ApplyField(const AccelerationField&amp; field);</code>
+        <div class="d">場の範囲（AABB）の中にいるパーティクルだけ、速度に「加速度 × 経過時間」を足します。毎フレーム、<code>Update</code> より前に呼びます（呼ばなかったフレームは影響を受けません）。複数の場を続けて適用してもかまいません。→ <a href="#AccelerationField">AccelerationField</a></div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Update(const Matrix4x4&amp; viewMatrix);</code>
+        <div class="d">各パーティクルを速度で動かし、経過時間を進め、生存時間を過ぎたものを消します。残ったものはワールド行列と色（アルファ ＝ 初期色のアルファ ×（1 − 経過 / 生存時間））を GPU のバッファへ書き込みます。毎フレーム、<code>Draw()</code> より前に1回呼びます。移動量と時間は秒単位（<code>Time::GetDeltaTime()</code>）です。</div>
+        <dl class="pr"><dt>viewMatrix</dt><dd>カメラのビュー行列。ビルボードの向きに使う。ふつうは <code>CalcViewMatrix()</code> を渡す</dd></dl>
+      </div>
+      <div class="fn">
+        <code class="sig">void Draw() const;</code>
+        <div class="d">出ているパーティクルをまとめて描きます。シーンの <code>OnDraw</code> の中で、不透明な物を描いた後に呼びます。パーティクル用のルートシグネチャと PSO（<code>kParticle</code>）に切り替えて描き、終わったら標準の状態へ戻すので、後に続けて <code>Object3D</code> などを描いてもかまいません。0 個なら何もしません。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void Clear();</code>
+        <div class="d">出ているパーティクルをすべて消します（リトライのときなど）。</div>
+      </div>
+    </div>
+    <p class="sub">状態・見た目</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">uint32_t GetParticleCount() const;
+uint32_t GetMaxParticleCount() const;
+bool IsFull() const;</code>
+        <div class="d">今出ている数・最大数（<code>Initialize</code> で決めた数）・最大数まで出ているか（true の間は <code>Emit</code> しても増えない）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetBillboardEnabled(bool enabled);
+bool IsBillboardEnabled() const;</code>
+        <div class="d">ビルボード（表を常にカメラへ向ける）を使うか。既定は使う。使わないときは、各パーティクルの回転（発生時は 0）のまま描きます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Material&amp; GetMaterial();</code>
+        <div class="d">全パーティクル共通のマテリアル。<code>color</code> がパーティクルごとの色に掛け算されます（<code>lightingMode</code> は使いません）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Transform3D&amp; GetUVTransform();</code>
+        <div class="d">全パーティクル共通のテクスチャ座標の変換（<code>scale</code>・<code>rotate.z</code>・<code>translate</code>）。<code>Update</code> で反映されます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">void SetTexture(const std::string&amp; textureFilePath);
+void SetTextureHandle(uint32_t textureHandle);
+uint32_t GetTextureHandle() const;</code>
+        <div class="d">テクスチャをファイルかハンドルで差し替える／取得します。例: <code>particles_.SetTexture("resources/circle.png");</code></div>
+      </div>
+      <div class="fn">
+        <code class="sig">Mesh* GetMesh() const;</code>
+        <div class="d">使っているメッシュ（<code>MeshManager</code> が持っていて、同じ OBJ の <code>Object3D</code> とも共有）。</div>
+      </div>
+    </div>
+    <ul>
+      <li>GPU のバッファ（<a href="#StructuredBuffer">StructuredBuffer</a>）を持つので、<code>ParticleSystem</code> はコピーできません。シーンのメンバーとして持つか、<code>std::unique_ptr</code> で持ちます。</li>
+      <li>SRV ヒープの枠を 2 つ使い、破棄したときに返します。</li>
+      <li>色の付いたパーティクルにしたいときは、エミッタの <code>color</code> / <code>colorRange</code> か <code>GetMaterial().color</code> で指定します。加算合成なので、背景が明るいと目立ちにくくなります。</li>
+    </ul>
+  </section>
+
+  <!-- ---------------------------------------------------------- ParticleEmitter -->
+  <section class="cls" id="ParticleEmitter">
+    <div class="cls-head"><h3>ParticleEmitter</h3><span class="path">Engine/Rendering/ParticleEmitter.h</span><span class="tags"><span class="tag">struct</span></span></div>
+    <p class="lead">パーティクルの発生源です。どこから・どのくらいの頻度で・どんなパーティクルを出すかの設定と、頻度を計るタイマーを持ちます（パーティクルそのものは <a href="#ParticleSystem">ParticleSystem</a> が持ちます）。毎フレーム <code>Update()</code> を呼び、true が返ったフレームに <code>ParticleSystem::Emit(emitter)</code> します。1 つの <code>ParticleSystem</code> に複数のエミッタから発生させてもかまいません。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">Vector3 translate{ 0, 0, 0 };   // 発生の基準となる位置
+Vector3 range{ 1, 1, 1 };       // 発生範囲（基準の位置から各軸 ±range の箱の中）</code>
+        <div class="d">発生する場所。<code>range</code> を 0 にすると全部が <code>translate</code> から出ます。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">uint32_t count = 3;            // 1回あたりの発生数
+float frequency = 0.5f;        // 発生頻度（秒。この時間が経つごとに1回発生）
+float frequencyTime = 0.0f;    // 前回の発生からの経過時間（秒。Update が進める）</code>
+        <div class="d">発生する数と頻度。<code>frequency</code> が 1 フレームより短くても、発生は 1 フレームに 1 回までです（数を増やしたいときは <code>count</code> を増やします）。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">Vector3 velocity{ 0, 0, 0 };       // 速度の基準（1秒あたりの移動量）
+Vector3 velocityRange{ 1, 1, 1 };  // 速度の幅（基準 ± 幅でランダム）
+float lifeTimeMin = 1.0f;          // 生存時間の最小（秒）
+float lifeTimeMax = 3.0f;          // 生存時間の最大（秒）
+Vector4 color{ 1, 1, 1, 1 };       // 初期色の基準（RGBA）
+Vector4 colorRange{ 0, 0, 0, 0 };  // 初期色の幅（基準 ± 幅。0 なら全部が基準の色）</code>
+        <div class="d">発生するパーティクルの設定。各成分が「基準 ± 幅」の範囲から乱数で決まります（色は 0〜1 に収められます）。生存時間は最小〜最大の間です。</div>
+      </div>
+      <div class="fn">
+        <code class="sig">bool Update();</code>
+        <div class="d">タイマーを <code>Time::GetDeltaTime()</code> だけ進め、発生のタイミングになったフレームだけ true を返します。毎フレーム呼びます。</div>
+        <p class="ret"><b>戻り値</b> true なら、このフレームに <code>Emit</code> する</p>
+      </div>
+      <div class="fn">
+        <code class="sig">AABB3D CalcRangeAABB() const;</code>
+        <div class="d">発生範囲の箱。<code>DebugDraw::DrawAABB(emitter_.CalcRangeAABB(), color)</code> で範囲を表示できます。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- AccelerationField -->
+  <section class="cls" id="AccelerationField">
+    <div class="cls-head"><h3>AccelerationField</h3><span class="path">Engine/Rendering/AccelerationField.h</span><span class="tags"><span class="tag">struct</span></span></div>
+    <p class="lead">範囲の中にいるパーティクルを加速させる場（風など）です。毎フレーム <code>ParticleSystem::ApplyField(field)</code> を <code>ParticleSystem::Update</code> より前に呼んで適用します。範囲は <code>DebugDraw::DrawAABB(field.area, color)</code> でそのまま表示できます。</p>
+    <div class="fns">
+      <div class="fn">
+        <code class="sig">Vector3 acceleration{ 0, 0, 0 };                  // 加速度（1秒あたりの速度の変化量）
+AABB3D area{ { -1, -1, -1 }, { 1, 1, 1 } };       // 範囲（この中にいるパーティクルだけ加速する）</code>
+        <div class="d">下向きの加速度で重力、上向きで煙の立ちのぼり、横向きで風になります。範囲の判定は <code>IsCollision(AABB3D, Vector3)</code>（<a href="#Collision">Collision</a>）です。</div>
+      </div>
+    </div>
+  </section>
+
   <!-- ---------------------------------------------------------- Camera -->
   <section class="cls" id="Camera">
     <div class="cls-head"><h3>Camera</h3><span class="path">Engine/Camera/Camera.h</span></div>
@@ -1592,8 +1762,8 @@ triangle_.Initialize(&amp;triangleMesh_, TextureManager::GetInstance()-&gt;GetWh
         <div class="d">1辺 1・原点中心の立方体を作ります（面ごとに法線と UV 0〜1 を持つ 24 頂点＋36 インデックス）。</div>
       </div>
       <div class="fn">
-        <code class="sig">void Draw(ID3D12GraphicsCommandList* commandList) const;</code>
-        <div class="d">頂点（とインデックス）バッファを設定して描画コマンドを積みます。定数バッファやテクスチャは呼ぶ側で設定しておきます。</div>
+        <code class="sig">void Draw(ID3D12GraphicsCommandList* commandList, uint32_t instanceCount = 1) const;</code>
+        <div class="d">頂点（とインデックス）バッファを設定して描画コマンドを積みます。定数バッファやテクスチャは呼ぶ側で設定しておきます。<code>instanceCount</code> を指定すると、同じメッシュをその数だけ 1 回の描画命令でまとめて描きます（インスタンシング。頂点シェーダーの <code>SV_InstanceID</code> に 0〜instanceCount−1 が入る。<a href="#ParticleSystem">ParticleSystem</a> が使っています）。</div>
       </div>
       <div class="fn">
         <code class="sig">void DrawSubMesh(ID3D12GraphicsCommandList* commandList, uint32_t index) const;</code>
@@ -1751,10 +1921,10 @@ Vector2 GetRightStick(int playerIndex = 0) const;</code>
         <div class="d">振動を止めます。</div>
       </div>
       <div class="fn">
-        <code class="sig">void Initialize(HWND hwnd);
+        <code class="sig">void Initialize(WinApp* winApp);
 void Finalize();
 void Update();<span class="tag t-engine">エンジンが呼ぶ</span></code>
-        <div class="d">デバイスの生成・解放と、毎フレームの状態の取得（前のフレームの状態を残してから新しい状態を読む）。</div>
+        <div class="d">デバイスの生成・解放と、毎フレームの状態の取得（前のフレームの状態を残してから新しい状態を読む）。<code>Initialize</code> は渡された <code>WinApp</code> のウィンドウハンドルとインスタンスハンドルで DirectInput を作ります。</div>
       </div>
     </div>
   </section>
@@ -1873,11 +2043,16 @@ const std::wstring&amp; GetTitle() const;</code>
         <div class="d">ウィンドウハンドル。Win32 API を直接使うときに。</div>
       </div>
       <div class="fn">
+        <code class="sig">HINSTANCE GetHInstance() const;</code>
+        <div class="d">ウィンドウクラスを登録したインスタンスハンドル。DirectInput の初期化などで使います。</div>
+      </div>
+      <div class="fn">
         <code class="sig">void Initialize();
+void Finalize();
 bool ProcessMessage();
 bool IsSizeChanged() const;
 void ClearSizeChangedFlag();<span class="tag t-engine">エンジンが呼ぶ</span></code>
-        <div class="d">ウィンドウの生成、メッセージ処理（たまっている分を毎フレーム全部処理する。閉じられたら false）、サイズ変化の検出。メニューは無いので、Alt や F10 を単独で押してもウィンドウはメニューモードに入りません（入るとゲームが止まるため）。</div>
+        <div class="d">ウィンドウの生成、終了処理（ウィンドウを閉じ、ウィンドウクラスの登録を解除する）、メッセージ処理（たまっている分を毎フレーム全部処理する。閉じられたら false）、サイズ変化の検出。メニューは無いので、Alt や F10 を単独で押してもウィンドウはメニューモードに入りません（入るとゲームが止まるため）。<code>DirectXCore</code>・<code>Input</code>・<code>ImGuiManager</code> の初期化には、<code>Framework</code> がこのクラスのポインタを渡します。</div>
       </div>
     </div>
   </section>
@@ -2110,6 +2285,7 @@ DebugDraw::DrawAABB(wall, { 1.0f, 0.3f, 0.3f, 1.0f });
         <tr><td class="m">AABB3D</td><td class="m">AABB3D</td><td></td></tr>
         <tr><td class="m">AABB3D</td><td class="m">Sphere</td><td></td></tr>
         <tr><td class="m">AABB3D</td><td class="m">Segment3D</td><td></td></tr>
+        <tr><td class="m">AABB3D</td><td class="m">Vector3（点）</td><td>点が箱の中にあるか（パーティクルが場の範囲内にいるかの判定などに）</td></tr>
         <tr><td class="m">OBB3D</td><td class="m">Sphere</td><td></td></tr>
         <tr><td class="m">OBB3D</td><td class="m">Segment3D</td><td></td></tr>
         <tr><td class="m">OBB3D</td><td class="m">OBB3D</td><td>分離軸判定（15 軸）</td></tr>
@@ -2126,6 +2302,7 @@ bool IsCollision(const Triangle3D&amp; triangle, const Segment3D&amp; segment);
 bool IsCollision(const AABB3D&amp; a, const AABB3D&amp; b);
 bool IsCollision(const AABB3D&amp; aabb, const Sphere&amp; sphere);
 bool IsCollision(const AABB3D&amp; aabb, const Segment3D&amp; segment);
+bool IsCollision(const AABB3D&amp; aabb, const Vector3&amp; point);
 bool IsCollision(const OBB3D&amp; obb, const Sphere&amp; sphere);
 bool IsCollision(const OBB3D&amp; obb, const Segment3D&amp; segment);
 bool IsCollision(const OBB3D&amp; a, const OBB3D&amp; b);
@@ -2486,7 +2663,7 @@ ID3D12DescriptorHeap* GetSRVDescriptorHeap() const;
 ID3D12DescriptorHeap* GetDSVDescriptorHeap() const;
 D3D12_VIEWPORT GetViewport() const;
 D3D12_RECT GetScissorRect() const;</code><div class="d">今のバックバッファの RTV・SRV ヒープ（128 枠）・DSV ヒープ・ウィンドウ全体のビューポートとシザー矩形。</div></div>
-      <div class="fn"><code class="sig">void Initialize(HWND hwnd, int32_t width, int32_t height);
+      <div class="fn"><code class="sig">void Initialize(WinApp* winApp);
 void Resize(int32_t width, int32_t height);
 void BeginFrame();
 void WaitForGPU();
@@ -2498,7 +2675,7 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><d
   <!-- ---------------------------------------------------------- PipelineManager -->
   <section class="cls" id="PipelineManager">
     <div class="cls-head"><h3>PipelineManager</h3><span class="path">Engine/Graphics/PipelineManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
-    <p class="lead">ルートシグネチャと用途別の PSO をまとめて作り、持っておきます。描画する側は <code>SetPipeline</code> で切り替えるだけです。PSO を切り替えて描いたら、後の描画のために <code>kStandard</code> に戻します。</p>
+    <p class="lead">ルートシグネチャ（標準・パーティクル用の 2 つ）と用途別の PSO をまとめて作り、持っておきます。描画する側は <code>SetPipeline</code> で切り替えるだけです。PSO を切り替えて描いたら、後の描画のために <code>kStandard</code> に戻します。パーティクル用のルートシグネチャに切り替えて描いたときは、<code>RenderContext::BindStandardState</code> でルートシグネチャ・ビュー射影・光源ごと標準の状態に戻します（ルートシグネチャを変えると、設定済みの定数バッファなどは無効になるため）。</p>
     <div class="ex">
       <p class="ex-label">例: 内側から見る天球（Sandbox の Skydome）</p>
 <pre class="code">ID3D12GraphicsCommandList* cmd = RenderContext::GetInstance()-&gt;GetCommandList();
@@ -2526,20 +2703,33 @@ pm-&gt;SetPipeline(cmd, PipelineManager::Pipeline::kStandard);      // 標準に
         <tr><td class="m">—</td><td class="m">static sampler</td><td class="m">s0</td><td>PS</td><td>バイリニア、範囲外は繰り返し（WRAP）</td><td>—</td></tr>
       </tbody>
     </table></div>
+    <p class="sub">パーティクル用ルートシグネチャの割り当て（<code>ParticleRootParameter</code>。光源は持たない）</p>
+    <div class="tbl"><table>
+      <thead><tr><th class="m">番号</th><th class="m">名前</th><th class="m">レジスタ</th><th>シェーダー</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td class="m num">0</td><td class="m">kParticleRootMaterial</td><td class="m">b0</td><td>PS</td><td><code>Material</code>（全インスタンス共通）</td></tr>
+        <tr><td class="m num">1</td><td class="m">kParticleRootInstancing</td><td class="m">t0</td><td>VS</td><td>パーティクルごとのワールド行列と色（StructuredBuffer。ディスクリプタテーブル）</td></tr>
+        <tr><td class="m num">2</td><td class="m">kParticleRootTexture</td><td class="m">t0</td><td>PS</td><td>テクスチャ（ディスクリプタテーブル）</td></tr>
+        <tr><td class="m num">3</td><td class="m">kParticleRootViewProjection</td><td class="m">b1</td><td>VS</td><td>視点ごとのビュー射影行列</td></tr>
+        <tr><td class="m">—</td><td class="m">static sampler</td><td class="m">s0</td><td>PS</td><td>標準と同じ</td></tr>
+      </tbody>
+    </table></div>
     <div class="fns">
       <div class="fn">
         <code class="sig">enum class Pipeline {
     kStandard,  // 裏面カリングあり（通常の 3D・スプライト）
     kNoCull,    // カリングなし（内側から見る天球など）
     kLine,      // 線分・深度テストなし（常に手前に出る補助線）
+    kParticle,  // インスタンシング・加算合成・深度の書き込みなし（パーティクル用ルートシグネチャと組で使う）
     kCount,
 };</code>
-        <div class="d">用途別の PSO。どれもアルファブレンドが有効です（<code>kLine</code> を除く）。<code>kStandard</code> と <code>kNoCull</code> は深度テスト（手前か同じ深さなら描く）と深度の書き込みが有効です。</div>
+        <div class="d">用途別の PSO。<code>kStandard</code> と <code>kNoCull</code> はアルファブレンドで、深度テスト（手前か同じ深さなら描く）と深度の書き込みが有効です。<code>kParticle</code> は加算合成（結果 ＝ 描く色 × アルファ ＋ 背景の色）で、深度テストはするが書き込まないので、半透明のパーティクル同士が重なっても互いを隠しません。<code>kLine</code> はブレンドなしです。</div>
       </div>
       <div class="fn"><code class="sig">static PipelineManager* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
-      <div class="fn"><code class="sig">void SetPipeline(ID3D12GraphicsCommandList* commandList, Pipeline pipeline) const;</code><div class="d">PSO と、それに合うトポロジ（<code>kLine</code> なら線のリスト、それ以外は三角形のリスト）をまとめて設定します。</div></div>
+      <div class="fn"><code class="sig">void SetPipeline(ID3D12GraphicsCommandList* commandList, Pipeline pipeline) const;</code><div class="d">PSO と、それに合うトポロジ（<code>kLine</code> なら線のリスト、それ以外は三角形のリスト）をまとめて設定します。ルートシグネチャは設定しないので、<code>kParticle</code> を使うときは先に <code>SetGraphicsRootSignature(GetParticleRootSignature())</code> を呼びます。</div></div>
       <div class="fn"><code class="sig">ID3D12PipelineState* Get(Pipeline pipeline) const;
-ID3D12RootSignature* GetRootSignature() const;</code><div class="d">PSO とルートシグネチャ。</div></div>
+ID3D12RootSignature* GetRootSignature() const;
+ID3D12RootSignature* GetParticleRootSignature() const;</code><div class="d">PSO と、標準のルートシグネチャ（<code>kParticle</code> 以外の PSO 用）・パーティクル用のルートシグネチャ（<code>kParticle</code> 用。番号は <code>ParticleRootParameter</code>）。</div></div>
       <div class="fn"><code class="sig">struct PipelineConfig {
     ID3D12Device* device; ID3D12RootSignature* rootSignature;
     D3D12_INPUT_LAYOUT_DESC inputLayout; D3D12_BLEND_DESC blendDesc;
@@ -2552,9 +2742,11 @@ ID3D12RootSignature* GetRootSignature() const;</code><div class="d">PSO とル�
 static ComPtr&lt;ID3D12PipelineState&gt; CreateGraphicsPipeline(const PipelineConfig&amp; config);</code><div class="d">設定をまとめて渡して PSO を作ります。自前のシェーダーで PSO を作るときの入口です。</div></div>
       <div class="fn"><code class="sig">static ComPtr&lt;ID3D12RootSignature&gt; CreateRootSignature(ID3D12Device* device);
 static ComPtr&lt;ID3D12PipelineState&gt; CreateStandardPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, IDxcBlob* vertexShader, IDxcBlob* pixelShader, D3D12_CULL_MODE cullMode = D3D12_CULL_MODE_BACK);
-static ComPtr&lt;ID3D12PipelineState&gt; CreateLinePipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, IDxcBlob* vertexShader, IDxcBlob* pixelShader);</code><div class="d">標準のルートシグネチャ・標準の入力レイアウトと各種設定の PSO・線分用の PSO を作ります。</div></div>
+static ComPtr&lt;ID3D12PipelineState&gt; CreateLinePipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, IDxcBlob* vertexShader, IDxcBlob* pixelShader);
+static ComPtr&lt;ID3D12RootSignature&gt; CreateParticleRootSignature(ID3D12Device* device);
+static ComPtr&lt;ID3D12PipelineState&gt; CreateParticlePipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, IDxcBlob* vertexShader, IDxcBlob* pixelShader);</code><div class="d">標準のルートシグネチャ・標準の入力レイアウトと各種設定の PSO・線分用の PSO・パーティクル用のルートシグネチャ（上の表）・パーティクル用の PSO（加算合成・深度の書き込みなし）を作ります。</div></div>
       <div class="fn"><code class="sig">void Initialize(ID3D12Device* device);
-void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">標準シェーダー（<code>Object3d.VS/PS.hlsl</code>）をコンパイルして全 PSO を作る／解放。</div></div>
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">標準シェーダー（<code>Object3d.VS/PS.hlsl</code>）とパーティクル用シェーダー（<code>Particle.VS/PS.hlsl</code>）をコンパイルして、両方のルートシグネチャと全 PSO を作る／解放。</div></div>
     </div>
   </section>
 
@@ -2581,15 +2773,16 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><d
   <!-- ---------------------------------------------------------- DescriptorHeapManager -->
   <section class="cls" id="DescriptorHeapManager">
     <div class="cls-head"><h3>DescriptorHeapManager</h3><span class="path">Engine/Graphics/DescriptorHeapManager.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
-    <p class="lead">SRV ヒープ（128 枠）の空き枠を順に払い出します。番号を直接書かずにここで確保するので、ImGui・テクスチャ・立体視・Web カメラの枠がぶつかりません。返却の仕組みはありません。</p>
+    <p class="lead">SRV ヒープ（128 枠）の空き枠を払い出します。番号を直接書かずにここで確保するので、ImGui・テクスチャ・立体視・Web カメラ・StructuredBuffer の枠がぶつかりません。シーンと一緒に破棄されるもの（StructuredBuffer など）は、破棄するときに <code>FreeSrv</code> で枠を返し、次の <code>AllocateSrv</code> で再利用されます。</p>
     <div class="fns">
       <div class="fn"><code class="sig">static DescriptorHeapManager* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
-      <div class="fn"><code class="sig">uint32_t AllocateSrv();</code><div class="d">空いている枠を1つ確保し、その番号を返します。</div></div>
+      <div class="fn"><code class="sig">uint32_t AllocateSrv();</code><div class="d">空いている枠を1つ確保し、その番号を返します。返された枠があればそれを先に使うので、続けて確保しても番号が連続するとは限りません（連続した枠が必要なものは、まだ何も返されていない起動時に確保します）。満杯なら assert で止まります。</div></div>
+      <div class="fn"><code class="sig">void FreeSrv(uint32_t index);</code><div class="d"><code>AllocateSrv</code> で確保した枠を返します。GPU がその SRV を使い終わってから呼びます（シーンは <code>SceneManager</code> が GPU の完了を待ってから破棄します）。確保していない番号や、二重に返した番号は assert で止まります。</div></div>
       <div class="fn"><code class="sig">D3D12_CPU_DESCRIPTOR_HANDLE GetSrvCPUHandle(uint32_t index) const;
 D3D12_GPU_DESCRIPTOR_HANDLE GetSrvGPUHandle(uint32_t index) const;</code><div class="d">枠の CPU ハンドル（SRV を作るとき）と GPU ハンドル（描画で設定するとき）。</div></div>
-      <div class="fn"><code class="sig">static ID3D12DescriptorHeap* CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
+      <div class="fn"><code class="sig">static ComPtr&lt;ID3D12DescriptorHeap&gt; CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
 static D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
-static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);</code><div class="d">ディスクリプタヒープを作る補助関数と、番号からハンドルを求める補助関数。</div></div>
+static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);</code><div class="d">ディスクリプタヒープを作る補助関数と、番号からハンドルを求める補助関数。<code>CreateDescriptorHeap</code> は所有権ごと <code>ComPtr</code> で返すので、受け取った側で <code>Release</code> は要りません。</div></div>
       <div class="fn"><code class="sig">void Initialize(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap);<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">払い出し対象の SRV ヒープを登録します。</div></div>
     </div>
   </section>
@@ -2616,10 +2809,39 @@ cmd-&gt;SetGraphicsRootConstantBufferView(PipelineManager::kRootMaterial, materi
     </div>
   </section>
 
+  <!-- ---------------------------------------------------------- StructuredBuffer -->
+  <section class="cls" id="StructuredBuffer">
+    <div class="cls-head"><h3>StructuredBuffer&lt;T&gt;</h3><span class="path">Engine/Rendering/StructuredBuffer.h</span><span class="tags"><span class="tag">テンプレート</span></span></div>
+    <p class="lead">型付きの StructuredBuffer（シェーダーから SRV として、配列のようにインデックスで読むバッファ。HLSL の <code>StructuredBuffer&lt;T&gt;</code>）です。インスタンシングのインスタンスごとの行列などに使います。<code>ConstantBuffer</code> と同じくフレームの数だけスロットを持ち、スロットごとに SRV を作ります。毎フレーム <code>GetData(frameIndex)</code> の配列へ書き、<code>GetSrvHandleGPU(frameIndex)</code> をディスクリプタテーブルに設定します。SRV の枠は <code>DescriptorHeapManager</code> から確保し、破棄（<code>Reset</code>・デストラクタ）のときに返します。</p>
+    <div class="ex">
+<pre class="code">// HLSL 側と同じ並びの構造体: struct InstanceData { Matrix4x4 World; Vector4 color; };
+// 作る（Initialize で1回）。1スロットに 100 個
+StructuredBuffer&lt;InstanceData&gt; instancing_;
+instancing_.Create(DirectXCore::GetInstance()-&gt;GetDevice(), 100, DirectXCore::kFramesInFlight);
+
+// 書く（Update）と使う（Draw）
+const uint32_t frame = DirectXCore::GetInstance()-&gt;GetFrameIndex();
+InstanceData* data = instancing_.GetData(frame);
+data[0].World = world;
+cmd-&gt;SetGraphicsRootDescriptorTable(PipelineManager::kParticleRootInstancing, instancing_.GetSrvHandleGPU(frame));</pre>
+    </div>
+    <div class="fns">
+      <div class="fn"><code class="sig">void Create(ID3D12Device* device, uint32_t elementCount, uint32_t slotCount);</code><div class="d">バッファを作って Map し、スロットごとに SRV を作ります。<code>elementCount</code> は1スロットの要素数（インスタンシングならインスタンスの最大数）、<code>slotCount</code> にはふつう <code>DirectXCore::kFramesInFlight</code> を渡します。作り直すと前のものは解放されます。</div></div>
+      <div class="fn"><code class="sig">T* GetData(uint32_t slot);</code><div class="d">指定したスロットの書き込み先（<code>elementCount</code> 個の配列の先頭）。</div></div>
+      <div class="fn"><code class="sig">D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU(uint32_t slot) const;</code><div class="d">スロットの SRV の GPU ハンドル（<code>SetGraphicsRootDescriptorTable</code> に渡す）。</div></div>
+      <div class="fn"><code class="sig">uint32_t GetElementCount() const;</code><div class="d">1スロットの要素数（<code>Create</code> で指定した数）。</div></div>
+      <div class="fn"><code class="sig">void Reset();</code><div class="d">リソースを解放し、SRV の枠を返します。GPU が使い終わってから呼びます（デストラクタからも呼ばれます）。</div></div>
+    </div>
+    <ul>
+      <li>SRV の枠を持つのでコピーできません（コピーコンストラクタと代入は delete）。</li>
+      <li>要素の並びは C++ の構造体のままで HLSL 側と一致します（定数バッファのような 16 バイト境界の詰め直しは要りません）。</li>
+    </ul>
+  </section>
+
   <!-- ---------------------------------------------------------- RenderContext -->
   <section class="cls" id="RenderContext">
     <div class="cls-head"><h3>RenderContext</h3><span class="path">Engine/Rendering/RenderContext.h</span><span class="tags"><span class="tag">シングルトン</span></span></div>
-    <p class="lead">今のフレームの描画情報（視錐台・描画先の大きさ・描画中の視点のビュー射影）を持ちます。BaseScene が毎フレーム設定し、Object3D や Sprite が読みます。おかげでゲーム側はコマンドリストや視錐台を持ち回らずに <code>Update()</code> / <code>Draw()</code> と書けます。</p>
+    <p class="lead">今のフレームの描画情報（視錐台・描画先の大きさ・描画中の視点のビュー射影と光源の定数バッファ）を持ちます。BaseScene が毎フレーム設定し、Object3D・Sprite・ParticleSystem が読みます。おかげでゲーム側はコマンドリストや視錐台を持ち回らずに <code>Update()</code> / <code>Draw()</code> と書けます。</p>
     <div class="fns">
       <div class="fn"><code class="sig">static RenderContext* GetInstance();</code><div class="d">唯一のインスタンスを返します。</div></div>
       <div class="fn"><code class="sig">ID3D12GraphicsCommandList* GetCommandList() const;</code><div class="d">描画コマンドを積むコマンドリスト。自前の <code>Draw</code> を書くときの入口です。</div></div>
@@ -2632,6 +2854,8 @@ float GetScreenWidth() const;
 float GetScreenHeight() const;</code><div class="d">ゲームの描画先の大きさ（ピクセル）。スプライトの正射影と画面外の判定に使われます。</div></div>
       <div class="fn"><code class="sig">void SetViewProjectionAddress(D3D12_GPU_VIRTUAL_ADDRESS address);
 D3D12_GPU_VIRTUAL_ADDRESS GetViewProjectionAddress() const;</code><div class="d">描画中の視点のビュー射影の定数バッファ。ビュー射影を一時的に差し替えて描いたとき（スプライトなど）に、元へ戻すために使います。</div></div>
+      <div class="fn"><code class="sig">void SetLightAddresses(D3D12_GPU_VIRTUAL_ADDRESS directionalLight, D3D12_GPU_VIRTUAL_ADDRESS pointLights);</code><div class="d">シーン共通の光源（平行光源・点光源）の定数バッファ。BaseScene が視点ごとの <code>Draw</code> の最初に設定します。</div></div>
+      <div class="fn"><code class="sig">void BindStandardState(ID3D12GraphicsCommandList* commandList) const;</code><div class="d">標準の描画状態（標準ルートシグネチャ・ビュー射影と光源の定数バッファ・<code>kStandard</code> の PSO）をまとめて設定します。BaseScene が視点ごとの <code>Draw</code> の最初に呼ぶほか、別のルートシグネチャで描いた後（<code>ParticleSystem::Draw</code> など）に、続く 3D の描画のために元へ戻すときに呼びます。BaseScene の <code>Draw</code> の中（ビュー射影と光源が設定された後）でだけ呼べます（それ以外は assert）。</div></div>
     </div>
   </section>
 
@@ -2707,11 +2931,11 @@ ImGuiManager::GetInstance()-&gt;PopPointSampling(dl);</pre>
         </div>
       </div>
       <div class="fn"><code class="sig">static ImGuiManager* GetInstance();
-void Initialize();
+void Initialize(WinApp* winApp);
 void BeginFrame();
 void Render();
 void Draw(ID3D12GraphicsCommandList* commandList);
-void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">初期化・フレームの開始・UI の確定・描画コマンドの発行・終了。</div></div>
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">初期化（渡された <code>WinApp</code> のウィンドウで Win32 バックエンドを作る）・フレームの開始・UI の確定・描画コマンドの発行・終了。</div></div>
     </div>
   </section>
 
@@ -2731,7 +2955,7 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><d
 </section>
 
 <footer class="foot">
-  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作り、2026-10-01 に色の指定（<code>SetColor</code> / <code>ColorFromHex</code>）、2026-10-07 にスプライトエディタ（<code>SpriteEditor</code> / <code>SpriteCanvas</code>・動的テクスチャ・点サンプリング描画）を追記しました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたときは、master からゲームのブランチへ取り込むタイミングでまとめてこのファイルを直します。</p>
+  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作り、2026-10-01 に色の指定（<code>SetColor</code> / <code>ColorFromHex</code>）、2026-10-07 にスプライトエディタ（<code>SpriteEditor</code> / <code>SpriteCanvas</code>・動的テクスチャ・点サンプリング描画）、2026-10-19 にパーティクル（<code>ParticleSystem</code> / <code>ParticleEmitter</code> / <code>AccelerationField</code>・<code>StructuredBuffer</code>・インスタンシング・パーティクル用 PSO）と、<code>WinApp</code> のポインタを渡す初期化・<code>DescriptorHeapManager</code> の枠の返却と <code>ComPtr</code> 化を追記しました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたときは、main からゲームのブランチへ取り込むタイミングでまとめてこのファイルを直します。</p>
 </footer>
 
 </main>

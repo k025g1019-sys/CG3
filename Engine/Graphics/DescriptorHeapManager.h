@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include <wrl.h>
 #include <cstdint>
 #include <vector>
 
@@ -35,8 +36,8 @@ public:
 
 public:
 
-    // DescriptorHeap作成
-    static ID3D12DescriptorHeap* CreateDescriptorHeap(
+    // DescriptorHeap作成（所有権ごとComPtrで返すので、受け取った側でReleaseは不要）
+    static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(
         ID3D12Device* device,
         D3D12_DESCRIPTOR_HEAP_TYPE heapType,
         UINT numDescriptors,

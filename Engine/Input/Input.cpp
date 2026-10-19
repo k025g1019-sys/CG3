@@ -5,6 +5,7 @@
 #include <cstring>  // std::memcpy, std::memset
 
 #include "Engine/Core/Time.h"
+#include "Engine/Core/WinApp.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -23,14 +24,17 @@ Input* Input::GetInstance() {
     return &instance;
 }
 
-void Input::Initialize(HWND hwnd) {
+void Input::Initialize(WinApp* winApp) {
+    assert(winApp);
+
     HRESULT hr;
 
+    HWND hwnd = winApp->GetHwnd();
     hwnd_ = hwnd;  // カーソル座標の変換で使う
 
     // DirectInput本体を生成
     hr = DirectInput8Create(
-        GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8,
+        winApp->GetHInstance(), DIRECTINPUT_VERSION, IID_IDirectInput8,
         reinterpret_cast<void**>(directInput_.GetAddressOf()), nullptr);
     assert(SUCCEEDED(hr));
 

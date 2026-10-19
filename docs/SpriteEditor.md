@@ -110,7 +110,7 @@ Sprite Editor を操作している間は、同じキーやマウス操作がゲ
 `SpriteEditor` は `USE_IMGUI` のあるビルドにしか無いので、使う場所は `#ifdef USE_IMGUI` で囲みます。
 保存したあとは、普通どおり `sprite.Initialize("resources/sprite.png", { 64.0f, 64.0f });` で読み込めます（Release でも使えます）。
 
-Sandbox では `GameScene`（起動時のシーン）に「Sprite Editor Preview」としてこの仕組みが入っています。位置・拡大率は「2D Objects」ウィンドウで調整できます。
+Sandbox では `AxisScene`（起動時のシーンから Tab キーで切り替える2つ目のシーン）に「Sprite Editor Preview」としてこの仕組みが入っています。位置・拡大率は「2D Objects」ウィンドウで調整できます。
 
 ## 仕組みと注意
 

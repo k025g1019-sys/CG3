@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Run this on the game branch (the branch that has Game/Game.vcxproj).
-    It merges the engine branch (master by default) and removes the engine-only
+    It merges the engine branch (main by default) and removes the engine-only
     test app (Sandbox/) from the merge, so the game branch keeps only the engine and the game.
 
     Usage (from anywhere inside the repository):
@@ -15,7 +15,7 @@
      non-ASCII characters in scripts saved as UTF-8 without BOM.)
 #>
 param(
-    [string]$EngineBranch = "master"
+    [string]$EngineBranch = "main"
 )
 
 # Work from the repository root

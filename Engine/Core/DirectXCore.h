@@ -10,6 +10,8 @@
 
 namespace Engine {
 
+class WinApp;
+
 class DirectXCore {
 public:
 
@@ -23,7 +25,8 @@ public:
     // 現在のフレームスロット（0〜kFramesInFlight-1）。定数バッファのスロット選択に使う
     uint32_t GetFrameIndex() const;
 
-    void Initialize(HWND hwnd, int32_t width, int32_t height);
+    // winAppのウィンドウとクライアントサイズでスワップチェーン等を作る
+    void Initialize(WinApp* winApp);
 
     // ウィンドウサイズ変更に追従して、スワップチェーンや深度バッファ等を作り直す
     void Resize(int32_t width, int32_t height);

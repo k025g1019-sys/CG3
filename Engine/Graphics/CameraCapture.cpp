@@ -238,12 +238,16 @@ void CameraCapture::WorkerThread() {
             }
             break;  // カメラ無し
         }
-        ComPtr<IMFMediaSource> source;
-        HRESULT hr = devices[0]->ActivateObject(IID_PPV_ARGS(&source));
+        // 列挙された各デバイスの参照をComPtrに引き取らせる（このブロックを抜けると自動で解放される）。
+        // 配列そのものはCoTaskMemFreeで解放する
+        std::vector<ComPtr<IMFActivate>> deviceList(count);
         for (UINT32 i = 0; i < count; ++i) {
-            devices[i]->Release();
+            deviceList[i].Attach(devices[i]);
         }
         CoTaskMemFree(devices);
+
+        ComPtr<IMFMediaSource> source;
+        HRESULT hr = deviceList[0]->ActivateObject(IID_PPV_ARGS(&source));
         if (FAILED(hr)) {
             break;
         }

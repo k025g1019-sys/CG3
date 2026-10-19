@@ -27,12 +27,22 @@ void GameScene::OnInitializeObjects() {
 	emitter_.lifeTimeMax = 3.0f;
 	emitter_.color = { 0.5f, 0.5f, 0.5f, 1.0f };    // 初期色の基準
 	emitter_.colorRange = { 0.5f, 0.5f, 0.5f, 0.0f };  // 初期色の幅（RGBが0～1のランダムな色になる。0にすると全て基準の色）
+
+	// --- 加速度場の設定（原点の ±1 の箱の中にいるパーティクルを、+X方向へ加速させる風）---
+	accelerationField_.acceleration = { 15.0f, 0.0f, 0.0f };  // 加速度
+	accelerationField_.area.min = { -1.0f, -1.0f, -1.0f };     // 範囲
+	accelerationField_.area.max = { 1.0f, 1.0f, 1.0f };
 }
 
 void GameScene::OnUpdateObjects() {
 	// エミッタの発生頻度計測用タイマーを進め、発生するタイミングになったらパーティクルを出す
 	if (emitter_.Update()) {
 		particles_.Emit(emitter_);
+	}
+
+	// 加速度場の範囲内にいるパーティクルの速度を変える（移動させるUpdateより前に適用する）
+	if (useField_) {
+		particles_.ApplyField(accelerationField_);
 	}
 
 	// 各パーティクルの移動・消滅をし、ワールド行列と色をStructuredBufferへ書き込む
@@ -42,6 +52,11 @@ void GameScene::OnUpdateObjects() {
 	// エミッタの範囲表示（発生範囲の箱を線で描く）
 	if (showEmitterRange_) {
 		DebugDraw::DrawAABB(emitter_.CalcRangeAABB(), { 1.0f, 1.0f, 0.2f, 1.0f });
+	}
+
+	// 加速度場の範囲表示（エミッタの範囲と区別するため水色で描く）
+	if (showFieldArea_) {
+		DebugDraw::DrawAABB(accelerationField_.area, { 0.2f, 0.8f, 1.0f, 1.0f });
 	}
 }
 
@@ -123,6 +138,22 @@ void GameScene::OnDrawObjectsImGui() {
 		// 初期色（基準色 ± 幅。幅が0なら全て基準色になる）
 		ImGui::ColorEdit4("Base Color", &emitter_.color.x);
 		ImGui::DragFloat4("Color Range", &emitter_.colorRange.x, 0.01f, 0.0f, 1.0f);
+
+		// --- 加速度場（風）---
+		ImGui::SeparatorText("Field");
+
+		// 加速度場を適用する・しないの切り替え
+		ImGui::Checkbox("Use Field", &useField_);
+
+		// 加速度（1秒あたりの速度の変化量）
+		ImGui::DragFloat3("Acceleration", &accelerationField_.acceleration.x, 0.1f, -100.0f, 100.0f);
+
+		// 範囲（この箱の中にいるパーティクルだけ加速する。minがmaxを超えると、どのパーティクルも範囲外になる）
+		ImGui::DragFloat3("Area Min", &accelerationField_.area.min.x, 0.01f, -100.0f, 100.0f);
+		ImGui::DragFloat3("Area Max", &accelerationField_.area.max.x, 0.01f, -100.0f, 100.0f);
+
+		// 加速度場の範囲表示の切り替え
+		ImGui::Checkbox("Show Field Area", &showFieldArea_);
 
 		ImGui::PopID();
 		ImGui::TreePop();

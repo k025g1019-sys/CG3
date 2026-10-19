@@ -157,6 +157,7 @@
     <ClInclude Include="Math\Vector2.h" />
     <ClInclude Include="Math\Vector3.h" />
     <ClInclude Include="Math\Vector4.h" />
+    <ClInclude Include="Rendering\AccelerationField.h" />
     <ClInclude Include="Rendering\ConstantBuffer.h" />
     <ClInclude Include="Rendering\DebugDraw.h" />
     <ClInclude Include="Rendering\Material.h" />

@@ -58,6 +58,9 @@ bool IsCollision(const AABB3D& aabb, const Sphere& sphere);
 // AABB と 線分
 bool IsCollision(const AABB3D& aabb, const Segment3D& segment);
 
+// AABB と 点（点がAABBの中にあるか。パーティクルが場の範囲内にいるかの判定などに使う）
+bool IsCollision(const AABB3D& aabb, const Vector3& point);
+
 // OBB と 球
 bool IsCollision(const OBB3D& obb, const Sphere& sphere);
 
@@ -77,6 +80,7 @@ inline bool IsCollision(const Plane3D& plane, const Segment3D& segment) { return
 inline bool IsCollision(const Segment3D& segment, const Triangle3D& triangle) { return IsCollision(triangle, segment); }
 inline bool IsCollision(const Sphere& sphere, const AABB3D& aabb) { return IsCollision(aabb, sphere); }
 inline bool IsCollision(const Segment3D& segment, const AABB3D& aabb) { return IsCollision(aabb, segment); }
+inline bool IsCollision(const Vector3& point, const AABB3D& aabb) { return IsCollision(aabb, point); }
 inline bool IsCollision(const Sphere& sphere, const OBB3D& obb) { return IsCollision(obb, sphere); }
 inline bool IsCollision(const Segment3D& segment, const OBB3D& obb) { return IsCollision(obb, segment); }
 inline bool IsCollision(const AABB3D& aabb, const OBB3D& obb) { return IsCollision(obb, aabb); }

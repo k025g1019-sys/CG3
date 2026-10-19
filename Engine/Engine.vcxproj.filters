@@ -290,6 +290,9 @@
     <ClInclude Include="Math\Vector4.h">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\AccelerationField.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
     <ClInclude Include="Rendering\ConstantBuffer.h">
       <Filter>Rendering</Filter>
     </ClInclude>

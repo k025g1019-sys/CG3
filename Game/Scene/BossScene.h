@@ -9,6 +9,7 @@
 #include "Game/Object/Boss.h"
 #include "Game/Object/Player.h"
 #include "Game/Stage/CameraController.h"
+#include "Game/Stage/Skydome.h"
 #include "Game/Stage/Stage.h"
 #include "Game/UI/Fade.h"
 #include "Game/UI/GameOverMenu.h"
@@ -72,6 +73,7 @@ private:
 	static inline const Engine::Vector2 kBossGaugePosition = { 340.0f, 664.0f };
 	static inline const Engine::Vector2 kBossGaugeSize = { 600.0f, 20.0f };
 
+	Skydome skydome_;                     // 天球（背景の空）
 	Stage stage_;                         // 床と左右の端
 	Player player_;                       // 操作キャラクター
 	Boss boss_;                           // ボス

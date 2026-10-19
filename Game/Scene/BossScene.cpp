@@ -92,6 +92,7 @@ void BossScene::OnInitialize() {
 	// 光は斜め上から当て、立体の面の向きが分かるようにする
 	directionalLight_.direction = { 0.4f, -1.0f, 0.6f };
 
+	skydome_.Initialize();
 	stage_.Initialize();
 	player_.Initialize(&stage_);
 	boss_.Initialize(&stage_, &player_);
@@ -145,6 +146,9 @@ void BossScene::OnUpdate() {
 		}
 	}
 #endif
+
+	// 天球（背景）はどの段階でも描くので、毎フレーム更新する
+	skydome_.Update();
 
 	switch (phase_) {
 	case Phase::kPlay:
@@ -529,7 +533,8 @@ void BossScene::SpawnBossHitEffect(Boss::HitResult result, const Vector3& attack
 #pragma region 描画
 
 void BossScene::OnDraw() {
-	// 不透明なものを先に描く
+	// 不透明なものを先に描く（背景の天球が一番奥）
+	skydome_.Draw();
 	stage_.Draw();
 	boss_.Draw();
 	if (IsPlayerVisible()) {

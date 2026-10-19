@@ -394,3 +394,4 @@ AL4 のゲーム制作は「授業で習得した知識のみを使う」制約�
 - 2026-10-07: 要確認事項の判断を反映（unique_ptr 使用、ラムダ・constexpr・指示付き初期化・json・パッド不使用、スクリーン→ワールド変換の承認、SE のみ）
 - 2026-10-12: 調整項目の一元管理（GlobalVariables）を CSV 保存で実装済みにした（§4.5）。使った知識は AL3 の GlobalVariables（map ＋ variant ＋ ImGui Drag）、マップチップの CSV 読込（getline）、ofstream の書き出し、filesystem、std::stoi ／ stof
 - 2026-10-13: エフェクト（AL3 の BaseEffect ／ HitEffect ／ GuardEffect と同じ形。Object3D の色のアルファとイージングで拡大 → 消える）、ジャンプの先行入力・頂点付近の重力弱め・攻撃後のジャンプ禁止（いずれも秒のタイマーと条件分岐の組み合わせ。新しい API は無し）、カメラの注目点（Lerp と clamp）を実装。知識の追加は無し
+- 2026-10-19: 天球（AL3 ex3 の Skydome と同じ形。Object3D で OBJ を読み、陰影なしで描く）を実装。知識の追加は無し。モデルと画像（`skydome.obj` ／ `sky_sphere.png`）は Sandbox のものを使い回してよいとユーザーが判断（`Game/resources/skydome/`）

@@ -77,6 +77,7 @@
     <ClCompile Include="Scene\ClearScene.cpp" />
     <ClCompile Include="Scene\TitleScene.cpp" />
     <ClCompile Include="Stage\CameraController.cpp" />
+    <ClCompile Include="Stage\Skydome.cpp" />
     <ClCompile Include="Stage\Stage.cpp" />
     <ClCompile Include="UI\Fade.cpp" />
     <ClCompile Include="UI\GameOverMenu.cpp" />
@@ -103,6 +104,7 @@
     <ClInclude Include="Scene\ClearScene.h" />
     <ClInclude Include="Scene\TitleScene.h" />
     <ClInclude Include="Stage\CameraController.h" />
+    <ClInclude Include="Stage\Skydome.h" />
     <ClInclude Include="Stage\Stage.h" />
     <ClInclude Include="UI\Fade.h" />
     <ClInclude Include="UI\GameOverMenu.h" />

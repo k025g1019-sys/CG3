@@ -62,6 +62,9 @@
     <ClCompile Include="Stage\CameraController.cpp">
       <Filter>Stage</Filter>
     </ClCompile>
+    <ClCompile Include="Stage\Skydome.cpp">
+      <Filter>Stage</Filter>
+    </ClCompile>
     <ClCompile Include="Stage\Stage.cpp">
       <Filter>Stage</Filter>
     </ClCompile>
@@ -132,6 +135,9 @@
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Stage\CameraController.h">
+      <Filter>Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage\Skydome.h">
       <Filter>Stage</Filter>
     </ClInclude>
     <ClInclude Include="Stage\Stage.h">

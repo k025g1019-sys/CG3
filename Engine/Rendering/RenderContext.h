@@ -7,8 +7,8 @@
 namespace Engine {
 
 /// <summary>
-/// 現在のフレームの描画情報（視錐台・ゲームの描画先サイズ・描画中の視点のビュー射影CBV）を持つシングルトン。
-/// BaseScene が毎フレーム設定し、Object3D・Sprite などが参照する。
+/// 現在のフレームの描画情報（視錐台・ゲームの描画先サイズ・描画中の視点のビュー射影と光源のCBV）を持つシングルトン。
+/// BaseScene が毎フレーム設定し、Object3D・Sprite・ParticleSystem などが参照する。
 /// これにより、ゲーム側のコードは視錐台やコマンドリストを持ち回らずに Update() / Draw() と書ける。
 /// </summary>
 class RenderContext {
@@ -42,6 +42,18 @@ public:
     void SetViewProjectionAddress(D3D12_GPU_VIRTUAL_ADDRESS address) { viewProjectionAddress_ = address; }
     D3D12_GPU_VIRTUAL_ADDRESS GetViewProjectionAddress() const { return viewProjectionAddress_; }
 
+    // --- シーン共通の光源CBV（BaseSceneが視点ごとのDrawの最初に設定する）---
+    // パーティクルなど、別のRootSignatureで描いた描画が標準の状態へ戻すために使う。
+    void SetLightAddresses(D3D12_GPU_VIRTUAL_ADDRESS directionalLight, D3D12_GPU_VIRTUAL_ADDRESS pointLights) {
+        directionalLightAddress_ = directionalLight;
+        pointLightsAddress_ = pointLights;
+    }
+
+    // 標準の描画状態（標準RootSignature・ビュー射影と光源のCBV・標準PSO）をコマンドリストへ設定する。
+    // BaseSceneが視点ごとのDrawの最初に呼ぶほか、別のRootSignatureで描いた後（パーティクルなど）に、
+    // 後に続く3D描画のために元へ戻すときにも呼ぶ（RootSignatureを変えると設定済みのCBV等は無効になるため）。
+    void BindStandardState(ID3D12GraphicsCommandList* commandList) const;
+
 private:
 
     RenderContext();
@@ -59,6 +71,9 @@ private:
     float screenHeight_ = 0.0f;
 
     D3D12_GPU_VIRTUAL_ADDRESS viewProjectionAddress_ = 0;
+
+    D3D12_GPU_VIRTUAL_ADDRESS directionalLightAddress_ = 0;
+    D3D12_GPU_VIRTUAL_ADDRESS pointLightsAddress_ = 0;
 };
 
 } // namespace Engine

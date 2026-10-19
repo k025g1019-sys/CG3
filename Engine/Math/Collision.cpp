@@ -212,6 +212,13 @@ bool IsCollision(const AABB3D& aabb, const Segment3D& segment) {
 	return true;
 }
 
+// AABBと点：各軸で、点がAABBのminとmaxの間にあれば中にいる
+bool IsCollision(const AABB3D& aabb, const Vector3& point) {
+	return (point.x >= aabb.min.x && point.x <= aabb.max.x) &&
+		(point.y >= aabb.min.y && point.y <= aabb.max.y) &&
+		(point.z >= aabb.min.z && point.z <= aabb.max.z);
+}
+
 // OBBと球：球の中心をOBBのローカル軸へ射影して最近接点を求める
 bool IsCollision(const OBB3D& obb, const Sphere& sphere) {
 	// OBB中心 → 球中心ベクトル

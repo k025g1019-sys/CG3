@@ -3,7 +3,6 @@
 #include "Engine/Core/DirectXCore.h"
 #include "Engine/Core/WinApp.h"
 #include "Engine/Culling/FrustumCulling.h"
-#include "Engine/Graphics/PipelineManager.h"
 #include "Engine/Rendering/DebugDraw.h"
 #include "Engine/Rendering/RenderContext.h"
 
@@ -51,24 +50,19 @@ void BaseScene::Update() {
 
 void BaseScene::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex) {
 	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	PipelineManager* pipelineManager = PipelineManager::GetInstance();
+	RenderContext* context = RenderContext::GetInstance();
 
-	// この視点のビュー射影（スプライト等が一時的に差し替えた後に戻せるよう共有しておく）
+	// この視点のビュー射影と光源のCBV（スプライトやパーティクル等が一時的に差し替えた後に戻せるよう共有しておく）
 	const D3D12_GPU_VIRTUAL_ADDRESS viewProjection =
 		stereoCamera_.GetViewProjectionAddress(frameIndex, viewIndex);
-	RenderContext::GetInstance()->SetViewProjectionAddress(viewProjection);
+	context->SetViewProjectionAddress(viewProjection);
+	context->SetLightAddresses(
+		directionalLightCB_.GetGPUAddress(frameIndex), pointLightCB_.GetGPUAddress(frameIndex));
 
 	// --- 共通設定（Viewport/Scissor/RenderTarget/DescriptorHeapは
 	//     DirectXCore::BeginFrameまたはStereoRenderer::BeginViewで設定済み）---
-	commandList->SetGraphicsRootSignature(pipelineManager->GetRootSignature());
-	commandList->SetGraphicsRootConstantBufferView(PipelineManager::kRootViewProjection, viewProjection);
-	commandList->SetGraphicsRootConstantBufferView(
-		PipelineManager::kRootDirectionalLight, directionalLightCB_.GetGPUAddress(frameIndex));
-	commandList->SetGraphicsRootConstantBufferView(
-		PipelineManager::kRootPointLights, pointLightCB_.GetGPUAddress(frameIndex));
-
-	// 標準PSO（裏面カリング・三角形）で描き始める
-	pipelineManager->SetPipeline(commandList, PipelineManager::Pipeline::kStandard);
+	// 標準RootSignature・ビュー射影・光源を設定し、標準PSO（裏面カリング・三角形）で描き始める
+	context->BindStandardState(commandList);
 
 	// --- 派生シーンのオブジェクト描画 ---
 	OnDraw();

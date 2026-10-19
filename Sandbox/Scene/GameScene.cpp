@@ -1,223 +1,167 @@
 #include "Sandbox/Scene/GameScene.h"
 
-#include "Engine/Rendering/Mesh.h"
+#include "Engine/Rendering/DebugDraw.h"
 
 #ifdef USE_IMGUI
-#include "Engine/Tools/SpriteEditor.h"
 #include "externals/imgui/imgui.h"
 #endif
 
 using namespace Engine;
 
 void GameScene::OnInitializeObjects() {
-	// --- plane.obj（左下。左上はスプライトに隠れるため下段に置く）---
-	plane_.Initialize("resources/plane.obj");
-	plane_.GetTransform().translate = { -2.25f, -1.45f, 6.0f };
+	// --- 板ポリ（plane.obj）のパーティクルを、最大kNumMaxInstance個まで出せるようにする ---
+	particles_.Initialize("resources/plane.obj", kNumMaxInstance);
 
-	// --- bunny.obj（スタンフォードバニー。mtl由来のuvCheckerで描かれる）---
-	bunny_.Initialize("resources/bunny.obj");
-	bunny_.GetTransform().translate = { -0.1f, -0.4f, 6.0f };
+	// 丸い粒のテクスチャに差し替える（既定はplane.mtl由来のuvChecker.png）
+	particles_.SetTexture("resources/circle.png");
 
-	// --- multiMaterial.obj（2サブメッシュ・2マテリアル。monsterBallとuvCheckerの2色になる）---
-	multiMaterial_.Initialize("resources/multiMaterial.obj");
-	multiMaterial_.GetTransform().translate = { -0.2f, -1.5f, 6.0f };
+	// --- エミッタの設定（0.5秒ごとに3個ずつ発生させる）---
+	emitter_.translate = { 0.0f, 0.0f, 0.0f };      // 発生の基準となる位置
+	emitter_.range = { 1.0f, 1.0f, 1.0f };          // 発生範囲（位置から ±1 の箱の中）
+	emitter_.count = 3;                             // 1回あたりの発生数
+	emitter_.frequency = 0.5f;                      // 発生頻度（0.5秒ごとに発生）
+	emitter_.frequencyTime = 0.0f;                  // 発生頻度計測用タイマー（0で初期化）
+	emitter_.velocity = { 0.0f, 0.0f, 0.0f };       // パーティクルの速度の基準
+	emitter_.velocityRange = { 1.0f, 1.0f, 1.0f };  // 速度の幅（-1～1のランダムな速度になる）
+	emitter_.lifeTimeMin = 1.0f;                    // パーティクルの生存時間（1～3秒）
+	emitter_.lifeTimeMax = 3.0f;
+	emitter_.color = { 0.5f, 0.5f, 0.5f, 1.0f };    // 初期色の基準
+	emitter_.colorRange = { 0.5f, 0.5f, 0.5f, 0.0f };  // 初期色の幅（RGBが0～1のランダムな色になる。0にすると全て基準の色）
 
-	// --- suzanne.obj（UVなし。mtlにmap_Kdも無いので白テクスチャ＋ライティングの単色で描かれる）---
-	suzanne_.Initialize("resources/suzanne.obj");
-	suzanne_.GetTransform().translate = { 1.7f, 3.0f, 6.0f };
-
-	// --- fence ---
-	fence_.Initialize("resources/fence.obj");
-	fence_.GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-
-	// --- スプライト ---
-	sprite_.Initialize(textureHandles_[spriteTextureIndex_], { 640.0f, 360.0f });
-
-#ifdef USE_IMGUI
-	// --- スプライトエディタのプレビュー ---
-	// エディタのキャンバスのテクスチャハンドルをそのまま渡す。描いた内容は毎フレーム反映され、
-	// サイズ（ピクセル）はキャンバスのサイズと同じにする（OnUpdateObjectsで追従させる）。
-	SpriteEditor* editor = SpriteEditor::GetInstance();
-	editorSprite_.Initialize(
-		editor->GetTextureHandle(),
-		{ float(editor->GetCanvasWidth()), float(editor->GetCanvasHeight()) });
-	editorSprite_.GetTransform().translate = { 800.0f, 400.0f, 0.0f };
-#endif
+	// --- 加速度場の設定（原点の ±1 の箱の中にいるパーティクルを、+X方向へ加速させる風）---
+	accelerationField_.acceleration = { 15.0f, 0.0f, 0.0f };  // 加速度
+	accelerationField_.area.min = { -1.0f, -1.0f, -1.0f };     // 範囲
+	accelerationField_.area.max = { 1.0f, 1.0f, 1.0f };
 }
 
 void GameScene::OnUpdateObjects() {
-	plane_.Update();
-	bunny_.Update();
-	multiMaterial_.Update();
-	suzanne_.Update();
-	fence_.Update();
-
-	// スプライト（正射影・2Dカリング。基準解像度との比に応じて等比スケールされる）
-	sprite_.Update();
-
-#ifdef USE_IMGUI
-	// エディタでキャンバスをリサイズ／画像を読み込んだときは、スプライトのサイズも合わせる
-	{
-		const SpriteEditor* editor = SpriteEditor::GetInstance();
-		const Vector2 canvasSize{ float(editor->GetCanvasWidth()), float(editor->GetCanvasHeight()) };
-		const Vector2 spriteSize = editorSprite_.GetSize();
-		if (spriteSize.x != canvasSize.x || spriteSize.y != canvasSize.y) {
-			editorSprite_.SetSize(canvasSize);
-		}
-		editorSprite_.Update();
+	// エミッタの発生頻度計測用タイマーを進め、発生するタイミングになったらパーティクルを出す
+	if (emitter_.Update()) {
+		particles_.Emit(emitter_);
 	}
-#endif
+
+	// 加速度場の範囲内にいるパーティクルの速度を変える（移動させるUpdateより前に適用する）
+	if (useField_) {
+		particles_.ApplyField(accelerationField_);
+	}
+
+	// 各パーティクルの移動・消滅をし、ワールド行列と色をStructuredBufferへ書き込む
+	// （ビルボード用に、描画に使うカメラ（デバッグカメラが有効ならそちら）のビュー行列を渡す）
+	particles_.Update(CalcViewMatrix());
+
+	// エミッタの範囲表示（発生範囲の箱を線で描く）
+	if (showEmitterRange_) {
+		DebugDraw::DrawAABB(emitter_.CalcRangeAABB(), { 1.0f, 1.0f, 0.2f, 1.0f });
+	}
+
+	// 加速度場の範囲表示（エミッタの範囲と区別するため水色で描く）
+	if (showFieldArea_) {
+		DebugDraw::DrawAABB(accelerationField_.area, { 0.2f, 0.8f, 1.0f, 1.0f });
+	}
+}
+
+void GameScene::OnDrawObjects() {
+	// 出ているパーティクルを1回の描画命令（DrawInstanced）で描く
+	particles_.Draw();
 }
 
 #ifndef NDEBUG
-void GameScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets) const {
-	for (const Object3D* object : { &plane_, &bunny_, &multiMaterial_, &suzanne_, &fence_ }) {
-		Sphere sphere = object->CalcWorldBoundingSphere();
-		targets.push_back({ sphere.center, sphere.radius });
-	}
+void GameScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& /*targets*/) const {
+	// パーティクルはObject3Dではないため、ピッキングの対象にしない
 }
 #endif
 
-void GameScene::AppendPadTargets(std::vector<PadObjectController::Target>& targets) {
-	targets.push_back({ "Plane", &plane_ });
-	targets.push_back({ "Bunny", &bunny_ });
-	targets.push_back({ "MultiMaterial", &multiMaterial_ });
-	targets.push_back({ "Suzanne", &suzanne_ });
-	targets.push_back({ "fence" , &fence_ });
+void GameScene::AppendPadTargets(std::vector<PadObjectController::Target>& /*targets*/) {
+	// パーティクルはObject3Dではないため、パッド操作の対象にしない
 }
 
 #ifdef USE_IMGUI
 void GameScene::OnDrawObjectsImGui() {
-	// OBJモデル共通の編集UI（Transform・色・ライティング・テクスチャ・サブメッシュ表示）
-	struct ModelEntry {
-		const char* label;
-		Engine::Object3D* object;
-		int* textureIndex;
-	};
-	const ModelEntry entries[] = {
-		{ "Plane",         &plane_,         &planeTextureIndex_ },
-		{ "Bunny",         &bunny_,         &bunnyTextureIndex_ },
-		{ "MultiMaterial", &multiMaterial_, &multiMaterialTextureIndex_ },
-		{ "Suzanne",       &suzanne_,       &suzanneTextureIndex_ },
-		{ "Fence",         &fence_,         &fenceTextureIndex_ },
-	};
+	if (ImGui::TreeNode("Particles (Instancing)")) {
+		ImGui::PushID("Particles");
 
-	for (const ModelEntry& entry : entries) {
-		if (ImGui::TreeNode(entry.label)) {
-			ImGui::PushID(entry.label);
+		// 今出ているパーティクルの数 / 最大数
+		ImGui::Text("Particle Count: %u / %u", particles_.GetParticleCount(), particles_.GetMaxParticleCount());
 
-			Transform3D& transform = entry.object->GetTransform();
-			ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
-			ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
-			ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
-			ImGui::Separator();
-
-			DrawMaterialEditor(*entry.object);
-			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
-
-			ImGui::Separator();
-			DrawSubMeshInfo(*entry.object->GetMesh());
-
-			ImGui::PopID();
-			ImGui::TreePop();
+		// 1回ぶん（エミッタのEmit Countの数）をその場で発生させる / 出ているパーティクルをすべて消す
+		if (ImGui::Button("Emit")) {
+			particles_.Emit(emitter_);
 		}
-	}
-}
-
-void GameScene::OnDrawExtraImGui() {
-	ImGui::Begin("2D Objects");
-	if (ImGui::TreeNode("Square")) {
-		ImGui::PushID("Square");
-
-		ImGui::Checkbox("Draw Sprite", &drawSprite_);
-		ImGui::Separator();
-
-		Transform3D& transform = sprite_.GetTransform();
-		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
-		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.05f);
-		ImGui::DragFloat3("translate", &transform.translate.x, 0.35f);
-		ImGui::Separator();
-		VertexData* vertices = sprite_.GetMappedVertices();
-		ImGui::DragFloat4("Vertex0 position", &vertices[0].position.x, 0.2f);
-		ImGui::DragFloat4("Vertex1 position", &vertices[1].position.x, 0.2f);
-		ImGui::DragFloat4("Vertex2 position", &vertices[2].position.x, 0.2f);
-		ImGui::DragFloat4("Vertex3 position", &vertices[3].position.x, 0.2f);
-
-		ImGui::DragFloat2("Vertex0 texcoord", &vertices[0].texcoord.x, 0.2f);
-		ImGui::DragFloat2("Vertex1 texcoord", &vertices[1].texcoord.x, 0.2f);
-		ImGui::DragFloat2("Vertex2 texcoord", &vertices[2].texcoord.x, 0.2f);
-		ImGui::DragFloat2("Vertex3 texcoord", &vertices[3].texcoord.x, 0.2f);
-
-		ImGui::Separator();
-
-		Transform3D& uvTransform = sprite_.GetUVTransform();
-		ImGui::DragFloat2("UVTranslate", &uvTransform.translate.x, 0.01f, -10.0f, 10.0f);
-		ImGui::DragFloat2("UVScale", &uvTransform.scale.x, 0.01f, -10.0f, 10.0f);
-		ImGui::SliderAngle("UVRotate", &uvTransform.rotate.z);
-
-		ImGui::Separator();
-
-		DrawLightingModeCombo(sprite_.GetMaterial());
-
-		if (ImGui::Combo("Texture", &spriteTextureIndex_, kTextureItems, kTextureCount)) {
-			sprite_.SetTextureHandle(textureHandles_[spriteTextureIndex_]);
-		}
-
-		ImGui::PopID();
-		ImGui::TreePop();
-	}
-
-	// スプライトエディタで描いた内容のプレビュー（位置・拡大率はここで調整する）
-	if (ImGui::TreeNode("Sprite Editor Preview")) {
-		ImGui::PushID("SpriteEditorPreview");
-
-		SpriteEditor* editor = SpriteEditor::GetInstance();
-		ImGui::Checkbox("Draw", &drawEditorSprite_);
 		ImGui::SameLine();
-		if (ImGui::Button("Open Sprite Editor")) {
-			editor->SetOpen(true);
+		if (ImGui::Button("Clear")) {
+			particles_.Clear();
 		}
-		ImGui::Text("Canvas: %d x %d px", editor->GetCanvasWidth(), editor->GetCanvasHeight());
-		ImGui::Separator();
 
-		Transform3D& transform = editorSprite_.GetTransform();
-		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
-		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.05f);
-		ImGui::DragFloat3("translate", &transform.translate.x, 0.35f);
+		// ビルボード（billboardMatrix）を利用する・しないの切り替え
+		bool useBillboard = particles_.IsBillboardEnabled();
+		if (ImGui::Checkbox("Use Billboard", &useBillboard)) {
+			particles_.SetBillboardEnabled(useBillboard);
+		}
+
+		// 全パーティクル共通の色（パーティクルごとの色に掛け合わされる）
+		ImGui::ColorEdit4("Color", &particles_.GetMaterial().color.x);
+
+		// --- エミッタ ---
+		ImGui::SeparatorText("Emitter");
+
+		// 1回あたりの発生数（＋/－ボタンで増減できる。0～最大数）
+		int emitCount = static_cast<int>(emitter_.count);
+		if (ImGui::InputInt("Emit Count", &emitCount, 1, 10)) {
+			const int maxCount = static_cast<int>(particles_.GetMaxParticleCount());
+			if (emitCount < 0) {
+				emitCount = 0;
+			}
+			if (emitCount > maxCount) {
+				emitCount = maxCount;
+			}
+			emitter_.count = static_cast<uint32_t>(emitCount);
+		}
+
+		// 発生の基準となる位置と、発生範囲（位置から ± の幅）
+		ImGui::DragFloat3("Emitter Translate", &emitter_.translate.x, 0.01f, -100.0f, 100.0f);
+		ImGui::DragFloat3("Emitter Range", &emitter_.range.x, 0.01f, 0.0f, 100.0f);
+
+		// エミッタの範囲表示の切り替え
+		ImGui::Checkbox("Show Emitter Range", &showEmitterRange_);
+
+		// 発生頻度（秒）と、発生頻度計測用タイマーの現在値
+		ImGui::DragFloat("Frequency (sec)", &emitter_.frequency, 0.01f, 0.01f, 10.0f);
+		ImGui::Text("Frequency Time: %.2f", emitter_.frequencyTime);
+
+		// パーティクルの速度（基準 ± 幅）
+		ImGui::DragFloat3("Velocity", &emitter_.velocity.x, 0.01f, -10.0f, 10.0f);
+		ImGui::DragFloat3("Velocity Range", &emitter_.velocityRange.x, 0.01f, 0.0f, 10.0f);
+
+		// パーティクルの生存時間（最小～最大）
+		ImGui::DragFloatRange2("Life Time (sec)", &emitter_.lifeTimeMin, &emitter_.lifeTimeMax, 0.01f, 0.1f, 10.0f);
+
+		// 初期色（基準色 ± 幅。幅が0なら全て基準色になる）
+		ImGui::ColorEdit4("Base Color", &emitter_.color.x);
+		ImGui::DragFloat4("Color Range", &emitter_.colorRange.x, 0.01f, 0.0f, 1.0f);
+
+		// --- 加速度場（風）---
+		ImGui::SeparatorText("Field");
+
+		// 加速度場を適用する・しないの切り替え
+		ImGui::Checkbox("Use Field", &useField_);
+
+		// 加速度（1秒あたりの速度の変化量）
+		ImGui::DragFloat3("Acceleration", &accelerationField_.acceleration.x, 0.1f, -100.0f, 100.0f);
+
+		// 範囲（この箱の中にいるパーティクルだけ加速する。minがmaxを超えると、どのパーティクルも範囲外になる）
+		ImGui::DragFloat3("Area Min", &accelerationField_.area.min.x, 0.01f, -100.0f, 100.0f);
+		ImGui::DragFloat3("Area Max", &accelerationField_.area.max.x, 0.01f, -100.0f, 100.0f);
+
+		// 加速度場の範囲表示の切り替え
+		ImGui::Checkbox("Show Field Area", &showFieldArea_);
 
 		ImGui::PopID();
 		ImGui::TreePop();
 	}
-	ImGui::End();
 }
 
 void GameScene::OnDrawCullingImGui() {
-	ImGui::Text("Plane         (sphere) : %s", VisibilityText(plane_.GetVisibility()));
-	ImGui::Text("Bunny         (sphere) : %s", VisibilityText(bunny_.GetVisibility()));
-	ImGui::Text("MultiMaterial (sphere) : %s", VisibilityText(multiMaterial_.GetVisibility()));
-	ImGui::Text("Suzanne       (sphere) : %s", VisibilityText(suzanne_.GetVisibility()));
-	ImGui::Text("Fence         (sphere) : %s", VisibilityText(fence_.GetVisibility()));
-	ImGui::Text("Sprite        (2D AABB): %s", VisibilityText(sprite_.GetVisibility()));
-	ImGui::Text("EditorSprite  (2D AABB): %s", VisibilityText(editorSprite_.GetVisibility()));
+	// Instancingでまとめて描くため、インスタンスごとの視錐台カリングはしない
+	ImGui::Text("Particles (instancing): not culled");
 }
 #endif
-
-void GameScene::OnDrawObjects() {
-	plane_.Draw();
-	bunny_.Draw();
-	multiMaterial_.Draw();
-	suzanne_.Draw();
-	fence_.Draw();
-
-	// スプライト（drawSprite_がfalse、または画面外なら描かれない）
-	if (drawSprite_) {
-		sprite_.Draw();
-	}
-
-#ifdef USE_IMGUI
-	// スプライトエディタのプレビュー
-	if (drawEditorSprite_) {
-		editorSprite_.Draw();
-	}
-#endif
-}

@@ -1,68 +1,66 @@
 #pragma once
 
-#include "Engine/Rendering/Object3D.h"
-#include "Engine/Rendering/Sprite.h"
+#include <cstdint>
+
+#include "Engine/Rendering/AccelerationField.h"
+#include "Engine/Rendering/ParticleEmitter.h"
+#include "Engine/Rendering/ParticleSystem.h"
 #include "Sandbox/Scene/DemoSceneBase.h"
 
-// 最初のデモシーン。2Dスプライトと5つのOBJモデル
-// （plane・bunny・multiMaterial・suzanne・fence）を描画する。
-// Debug・Developmentではスプライトエディタで描いた内容をそのまま映すプレビュー用スプライトも置く。
+// 最初のデモシーン。板ポリ（plane.obj）のパーティクルを、Instancingで1回の描画命令でまとめて描画する。
+// パーティクルはエミッタから0.5秒ごとに3個ずつ発生し（最大100個）、1～3秒かけて薄くなって消える
+// （加算合成で描き、ビルボードで常にカメラを向く）。
+// 加速度場（風）の範囲内に入ったパーティクルは、+X方向へ流される。
+// （それまで置いていたOBJモデル・スプライトはAxisSceneへ移した）
 // カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBase（とエンジンのBaseScene）が提供する。
 class GameScene : public DemoSceneBase {
 protected:
-    // OBJモデル・スプライトの生成
+    // パーティクルの初期化とエミッタ・加速度場の設定
     void OnInitializeObjects() override;
 
-    // 各オブジェクトの行列計算・定数バッファ更新
+    // エミッタからの発生・加速度場の適用・パーティクルの移動と消滅・StructuredBuffer更新・エミッタと加速度場の範囲表示
     void OnUpdateObjects() override;
 
-    // 各オブジェクトの描画コマンドを積む
+    // パーティクルの描画（DrawInstanced 1回で全パーティクルを描く）
     void OnDrawObjects() override;
 
 #ifdef USE_IMGUI
-    // "3D Objects"ウィンドウ内の各OBJモデルの編集UI
+    // "3D Objects"ウィンドウ内のパーティクルのUI
+    // （パーティクルの数の表示・ビルボードの切り替え・共通の色・エミッタの設定・発生と削除のボタン・範囲表示の切り替え・
+    //   加速度場の適用の切り替えと設定）
     void OnDrawObjectsImGui() override;
 
-    // "2D Objects"ウィンドウ（スプライトの編集UI）
-    void OnDrawExtraImGui() override;
-
-    // 各オブジェクトのカリング判定結果表示
+    // カリング判定結果表示（パーティクルはインスタンスごとのカリングをしない）
     void OnDrawCullingImGui() override;
 #endif
 
 #ifndef NDEBUG
-    // デバッグカメラのピッキング対象（各OBJモデル）
+    // デバッグカメラのピッキング対象（パーティクルはObject3Dではないため無し）
     void AppendPickTargets(std::vector<Engine::DebugCamera::PickTarget>& targets) const override;
 #endif
 
-    // パッドで操作できるオブジェクト（各OBJモデル）
+    // パッドで操作できるオブジェクト（パーティクルはObject3Dではないため無し）
     void AppendPadTargets(std::vector<PadObjectController::Target>& targets) override;
 
 private:
-    // --- 描画オブジェクト（OBJのメッシュはMeshManagerが読み込み・共有する）---
-    Engine::Object3D plane_;          // plane.obj
-    Engine::Object3D bunny_;          // bunny.obj（スタンフォードバニー）
-    Engine::Object3D multiMaterial_;  // multiMaterial.obj（2サブメッシュ・2マテリアル）
-    Engine::Object3D suzanne_;        // suzanne.obj（UVなし・テクスチャなし）
-    Engine::Object3D fence_;          // fence.obj（透明部分をdiscardで抜く）
-    Engine::Sprite sprite_;
+    // インスタンスの最大数（同時に出せるパーティクルの最大数）
+    static constexpr uint32_t kNumMaxInstance = 100;
 
-    // --- テクスチャ選択（ImGuiのComboに対応）---
-    // OBJモデルは0="MTL (default)"（mtl由来）、1以降でtextureHandles_の一括上書き
-    int planeTextureIndex_ = 0;
-    int bunnyTextureIndex_ = 0;
-    int multiMaterialTextureIndex_ = 0;
-    int suzanneTextureIndex_ = 0;
-    int fenceTextureIndex_ = 0;
-    // スプライトはtextureHandles_のインデックス
-    int spriteTextureIndex_ = 0;
+    // 板ポリ（plane.obj）をInstancingでまとめて描くパーティクル
+    Engine::ParticleSystem particles_;
 
-    // --- スプライト描画のオン/オフ（ImGuiで切り替え） ---
-    bool drawSprite_ = true;
+    // パーティクルの発生源（発生位置・範囲・1回あたりの発生数・発生頻度など）
+    Engine::ParticleEmitter emitter_;
 
-#ifdef USE_IMGUI
-    // --- スプライトエディタのプレビュー（キャンバスのテクスチャをそのまま表示。サイズはキャンバスに追従）---
-    Engine::Sprite editorSprite_;
-    bool drawEditorSprite_ = true;
-#endif
+    // エミッタの発生範囲を線で表示するか
+    bool showEmitterRange_ = true;
+
+    // 加速度場（風。範囲内のパーティクルを加速させる）
+    Engine::AccelerationField accelerationField_;
+
+    // 加速度場をパーティクルに適用するか
+    bool useField_ = true;
+
+    // 加速度場の範囲を線で表示するか
+    bool showFieldArea_ = true;
 };

@@ -14,7 +14,7 @@ FollowAccelTime,float,0.2
 FollowBounceDuration,float,0.15
 FollowBounceSpeed,float,0.25
 FollowHalfHitCount,int,2
-FollowMaxSpeed,float,0.3
+FollowMaxSpeed,float,0.15
 FollowSlowDistance,float,2
 OutwardDuration,float,0.56
 Radius,float,0.5

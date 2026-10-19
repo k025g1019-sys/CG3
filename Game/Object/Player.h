@@ -15,8 +15,9 @@ class Stage;
 /// 空中で W / Space を押し続けるとゆっくり降下する。
 /// 左クリックで近接攻撃（地上は正面の円、空中は自分を中心にした大きい円）。
 /// 右ボタンを押している間はカーソルを狙い、ホイールで予測線を曲げ、離すとブーメランを投げる。
+/// ブーメランが飛んでいる間に右ボタンを押すと、押した瞬間からカーソルを追いかけさせる（追従）。すぐ離すと大技になる。
 /// 狙っている間も近接攻撃は出せるが、近接攻撃の最中はブーメランを投げられない。
-/// ブーメランをキャッチした直後は少しの間、近接攻撃も狙いも出せない。
+/// ブーメランをキャッチした直後は少しの間、近接攻撃も狙いも出せない（大技を出した投げでは、狙いだけ少し長く待つ）。
 /// ライフは調整値（既定 6）。被弾すると一瞬止まって揺れ（ヒットストップ）、続けて攻撃から離れる向きへ少しずれ（ノックバック）、しばらく無敵になる。
 /// ライフが尽きるとその場で止まる（やられ演出はシーンが進める）。
 /// 位置はモデルの translate で持ち（Z は常に 0）、速度は 1 フレームあたりの移動量。
@@ -42,7 +43,7 @@ public:
 	};
 
 	// 近接攻撃 1 発のダメージ（ブーメランより低いが連続で出せる。調整値）
-	static inline int32_t kMeleeDamage = 1;
+	static inline int32_t kMeleeDamage = 4;
 
 	/// <summary>
 	/// 仮モデルを作り、ステージの床の上に置く
@@ -187,6 +188,8 @@ private:
 	static inline float kMaxCurveOffset = 4.0f;        // 曲線の膨らみの上限
 	static inline float kThrowOffsetY = 0.2f;          // 投げ始める位置を中心から上にずらす量
 	static inline float kCatchCooldown = 0.25f;        // ブーメランをキャッチしてから、次の攻撃（近接・狙い）ができるまでの時間（秒）
+	static inline float kBurstCatchCooldown = 0.4f;    // 大技を出したブーメランをキャッチしてから、次に狙えるまでの時間（秒。近接は CatchCooldown のまま）
+	static inline float kBurstClickTime = 0.15f;       // 飛んでいるブーメランへの右ボタンを、押してからこの時間以内に離したら大技（秒）
 
 	// --- 被弾の調整値 ---
 	static inline int32_t kMaxLife = 6;                 // ライフの最大値
@@ -223,7 +226,9 @@ private:
 	bool isAiming_ = false;                               // 右ボタンを押して狙っている最中か
 	float curveOffset_ = 0.0f;                            // 予測線の曲がり具合（線の中点からの膨らみ）
 	Boomerang boomerang_;                                 // ブーメラン（同時に 1 つ）
-	float catchCooldownTimer_ = 0.0f;                     // キャッチ後、次の攻撃ができるまでの残り時間（秒）
+	float meleeCooldownTimer_ = 0.0f;                     // キャッチ後、近接攻撃ができるまでの残り時間（秒）
+	float aimCooldownTimer_ = 0.0f;                       // キャッチ後、狙いを始められるまでの残り時間（秒。大技の後は少し長い）
+	float followPressTimer_ = 0.0f;                       // 追従を始めてから（右ボタンを押してから）の時間（秒。短ければ大技にする）
 
 	float invincibleTimer_ = 0.0f;                        // 被弾後の無敵の残り時間（秒）
 	int32_t life_ = kMaxLife;                             // 残りライフ（0 でやられ）
@@ -255,6 +260,9 @@ private:
 	// 右ボタンでの狙い、ホイールでの曲線化、離して投げる
 	void UpdateAim();
 
+	// 飛んでいるブーメランの操作（押している間は追従、押してすぐ離したら大技、長く押してから離したら戻す）
+	void UpdateBoomerangControl();
+
 	// 向きをモデルに反映する（狙っている間はカーソルの方を向く）
 	void UpdateDirection();
 
@@ -279,8 +287,11 @@ private:
 	// 近接攻撃の判定の中心
 	Engine::Vector3 CalcAttackCenter() const;
 
-	// 新しく攻撃（近接・狙い）を始められるか（操作できて、ブーメランが手元にあり、キャッチ直後でない）
-	bool CanStartAttack() const;
+	// 新しく近接攻撃を始められるか（操作できて、ブーメランが手元にあり、キャッチ直後でない）
+	bool CanStartMelee() const;
+
+	// 新しく狙いを始められるか（操作できて、ブーメランが手元にあり、キャッチ直後でない。大技の後は近接より少し長く待つ）
+	bool CanStartAim() const;
 
 	// ノックバックの最中か
 	bool IsKnockback() const { return knockbackTimer_ > 0.0f; }

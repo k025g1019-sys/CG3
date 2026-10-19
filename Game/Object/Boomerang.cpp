@@ -13,6 +13,12 @@
 
 using namespace Engine;
 
+namespace {
+
+const Vector3 kModelScale = { 1.0f, 0.2f, 0.2f };  // 普通の大きさのときのモデルの拡大率（細長い立方体）
+
+} // namespace
+
 #pragma region 調整値
 
 void Boomerang::RegisterGlobalVariables() {
@@ -31,6 +37,19 @@ void Boomerang::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "SpinSpeed", kSpinSpeed);
 	globalVariables->AddItem(groupName, "CurvePeakRate", kCurvePeakRate);
 	globalVariables->AddItem(groupName, "DownCurveVerticalRate", kDownCurveVerticalRate);
+	globalVariables->AddItem(groupName, "BlockEffectCooldown", kBlockEffectCooldown);
+	globalVariables->AddItem(groupName, "FollowMaxSpeed", kFollowMaxSpeed);
+	globalVariables->AddItem(groupName, "FollowAccelTime", kFollowAccelTime);
+	globalVariables->AddItem(groupName, "FollowSlowDistance", kFollowSlowDistance);
+	globalVariables->AddItem(groupName, "FollowBounceSpeed", kFollowBounceSpeed);
+	globalVariables->AddItem(groupName, "FollowBounceDuration", kFollowBounceDuration);
+	globalVariables->AddItem(groupName, "FollowHalfHitCount", kFollowHalfHitCount);
+	globalVariables->AddItem(groupName, "BurstDuration", kBurstDuration);
+	globalVariables->AddItem(groupName, "BurstScale", kBurstScale);
+	globalVariables->AddItem(groupName, "BurstDamageMultiplier", kBurstDamageMultiplier);
+	globalVariables->AddItem(groupName, "BurstRecoverDuration", kBurstRecoverDuration);
+	globalVariables->AddItem(groupName, "BurstReturnScale", kBurstReturnScale);
+	globalVariables->AddItem(groupName, "BurstReturnSpeedRate", kBurstReturnSpeedRate);
 }
 
 void Boomerang::ApplyGlobalVariables() {
@@ -46,6 +65,19 @@ void Boomerang::ApplyGlobalVariables() {
 	kSpinSpeed = globalVariables->GetFloatValue(groupName, "SpinSpeed");
 	kCurvePeakRate = globalVariables->GetFloatValue(groupName, "CurvePeakRate");
 	kDownCurveVerticalRate = globalVariables->GetFloatValue(groupName, "DownCurveVerticalRate");
+	kBlockEffectCooldown = globalVariables->GetFloatValue(groupName, "BlockEffectCooldown");
+	kFollowMaxSpeed = globalVariables->GetFloatValue(groupName, "FollowMaxSpeed");
+	kFollowAccelTime = globalVariables->GetFloatValue(groupName, "FollowAccelTime");
+	kFollowSlowDistance = globalVariables->GetFloatValue(groupName, "FollowSlowDistance");
+	kFollowBounceSpeed = globalVariables->GetFloatValue(groupName, "FollowBounceSpeed");
+	kFollowBounceDuration = globalVariables->GetFloatValue(groupName, "FollowBounceDuration");
+	kFollowHalfHitCount = globalVariables->GetIntValue(groupName, "FollowHalfHitCount");
+	kBurstDuration = globalVariables->GetFloatValue(groupName, "BurstDuration");
+	kBurstScale = globalVariables->GetFloatValue(groupName, "BurstScale");
+	kBurstDamageMultiplier = globalVariables->GetIntValue(groupName, "BurstDamageMultiplier");
+	kBurstRecoverDuration = globalVariables->GetFloatValue(groupName, "BurstRecoverDuration");
+	kBurstReturnScale = globalVariables->GetFloatValue(groupName, "BurstReturnScale");
+	kBurstReturnSpeedRate = globalVariables->GetFloatValue(groupName, "BurstReturnSpeedRate");
 }
 
 #pragma endregion
@@ -56,7 +88,7 @@ void Boomerang::Initialize(float groundY) {
 	// 仮モデル（細長い立方体を回して見せる）。モデルができたら差し替える
 	model_.Initialize(Primitive::kCube);
 	model_.SetColor({ 1.0f, 0.85f, 0.3f, 1.0f });
-	model_.GetTransform().scale = { 1.0f, 0.2f, 0.2f };
+	model_.GetTransform().scale = kModelScale;
 
 	groundY_ = groundY;
 	Reset();
@@ -67,7 +99,13 @@ void Boomerang::Reset() {
 	position_ = { 0.0f, 0.0f, 0.0f };
 	timer_ = 0.0f;
 	speed_ = 0.0f;
-	hasHit_ = false;
+	size_ = 1.0f;
+	blockEffectTimer_ = 0.0f;
+	bounceTimer_ = 0.0f;
+	isFollowUsed_ = false;
+	followHitCount_ = 0;
+	isBurstUsed_ = false;
+	hasBurstHit_ = false;
 }
 
 #pragma endregion
@@ -75,6 +113,11 @@ void Boomerang::Reset() {
 #pragma region 更新
 
 void Boomerang::Update(const Vector3& ownerPosition) {
+	// 盾に弾かれた演出の間隔
+	if (blockEffectTimer_ > 0.0f) {
+		blockEffectTimer_ -= kFrameTime;
+	}
+
 	switch (phase_) {
 	case Phase::kOutward:
 		UpdateOutward();
@@ -82,14 +125,24 @@ void Boomerang::Update(const Vector3& ownerPosition) {
 	case Phase::kReturn:
 		UpdateReturn(ownerPosition);
 		break;
+	case Phase::kFollow:
+		UpdateFollow();
+		break;
+	case Phase::kBurst:
+		UpdateBurst();
+		break;
+	case Phase::kBurstRecover:
+		UpdateBurstRecover();
+		break;
 	case Phase::kIdle:
 	default:
 		break;
 	}
 
-	// 見た目：位置を合わせ、飛行中は回し続ける
+	// 見た目：位置と大きさを合わせ、飛行中は回し続ける
 	Transform3D& transform = model_.GetTransform();
 	transform.translate = position_;
+	transform.scale = kModelScale * size_;
 	if (IsFlying()) {
 		transform.rotate.z += kSpinSpeed;
 	}
@@ -104,18 +157,56 @@ void Boomerang::Throw(const Vector3& start, const Vector3& target, float curveOf
 	if (IsFlying()) {
 		return;
 	}
+
+	// 前の投げの状態（大きさ・追従・大技など）を消してから投げる
+	Reset();
 	controlPoints_ = MakeControlPoints(start, target, curveOffset);
 	position_ = start;
-	timer_ = 0.0f;
-	speed_ = 0.0f;
-	hasHit_ = false;
 	phase_ = Phase::kOutward;
 }
 
-void Boomerang::Repel() {
+void Boomerang::Repel(const Vector3& pushDirection) {
+	// 往路なら、そこで折り返して戻る
 	if (phase_ == Phase::kOutward) {
 		StartReturn();
+		return;
 	}
+
+	// 追従中なら、押し返されながら追従を続ける（滑り終えたら、また動き出しから追いかける）
+	if (phase_ == Phase::kFollow) {
+		bounceDirection_ = pushDirection;
+		bounceTimer_ = kFollowBounceDuration;
+		followTimer_ = 0.0f;
+	}
+}
+
+void Boomerang::StartFollow(const Vector3& target) {
+	if (!CanStartFollow()) {
+		return;
+	}
+	phase_ = Phase::kFollow;
+	followTarget_ = target;
+	followTimer_ = 0.0f;
+	bounceTimer_ = 0.0f;
+
+	// 追従を使った投げは、戻ってくるまでダメージが減る
+	isFollowUsed_ = true;
+}
+
+void Boomerang::EndFollow() {
+	if (phase_ == Phase::kFollow) {
+		StartReturn();
+	}
+}
+
+void Boomerang::StartBurst() {
+	if (phase_ != Phase::kFollow) {
+		return;
+	}
+	phase_ = Phase::kBurst;
+	timer_ = 0.0f;
+	isBurstUsed_ = true;
+	hasBurstHit_ = false;
 }
 
 std::array<Vector3, 3> Boomerang::MakeControlPoints(const Vector3& start, const Vector3& target, float curveOffset) {
@@ -165,8 +256,8 @@ void Boomerang::UpdateOutward() {
 }
 
 bool Boomerang::ResolveGroundCollision() {
-	// 判定の球の下端が地面に届いたら、地面の上へ押し戻す
-	const float minY = groundY_ + kRadius;
+	// 判定の球の下端が地面に届いたら、地面の上へ押し戻す（今の大きさの判定で見る）
+	const float minY = groundY_ + kRadius * size_;
 	if (position_.y <= minY) {
 		position_.y = minY;
 		return true;
@@ -176,8 +267,11 @@ bool Boomerang::ResolveGroundCollision() {
 
 void Boomerang::StartReturn() {
 	phase_ = Phase::kReturn;
-	speed_ = kReturnStartSpeed;
-	hasHit_ = false;  // 復路でもう一度当たれる
+	speed_ = kReturnStartSpeed * CalcReturnSpeedRate();
+}
+
+float Boomerang::CalcReturnSpeedRate() const {
+	return isBurstUsed_ ? kBurstReturnSpeedRate : 1.0f;
 }
 
 void Boomerang::UpdateReturn(const Vector3& ownerPosition) {
@@ -191,13 +285,123 @@ void Boomerang::UpdateReturn(const Vector3& ownerPosition) {
 		return;
 	}
 
-	// 加速しながら持ち主へ向かう（行き過ぎないよう、1 フレームの移動量は残りの距離で頭打ち）
-	speed_ = std::clamp(speed_ + kReturnAcceleration, 0.0f, kReturnMaxSpeed);
+	// 加速しながら持ち主へ向かう（行き過ぎないよう、1 フレームの移動量は残りの距離で頭打ち）。大技の後は速く戻る
+	const float speedRate = CalcReturnSpeedRate();
+	speed_ = std::clamp(speed_ + kReturnAcceleration * speedRate, 0.0f, kReturnMaxSpeed * speedRate);
 	const float step = (speed_ < distance) ? speed_ : distance;
 	position_ += Normalize(toOwner) * step;
 
 	// 復路でも地面にはもぐらない（高さだけ止めて、そのまま持ち主へ向かう）
 	ResolveGroundCollision();
+}
+
+void Boomerang::UpdateFollow() {
+	// 盾に押し返されている間は、押し返される向きへ滑る（終わりにかけて遅くなる）
+	if (bounceTimer_ > 0.0f) {
+		const float rate = (kFollowBounceDuration > 0.0f) ? (bounceTimer_ / kFollowBounceDuration) : 0.0f;
+		position_ += bounceDirection_ * (kFollowBounceSpeed * rate);
+		bounceTimer_ -= kFrameTime;
+		ResolveGroundCollision();
+		return;
+	}
+
+	// カーソルへ向かう（ease-in-out の動き）。動き出しは FollowAccelTime 秒かけて速さを 0 から上限まで上げ、
+	// 止まり際はカーソルまでの距離が FollowSlowDistance より近いと、距離に比例して遅くする
+	followTimer_ += kFrameTime;
+	float accelRate = 1.0f;
+	if (kFollowAccelTime > 0.0f) {
+		accelRate = EaseInOut(std::clamp(followTimer_ / kFollowAccelTime, 0.0f, 1.0f));
+	}
+	const Vector3 toTarget = followTarget_ - position_;
+	const float distance = Length(toTarget);
+	float slowRate = 1.0f;
+	if (kFollowSlowDistance > 0.0f) {
+		slowRate = std::clamp(distance / kFollowSlowDistance, 0.0f, 1.0f);
+	}
+
+	// 行き過ぎないよう、1 フレームの移動量は残りの距離で頭打ち
+	const float speed = kFollowMaxSpeed * accelRate * slowRate;
+	const float step = (speed < distance) ? speed : distance;
+	if (distance > 0.0f) {
+		position_ += toTarget * (step / distance);
+	}
+
+	// カーソルが地面より下にあっても、地面にはもぐらない
+	ResolveGroundCollision();
+}
+
+void Boomerang::UpdateBurst() {
+	// その場で止まったまま大きくなる（最初が速く、終わりにかけてゆっくり）
+	timer_ += kFrameTime;
+	const float t = (kBurstDuration > 0.0f) ? std::clamp(timer_ / kBurstDuration, 0.0f, 1.0f) : 1.0f;
+	size_ = Lerp(1.0f, kBurstScale, EaseOutQuad(t));
+	if (t >= 1.0f) {
+		phase_ = Phase::kBurstRecover;
+		timer_ = 0.0f;
+	}
+}
+
+void Boomerang::UpdateBurstRecover() {
+	// 止まったまま、戻るときの小ささまで縮む（この間は当たらない）。縮み終えたら速く戻り始める
+	timer_ += kFrameTime;
+	const float t = (kBurstRecoverDuration > 0.0f) ? std::clamp(timer_ / kBurstRecoverDuration, 0.0f, 1.0f) : 1.0f;
+	size_ = Lerp(kBurstScale, kBurstReturnScale, EaseOutQuad(t));
+	if (t >= 1.0f) {
+		StartReturn();
+	}
+}
+
+bool Boomerang::CanStartFollow() const {
+	// 往路か、追従を使っていない復路のときだけ（追従をやめた後の戻りと、大技の後は始めない）
+	const bool isOutwardOrReturn = (phase_ == Phase::kOutward) || (phase_ == Phase::kReturn);
+	return isOutwardOrReturn && !isFollowUsed_ && !isBurstUsed_;
+}
+
+bool Boomerang::CanHit() const {
+	switch (phase_) {
+	case Phase::kOutward:
+	case Phase::kFollow:
+		return true;
+	case Phase::kReturn:
+		// 大技の後の戻りは当たらない
+		return !isBurstUsed_;
+	case Phase::kBurst:
+		// 大技の一撃は 1 回だけ
+		return !hasBurstHit_;
+	case Phase::kBurstRecover:
+	case Phase::kIdle:
+	default:
+		return false;
+	}
+}
+
+int32_t Boomerang::CalcDamage() const {
+	// 大技の一撃は、普通の何倍か
+	if (phase_ == Phase::kBurst) {
+		return kDamage * kBurstDamageMultiplier;
+	}
+
+	// 追従を使った投げは、戻ってくるまで半分。決めた回数だけ当てた後は、さらに半分（整数なので切り捨て）
+	if (isFollowUsed_) {
+		if (followHitCount_ < kFollowHalfHitCount) {
+			return kDamage / 2;
+		}
+		return kDamage / 4;
+	}
+	return kDamage;
+}
+
+void Boomerang::OnHit() {
+	// 大技の一撃を当てたら、もう当たらない
+	if (phase_ == Phase::kBurst) {
+		hasBurstHit_ = true;
+		return;
+	}
+
+	// 追従を使った投げは、当たった回数を数える（ダメージをさらに半分にするかの判断に使う）
+	if (isFollowUsed_) {
+		followHitCount_++;
+	}
 }
 
 #pragma endregion
@@ -212,16 +416,32 @@ void Boomerang::Draw() const {
 	model_.Draw();
 }
 
+const char* Boomerang::GetPhaseName() const {
+	switch (phase_) {
+	case Phase::kOutward:
+		return "outward";
+	case Phase::kReturn:
+		return isBurstUsed_ ? "return (after burst)" : "return";
+	case Phase::kFollow:
+		return "follow";
+	case Phase::kBurst:
+		return "burst";
+	case Phase::kBurstRecover:
+		return "burst recover";
+	case Phase::kIdle:
+	default:
+		return "idle";
+	}
+}
+
 #ifdef USE_IMGUI
 void Boomerang::DrawImGui() {
 	if (ImGui::TreeNode("Boomerang")) {
-		const char* phaseName = "idle";
-		if (phase_ == Phase::kOutward) {
-			phaseName = "outward";
-		} else if (phase_ == Phase::kReturn) {
-			phaseName = "return";
-		}
-		ImGui::Text("phase: %s  position: %.2f, %.2f  speed: %.3f  hasHit: %s", phaseName, position_.x, position_.y, speed_, hasHit_ ? "true" : "false");
+		ImGui::Text("phase: %s  position: %.2f, %.2f  speed: %.3f  size: %.2f",
+			GetPhaseName(), position_.x, position_.y, speed_, size_);
+		ImGui::Text("followUsed: %s  followHits: %d  burstUsed: %s  burstHit: %s  damage: %d",
+			isFollowUsed_ ? "true" : "false", followHitCount_, isBurstUsed_ ? "true" : "false",
+			hasBurstHit_ ? "true" : "false", CalcDamage());
 		ImGui::TreePop();
 	}
 }

@@ -3,6 +3,7 @@ BitAnchorOffsetY,float,1
 BitCount,int,3
 BodyHalfHeight,float,1.2
 BodyHalfWidth,float,1
+BoomerangHitInterval,float,0.5
 ChargeDistance,float,14
 ChargeSpeed,float,0.24
 ChargeWindup,float,0.75
@@ -30,7 +31,7 @@ HitStopDuration,float,0.08
 HitStopResistHitCount,int,3
 HitStopResistResetTime,float,1
 IdleDuration,float,1.2
-MaxHp,int,24
+MaxHp,int,96
 RockCount,int,5
 RockHeightStep,float,2
 RockRecover,float,1.25

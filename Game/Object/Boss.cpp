@@ -124,6 +124,7 @@ void Boss::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "HitShakeAmplitude", kHitShakeAmplitude);
 	globalVariables->AddItem(groupName, "HitStopResistHitCount", kHitStopResistHitCount);
 	globalVariables->AddItem(groupName, "HitStopResistResetTime", kHitStopResistResetTime);
+	globalVariables->AddItem(groupName, "BoomerangHitInterval", kBoomerangHitInterval);
 	globalVariables->AddItem(groupName, "StaggerDuration", kStaggerDuration);
 	globalVariables->AddItem(groupName, "StaggerCooldown", kStaggerCooldown);
 	globalVariables->AddItem(groupName, "DeathDuration", kDeathDuration);
@@ -181,6 +182,7 @@ void Boss::ApplyGlobalVariables() {
 	kHitShakeAmplitude = globalVariables->GetFloatValue(groupName, "HitShakeAmplitude");
 	kHitStopResistHitCount = globalVariables->GetIntValue(groupName, "HitStopResistHitCount");
 	kHitStopResistResetTime = globalVariables->GetFloatValue(groupName, "HitStopResistResetTime");
+	kBoomerangHitInterval = globalVariables->GetFloatValue(groupName, "BoomerangHitInterval");
 	kStaggerDuration = globalVariables->GetFloatValue(groupName, "StaggerDuration");
 	kStaggerCooldown = globalVariables->GetFloatValue(groupName, "StaggerCooldown");
 	kDeathDuration = globalVariables->GetFloatValue(groupName, "DeathDuration");
@@ -251,6 +253,7 @@ void Boss::Reset() {
 	isHitStopFreezing_ = true;
 	meleeHitCount_ = 0;
 	meleeHitTimer_ = 0.0f;
+	boomerangHitTimer_ = kBoomerangHitInterval;  // 最初の一撃はすぐ当たるように
 
 	// 出ている攻撃物は消す（その場では壊さず、次の更新で取り除く。前のフレームに描いたものの定数バッファを壊さないため）
 	KillAllHazards();
@@ -277,6 +280,9 @@ void Boss::Update() {
 	if (meleeHitTimer_ > kHitStopResistResetTime) {
 		meleeHitCount_ = 0;
 	}
+
+	// ブーメランでダメージを受けてからの時間（同じ相手へ続けて当たりすぎないよう、ApplyAttack で間隔を見る）
+	boomerangHitTimer_ += kFrameTime;
 
 	// ヒットストップ中は自分の動きだけ止める（行動の時間も進めないので、攻撃のタイミングが少し遅れる。行動は打ち切らない）。
 	// 出してある攻撃物は動き続け、見た目は毎フレーム更新して揺らす。怯みややられへの切り替えは、止まり終わってから行う。
@@ -983,7 +989,7 @@ void Boss::UpdateModel() {
 
 #pragma region 当たり判定・ダメージ
 
-Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, const Vector3& attackerPosition, bool isMelee) {
+Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, const Vector3& attackerPosition, AttackType type) {
 	if (!IsAlive()) {
 		return HitResult::kNone;
 	}
@@ -998,6 +1004,16 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 		shieldFlashTimer_ = kShieldFlashDuration;
 		return HitResult::kBlocked;
 	}
+
+	// ブーメランは、前にブーメランでダメージを受けてから一定の時間がたつまで当たらない（同じ相手へ続けて当たりすぎないように）。
+	// 大技の一撃は間隔に関係なく当たり、そこから数え直す
+	if (type == AttackType::kBoomerang && boomerangHitTimer_ < kBoomerangHitInterval) {
+		return HitResult::kNone;
+	}
+	if (type != AttackType::kMelee) {
+		boomerangHitTimer_ = 0.0f;
+	}
+	const bool isMelee = (type == AttackType::kMelee);
 
 	// 弱点のコア：ダメージ 2 倍。怯むのは攻撃していないときと、押しつぶしで浮いている間だけ（ほかの攻撃は続ける）。
 	// 怯みは間隔を空ける（連続で怯ませて封じられないように）
@@ -1304,8 +1320,8 @@ void Boss::DrawImGui() {
 		ImGui::Text("staggerCooldown: %.2f  rockTargets: %d  hitStop: %.2f%s  attackEnabled: %s",
 			staggerCooldownTimer_, static_cast<int>(rockTargetsX_.size()), hitStop_.GetRemainingTime(),
 			isHitStopFreezing_ ? "" : " (shake only)", isAttackEnabled_ ? "true" : "false");
-		ImGui::Text("meleeHits: %d  hitStopResist: %s  enraged (phase 2+): %s",
-			meleeHitCount_, IsHitStopResistant() ? "on" : "off", IsEnraged() ? "true" : "false");
+		ImGui::Text("meleeHits: %d  hitStopResist: %s  enraged (phase 2+): %s  boomerangHit: %.2f",
+			meleeHitCount_, IsHitStopResistant() ? "on" : "off", IsEnraged() ? "true" : "false", boomerangHitTimer_);
 		ImGui::Checkbox("AI enabled", &isAiEnabled_);
 
 		// AI が選ぶ攻撃を 1 つに固定する（同じ攻撃を繰り返し見たいとき。AI が有効な間だけ意味がある）

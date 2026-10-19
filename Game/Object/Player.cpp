@@ -60,6 +60,8 @@ void Player::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "MaxCurveOffset", kMaxCurveOffset);
 	globalVariables->AddItem(groupName, "ThrowOffsetY", kThrowOffsetY);
 	globalVariables->AddItem(groupName, "CatchCooldown", kCatchCooldown);
+	globalVariables->AddItem(groupName, "BurstCatchCooldown", kBurstCatchCooldown);
+	globalVariables->AddItem(groupName, "BurstClickTime", kBurstClickTime);
 	globalVariables->AddItem(groupName, "InvincibleDuration", kInvincibleDuration);
 	globalVariables->AddItem(groupName, "DamageHitStopDuration", kDamageHitStopDuration);
 	globalVariables->AddItem(groupName, "DamageShakeAmplitude", kDamageShakeAmplitude);
@@ -96,6 +98,8 @@ void Player::ApplyGlobalVariables() {
 	kMaxCurveOffset = globalVariables->GetFloatValue(groupName, "MaxCurveOffset");
 	kThrowOffsetY = globalVariables->GetFloatValue(groupName, "ThrowOffsetY");
 	kCatchCooldown = globalVariables->GetFloatValue(groupName, "CatchCooldown");
+	kBurstCatchCooldown = globalVariables->GetFloatValue(groupName, "BurstCatchCooldown");
+	kBurstClickTime = globalVariables->GetFloatValue(groupName, "BurstClickTime");
 	kInvincibleDuration = globalVariables->GetFloatValue(groupName, "InvincibleDuration");
 	kDamageHitStopDuration = globalVariables->GetFloatValue(groupName, "DamageHitStopDuration");
 	kDamageShakeAmplitude = globalVariables->GetFloatValue(groupName, "DamageShakeAmplitude");
@@ -144,7 +148,9 @@ void Player::Reset() {
 	isAiming_ = false;
 	curveOffset_ = 0.0f;
 	boomerang_.Reset();
-	catchCooldownTimer_ = 0.0f;
+	meleeCooldownTimer_ = 0.0f;
+	aimCooldownTimer_ = 0.0f;
+	followPressTimer_ = 0.0f;
 
 	invincibleTimer_ = 0.0f;
 	life_ = kMaxLife;
@@ -181,6 +187,7 @@ void Player::Update() {
 	UpdateCollision();
 	UpdateAttack();
 	UpdateAim();
+	UpdateBoomerangControl();
 	UpdateDirection();
 	UpdateInvincible();
 
@@ -191,15 +198,20 @@ void Player::Update() {
 
 void Player::UpdateBoomerang() {
 	// キャッチ後のクールタイムを減らす
-	if (catchCooldownTimer_ > 0.0f) {
-		catchCooldownTimer_ -= kFrameTime;
+	if (meleeCooldownTimer_ > 0.0f) {
+		meleeCooldownTimer_ -= kFrameTime;
+	}
+	if (aimCooldownTimer_ > 0.0f) {
+		aimCooldownTimer_ -= kFrameTime;
 	}
 
-	// 飛んでいたブーメランが手元に戻った瞬間から、少しの間は次の攻撃を出せない
+	// 飛んでいたブーメランが手元に戻った瞬間から、少しの間は次の攻撃を出せない。
+	// 大技を出した投げのときは、狙い直しだけ少し長く待つ（近接は同じ）
 	const bool wasFlying = boomerang_.IsFlying();
 	boomerang_.Update(GetPosition());
 	if (wasFlying && !boomerang_.IsFlying()) {
-		catchCooldownTimer_ = kCatchCooldown;
+		meleeCooldownTimer_ = kCatchCooldown;
+		aimCooldownTimer_ = boomerang_.IsBurstUsed() ? kBurstCatchCooldown : kCatchCooldown;
 	}
 }
 
@@ -373,7 +385,7 @@ void Player::UpdateAttack() {
 	}
 
 	// 左クリックで開始（狙っている間でも出せる）。攻撃中・ブーメランが飛んでいる間・キャッチした直後は出せない
-	if (input->IsMouseTrigger(kMouseLeft) && !IsAttacking() && CanStartAttack()) {
+	if (input->IsMouseTrigger(kMouseLeft) && !IsAttacking() && CanStartMelee()) {
 		if (isGrounded_) {
 			attackType_ = AttackType::kGround;
 			attackTimer_ = kGroundAttackDuration;
@@ -401,7 +413,7 @@ void Player::UpdateAim() {
 
 	// 右ボタンを押している間、狙える状態になったら狙い始める。
 	// 近接攻撃の最中・ブーメランが飛んでいる間・キャッチした直後は狙えない（押したままなら、狙えるようになった時点で始まる）
-	if (!isAiming_ && input->IsMousePress(kMouseRight) && !IsAttacking() && CanStartAttack()) {
+	if (!isAiming_ && input->IsMousePress(kMouseRight) && !IsAttacking() && CanStartAim()) {
 		isAiming_ = true;
 		curveOffset_ = 0.0f;  // 曲線は毎回直線から始める
 	}
@@ -454,6 +466,31 @@ void Player::DrawAimLine() const {
 
 	// ブーメランが折り返す位置の印（地面に当たるならその位置、当たらなければカーソルの位置）
 	DebugDraw::DrawSphere({ previous, 0.2f }, lineColor);
+}
+
+void Player::UpdateBoomerangControl() {
+	Input* input = Input::GetInstance();
+
+	// 追従中：押している間はカーソルを追わせる。離したら戻す（押してすぐ離したなら大技にする）
+	if (boomerang_.IsFollowing()) {
+		followPressTimer_ += kFrameTime;
+		if (input->IsMousePress(kMouseRight)) {
+			boomerang_.SetFollowTarget(cursorWorldPosition_);
+			return;
+		}
+		if (followPressTimer_ <= kBurstClickTime) {
+			boomerang_.StartBurst();
+		} else {
+			boomerang_.EndFollow();
+		}
+		return;
+	}
+
+	// 飛んでいる間に右ボタンを押したら、押した瞬間から追従を始める（追従をやめた後の戻りと、大技の後は始めない）
+	if (CanControl() && input->IsMouseTrigger(kMouseRight) && boomerang_.CanStartFollow()) {
+		boomerang_.StartFollow(cursorWorldPosition_);
+		followPressTimer_ = 0.0f;
+	}
 }
 
 void Player::UpdateDirection() {
@@ -520,6 +557,9 @@ void Player::SetControllable(bool isControllable) {
 		jumpBufferTimer_ = 0.0f;
 		isAiming_ = false;
 		curveOffset_ = 0.0f;
+
+		// 追従させていたブーメランは戻す
+		boomerang_.EndFollow();
 	}
 }
 
@@ -562,8 +602,12 @@ Sphere Player::GetAttackSphere() const {
 	return { CalcAttackCenter(), radius };
 }
 
-bool Player::CanStartAttack() const {
-	return CanControl() && !boomerang_.IsFlying() && catchCooldownTimer_ <= 0.0f;
+bool Player::CanStartMelee() const {
+	return CanControl() && !boomerang_.IsFlying() && meleeCooldownTimer_ <= 0.0f;
+}
+
+bool Player::CanStartAim() const {
+	return CanControl() && !boomerang_.IsFlying() && aimCooldownTimer_ <= 0.0f;
 }
 
 bool Player::IsJumpTrigger() const {
@@ -609,7 +653,8 @@ void Player::DrawImGui() {
 		ImGui::Text("velocity: %.3f, %.3f", velocity_.x, velocity_.y);
 		ImGui::Text("grounded: %s  gliding: %s  coyote: %.2f", isGrounded_ ? "true" : "false", isGliding_ ? "true" : "false", coyoteTimer_);
 		ImGui::Text("direction: %s  life: %d / %d  invincible: %.2f", (lrDirection_ == LRDirection::kRight) ? "right" : "left", life_, kMaxLife, invincibleTimer_);
-		ImGui::Text("jumpBuffer: %.2f  attackJumpLock: %.2f  catchCooldown: %.2f", jumpBufferTimer_, attackJumpLockTimer_, catchCooldownTimer_);
+		ImGui::Text("jumpBuffer: %.2f  attackJumpLock: %.2f", jumpBufferTimer_, attackJumpLockTimer_);
+		ImGui::Text("catch cooldown  melee: %.2f  aim: %.2f  followPress: %.2f", meleeCooldownTimer_, aimCooldownTimer_, followPressTimer_);
 		ImGui::Text("hitStop: %.2f  knockback: %.2f  controllable: %s", hitStop_.GetRemainingTime(), knockbackTimer_, isControllable_ ? "true" : "false");
 		ImGui::Checkbox("invincible mode (no damage, reactions on)", &isInvincibleMode_);
 

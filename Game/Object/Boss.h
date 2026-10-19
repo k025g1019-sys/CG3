@@ -64,6 +64,15 @@ public:
 	};
 
 	/// <summary>
+	/// プレイヤーの攻撃の種類（ヒットストップへの耐性と、ブーメランの攻撃間隔の判定に使う）
+	/// </summary>
+	enum class AttackType {
+		kMelee,      // 近接攻撃
+		kBoomerang,  // 投げたブーメラン（前にブーメランでダメージを受けてから一定の時間がたつまで当たらない）
+		kBurst,      // ブーメランの大技（間隔に関係なく当たり、そこから間隔を数え直す）
+	};
+
+	/// <summary>
 	/// 仮モデルを作り、ステージの右寄りに置く
 	/// </summary>
 	/// <param name="stage">床の高さと左右の端を参照するステージ（所有しない）</param>
@@ -114,8 +123,8 @@ public:
 	/// <param name="damage">基本ダメージ（コアに当たると 2 倍）</param>
 	/// <param name="attackerPosition">攻撃してきた側の位置（近接はプレイヤー、ブーメランはブーメラン自身）。正面か背後かの判定に使う。
 	/// 近接の判定は大きく正面から体越しにコアへ届くことがあるので、判定の中心ではなく攻撃した側の位置で見る</param>
-	/// <param name="isMelee">近接攻撃か（近接を続けて受けると、ヒットストップに耐性がつく）</param>
-	HitResult ApplyAttack(const Engine::Sphere& attackSphere, int32_t damage, const Engine::Vector3& attackerPosition, bool isMelee);
+	/// <param name="type">攻撃の種類（近接を続けて受けるとヒットストップに耐性がつく。ブーメランは同じ相手へ一定の間隔でしか当たらない）</param>
+	HitResult ApplyAttack(const Engine::Sphere& attackSphere, int32_t damage, const Engine::Vector3& attackerPosition, AttackType type);
 
 	// 体の判定（箱）
 	Engine::AABB3D GetBodyBox() const;
@@ -197,7 +206,7 @@ private:
 	static inline const float kFrameTime = 1.0f / 60.0f;   // 1 フレームの秒数
 
 	// --- HP と数の調整値 ---
-	static inline int32_t kMaxHp = 24;               // 最大 HP
+	static inline int32_t kMaxHp = 96;               // 最大 HP
 	static inline int32_t kWeakPointMultiplier = 2;  // コアに当たったときのダメージ倍率
 	static inline int32_t kRockCount = 4;            // 落石 1 回で落とす岩の数
 	static inline int32_t kBitCount = 3;             // 第 2 段階で呼ぶビットの数
@@ -245,6 +254,7 @@ private:
 	static inline float kCoreHitStopDuration = 0.12f;  // コアにダメージを受けたときに止まる時間（秒）
 	static inline float kHitShakeAmplitude = 0.12f;    // ダメージを受けたときの揺れ幅
 	static inline int32_t kHitStopResistHitCount = 3;  // 近接攻撃を続けてこの回数受けると、ヒットストップに耐性がつく（揺れるだけで止まらない）
+	static inline float kBoomerangHitInterval = 0.5f;  // ブーメランのダメージが同じ相手（このボス）に入る間隔（秒。大技の一撃は間隔に関係なく入る）
 	static inline float kHitStopResistResetTime = 1.0f;  // 近接攻撃の間隔がこれ以内なら「続けて」とみなす。これだけ近接を受けなければ耐性が消える（秒）
 	static inline float kStaggerDuration = 0.6f;    // 怯みの時間
 	static inline float kStaggerCooldown = 2.0f;    // 怯んだ後、次に怯むまでの間隔（連続で怯ませて封じられないように）
@@ -302,6 +312,7 @@ private:
 	bool isLoopSelected_ = false;                      // 開発用：AI が無効のとき、選んでいる行動を繰り返すか
 	int32_t meleeHitCount_ = 0;                        // 近接攻撃を続けて受けた回数（間隔が空くと 0 に戻る）
 	float meleeHitTimer_ = 0.0f;                       // 前に近接攻撃を受けてからの時間（秒）
+	float boomerangHitTimer_ = 0.0f;                   // 前にブーメランでダメージを受けてからの時間（秒）
 	bool isHitStopFreezing_ = true;                    // 今のヒットストップで行動を止めるか（耐性があるときは揺れるだけ）
 	bool isAttackEnabled_ = true;                      // 新しい攻撃を始めるか（プレイヤーがやられた後は false）
 	HitStop hitStop_;                                  // ヒットストップ（ダメージを受けたとき）

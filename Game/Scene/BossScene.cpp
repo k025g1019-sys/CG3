@@ -384,22 +384,38 @@ void BossScene::CheckAllCollisions() {
 	// --- プレイヤーの近接攻撃 → ボス（1 回の攻撃で 1 ヒット）---
 	if (player_.IsAttacking() && !player_.HasAttackHit()) {
 		const Sphere attackSphere = player_.GetAttackSphere();
-		const Boss::HitResult result = boss_.ApplyAttack(attackSphere, Player::kMeleeDamage, player_.GetPosition(), true);
+		const Boss::HitResult result =
+			boss_.ApplyAttack(attackSphere, Player::kMeleeDamage, player_.GetPosition(), Boss::AttackType::kMelee);
 		if (result != Boss::HitResult::kNone) {
 			player_.MarkAttackHit();
 			SpawnBossHitEffect(result, attackSphere.center);
 		}
 	}
 
-	// --- ブーメラン → ボス（往路・復路で 1 回ずつ。盾に当たれば弾かれて戻る）---
+	// --- ブーメラン → ボス（同じ相手には一定の間隔でしかダメージが入らない。間隔はボスが数え、大技の一撃は間隔に関係なく入る）---
 	if (boomerang.CanHit()) {
 		const Sphere boomerangSphere = boomerang.GetHitSphere();
-		const Boss::HitResult result = boss_.ApplyAttack(boomerangSphere, Boomerang::kDamage, boomerangSphere.center, false);
+		const Boss::AttackType attackType = boomerang.IsBursting() ? Boss::AttackType::kBurst : Boss::AttackType::kBoomerang;
+		const Boss::HitResult result =
+			boss_.ApplyAttack(boomerangSphere, boomerang.CalcDamage(), boomerangSphere.center, attackType);
 		if (result == Boss::HitResult::kBlocked) {
-			boomerang.Repel();
-		}
-		if (result != Boss::HitResult::kNone) {
-			boomerang.MarkHit();
+			// 盾に弾かれた：往路なら戻り、追従中ならボスの中心から離れる向きへ押し返される
+			Vector3 pushDirection = boomerangSphere.center - boss_.GetPosition();
+			pushDirection.z = 0.0f;
+			if (Length(pushDirection) > 0.0f) {
+				pushDirection = Normalize(pushDirection);
+			} else {
+				pushDirection = { boss_.GetFacing(), 0.0f, 0.0f };
+			}
+			boomerang.Repel(pushDirection);
+
+			// 弾いた演出は、続けて出しすぎないよう間を空ける
+			if (boomerang.CanShowBlockEffect()) {
+				boomerang.MarkBlockEffect();
+				SpawnBossHitEffect(result, boomerangSphere.center);
+			}
+		} else if (result != Boss::HitResult::kNone) {
+			boomerang.OnHit();
 			SpawnBossHitEffect(result, boomerangSphere.center);
 		}
 	}
@@ -411,7 +427,7 @@ void BossScene::CheckAllCollisions() {
 		}
 		const Sphere hazardSphere = hazard->GetHitSphere();
 		const bool hitByMelee = player_.IsAttacking() && IsCollision(player_.GetAttackSphere(), hazardSphere);
-		const bool hitByBoomerang = boomerang.IsFlying() && IsCollision(boomerang.GetHitSphere(), hazardSphere);
+		const bool hitByBoomerang = boomerang.CanHit() && IsCollision(boomerang.GetHitSphere(), hazardSphere);
 		if (hitByMelee || hitByBoomerang) {
 			hazard->OnHitByPlayer();
 			SpawnHitEffect(hazardSphere.center, kBreakColor);
@@ -547,6 +563,7 @@ void BossScene::OnDrawImGui() {
 	Player::DrawWheelDirectionImGui();
 	ImGui::Text("A/D: move  W/Space: jump (hold: higher / glide)");
 	ImGui::Text("LMB: melee  RMB hold: aim, wheel: curve, release: throw");
+	ImGui::Text("RMB while the boomerang flies: hold = follow the cursor, short click = burst");
 	ImGui::Text("Esc: Title  C: Clear  P: boss AI on/off  H: damage player  (development only)");
 	ImGui::Text("Tuning values: Global Variables window (Save writes resources/GlobalVariables/*.csv)");
 	ImGui::Separator();
@@ -584,14 +601,8 @@ void BossScene::OnDrawImGui() {
 	} else if (player_.GetAttackType() == Player::AttackType::kAir) {
 		attackName = "air";
 	}
-	const char* boomerangPhase = "idle";
-	if (player_.GetBoomerang().GetPhase() == Boomerang::Phase::kOutward) {
-		boomerangPhase = "outward";
-	} else if (player_.GetBoomerang().GetPhase() == Boomerang::Phase::kReturn) {
-		boomerangPhase = "return";
-	}
 	ImGui::Text("attack: %s  aiming: %s  curve: %.2f  boomerang: %s",
-		attackName, player_.IsAiming() ? "true" : "false", player_.GetCurveOffset(), boomerangPhase);
+		attackName, player_.IsAiming() ? "true" : "false", player_.GetCurveOffset(), player_.GetBoomerang().GetPhaseName());
 	ImGui::Text("boss hp: %d / %d  phase: %d  behavior: %s  ai: %s",
 		boss_.GetHp(), boss_.GetMaxHp(), boss_.GetPhase(), boss_.GetBehaviorName(), boss_.IsAiEnabled() ? "on" : "off");
 	ImGui::Text("cursor world: %.2f, %.2f", cursorWorldPosition_.x, cursorWorldPosition_.y);

@@ -7,6 +7,8 @@ ApexSpeedThreshold,float,0.07
 AttackJumpLockTime,float,0.15
 Attenuation,float,0.15
 BrakeAttenuation,float,0.3
+BurstCatchCooldown,float,0.4
+BurstClickTime,float,0.15
 CatchCooldown,float,0.25
 CoyoteTime,float,0.1
 CurveStepPerNotch,float,0.8
@@ -27,6 +29,6 @@ LimitRunSpeed,float,0.16
 MaxCurveOffset,float,4
 MaxFallSpeed,float,0.32
 MaxLife,int,6
-MeleeDamage,int,1
+MeleeDamage,int,4
 ThrowOffsetY,float,0.2
 WheelAwayCurvesUp,int,1

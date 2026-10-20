@@ -32,7 +32,7 @@ public:
         kRootTexture = 3,           // t0 [PS] テクスチャ（DescriptorTable）
         kRootViewProjection = 4,    // b1 [VS] 視点ごとのビュー射影
         kRootPointLights = 5,       // b2 [PS] 点光源
-
+        kRootSpecular = 6, // b3 [PS] 鏡面反射用定数
         kRootParameterCount,        // パラメータ数（enumの末尾に置くこと）
     };
 

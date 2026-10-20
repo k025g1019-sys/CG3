@@ -52,6 +52,11 @@ void AxisScene::OnInitializeObjects() {
 	sphere_.Initialize(&sphereMesh_, textureHandles_[sphereTextureIndex_]);
 	sphere_.GetTransform().translate = { 2.2f, 0.7f, 6.0f };
 	sphere_.GetTransform().rotate.y = 4.9f;
+	sphere_.SetSpecularModel(
+		Engine::Object3D::SpecularModel::kBlinnPhong
+	);
+	sphere_.SetShininess(64.0f);
+	sphere_.SetSpecularStrength(0.8f);
 
 	// ---- GameSceneから移したオブジェクト ----
 	// 上のオブジェクトと画面上で重ならないよう、左右の空いている所に置く。

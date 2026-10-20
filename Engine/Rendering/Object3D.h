@@ -72,6 +72,17 @@ public:
     // マテリアル数（サブメッシュを持つメッシュはサブメッシュ数、それ以外は1）
     uint32_t GetMaterialCount() const { return uint32_t(materials_.size()); }
 
+    // 鏡面反射モデル
+    enum class SpecularModel {
+        kPhong = 0,
+        kBlinnPhong = 1,
+    };
+
+    // 鏡面反射の設定
+    void SetShininess(float shininess);
+    void SetSpecularStrength(float strength);
+    void SetSpecularModel(SpecularModel model);
+
     // CPU側マテリアル（ImGuiで色・ライティングを編集し、Updateで定数バッファへ反映される）
     Material& GetMaterial(uint32_t index = 0) { return materials_[index]; }
 
@@ -131,6 +142,21 @@ private:
 
     // Updateで計算したワールド空間のバウンディング球（Drawの視錐台カリングに使う）
     Sphere worldBoundingSphere_{ { 0.0f, 0.0f, 0.0f }, 0.0f };
+
+    struct SpecularConstants {
+        Vector3 cameraPosition{};
+        float shininess = 32.0f;
+
+        float specularStrength = 0.5f;
+        int specularModel = 1;
+        float padding[2]{};
+    };
+
+    mutable ConstantBuffer<SpecularConstants> specularCB_;
+
+    float shininess_ = 32.0f;
+    float specularStrength_ = 0.5f;
+    SpecularModel specularModel_ = SpecularModel::kBlinnPhong;
 
     // 直近のDrawで判定したカリング結果（Drawはconstだが判定結果だけは記録する）
     mutable FrustumVisibility visibility_ = FrustumVisibility::Inside;

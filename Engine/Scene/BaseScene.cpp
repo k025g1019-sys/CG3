@@ -64,6 +64,9 @@ void BaseScene::Draw(ID3D12GraphicsCommandList* commandList, uint32_t viewIndex)
 	// 標準RootSignature・ビュー射影・光源を設定し、標準PSO（裏面カリング・三角形）で描き始める
 	context->BindStandardState(commandList);
 
+	// カメラ位置をRenderContextに設定
+	context->SetCameraPosition(camera_.GetTransform().translate);
+
 	// --- 派生シーンのオブジェクト描画 ---
 	OnDraw();
 

@@ -64,6 +64,10 @@ void Object3D::Initialize(Mesh* mesh, uint32_t textureHandle, LightingMode light
 	}
 
 	transformCB_.Create(device, DirectXCore::kFramesInFlight);
+	specularCB_.Create(
+		DirectXCore::GetInstance()->GetDevice(),
+		DirectXCore::kFramesInFlight
+	);
 	materialCBs_.clear();
 	materialCBs_.resize(materialCount);
 	for (ConstantBuffer<Material>& materialCB : materialCBs_) {
@@ -109,8 +113,23 @@ void Object3D::Draw() const {
 
 	ID3D12GraphicsCommandList* commandList = context->GetCommandList();
 	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
+	// ワールド変換定数バッファを設定
 	commandList->SetGraphicsRootConstantBufferView(
 		PipelineManager::kRootWorldTransform, transformCB_.GetGPUAddress(frameIndex));
+
+	// 鏡面反射用の定数バッファを設定
+	SpecularConstants specularData{};
+	specularData.cameraPosition = context->GetCameraPosition();
+	specularData.shininess = shininess_;
+	specularData.specularStrength = specularStrength_;
+	specularData.specularModel =
+		static_cast<int>(specularModel_);
+
+	specularCB_.Write(frameIndex, specularData);
+
+	commandList->SetGraphicsRootConstantBufferView(
+		PipelineManager::kRootSpecular,
+		specularCB_.GetGPUAddress(frameIndex));
 
 	TextureManager* textureManager = TextureManager::GetInstance();
 	if (subMeshTextureHandles_.empty()) {
@@ -138,6 +157,21 @@ void Object3D::SetColor(const Vector4& color) {
 	for (Material& material : materials_) {
 		material.color = color;
 	}
+}
+
+// 鏡面反射の光沢度を設定
+void Object3D::SetShininess(float shininess) {
+	shininess_ = shininess > 1.0f ? shininess : 1.0f;
+}
+
+// 鏡面反射の強さを設定
+void Object3D::SetSpecularStrength(float strength) {
+	specularStrength_ = strength > 0.0f ? strength : 0.0f;
+}
+
+// 鏡面反射モデルを設定
+void Object3D::SetSpecularModel(SpecularModel model) {
+	specularModel_ = model;
 }
 
 void Object3D::SetTexture(const std::string& textureFilePath) {

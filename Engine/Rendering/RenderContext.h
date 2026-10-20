@@ -19,6 +19,14 @@ public:
     // 描画コマンドを積むコマンドリスト（DirectXCoreのもの）
     ID3D12GraphicsCommandList* GetCommandList() const;
 
+    void SetCameraPosition(const Vector3& position) {
+        cameraPosition_ = position;
+    }
+
+    const Vector3& GetCameraPosition() const {
+        return cameraPosition_;
+    }
+
     // --- 視錐台カリング（中心カメラの視錐台。BaseSceneがUpdateの最後に設定する）---
     void SetFrustum(const Frustum3D& frustum) {
         frustum_ = frustum;
@@ -64,6 +72,7 @@ private:
 
 private:
 
+    Vector3 cameraPosition_{};
     Frustum3D frustum_{};
     bool hasFrustum_ = false;
 

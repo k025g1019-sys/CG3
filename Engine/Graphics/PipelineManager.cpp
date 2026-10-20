@@ -144,6 +144,15 @@ ComPtr<ID3D12RootSignature> PipelineManager::CreateRootSignature(ID3D12Device* d
     rootParameters[kRootPointLights].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[kRootPointLights].Descriptor.ShaderRegister = 2;
 
+    // 鏡面反射用定数バッファ（b3, PS）
+    rootParameters[kRootSpecular].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_CBV;
+
+    rootParameters[kRootSpecular].ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
+
+    rootParameters[kRootSpecular].Descriptor.ShaderRegister = 3;
+
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);
 

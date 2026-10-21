@@ -12,11 +12,16 @@ using namespace Engine;
 void TitleScene::OnInitialize() {
 	camera_.GetTransform().translate = { 0.0f, 0.0f, -6.0f };
 
-	// 立方体の面の向きが分かるよう、光を斜め上から当てる
+	// 文字の厚みの陰影が分かるよう、光を斜め上から当てる
 	directionalLight_.direction = { 0.4f, -1.0f, 0.6f };
 
-	logo_.Initialize(Primitive::kCube);
-	logo_.SetColor({ 1.0f, 0.8f, 0.2f, 1.0f });
+	skydome_.Initialize();
+
+	// タイトルロゴ（上下にゆっくり揺らす。大きさなどは ImGui の TitleLogo で調整する）
+	logo_.Initialize("resources/textObjects/title.obj", "TitleLogo", { 0.0f, 0.3f, 0.0f }, 0.8f, 0.1f);
+
+	// 「press space」の表示（調整値はクリア画面と共通）
+	pressSpace_.Initialize("resources/textObjects/pressSpace.obj", "PressSpace", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);
 
 	// フェードインから始める
 	fade_.Initialize();
@@ -25,10 +30,13 @@ void TitleScene::OnInitialize() {
 }
 
 void TitleScene::OnUpdate() {
-	// 仮ロゴをゆっくり回す
-	logo_.GetTransform().rotate.x += 0.01f;
-	logo_.GetTransform().rotate.y += 0.02f;
+
+	// 天球（背景）はどの段階でも描くので、毎フレーム更新する
+	skydome_.Update();
+
 	logo_.Update();
+
+	pressSpace_.Update();
 
 	// フェードの時間の調整値を反映（ImGui での変更をこのシーンでも反映する）
 	Fade::ApplyGlobalVariables();
@@ -60,7 +68,10 @@ void TitleScene::OnUpdate() {
 }
 
 void TitleScene::OnDraw() {
+	// 不透明なものを先に描く（背景の天球が一番奥）
+	skydome_.Draw();
 	logo_.Draw();
+	pressSpace_.Draw();
 
 	// フェードは一番最後（最前面）
 	fade_.Draw();

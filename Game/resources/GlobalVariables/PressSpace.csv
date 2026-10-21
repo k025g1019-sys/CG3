@@ -1,0 +1,6 @@
+name,type,value
+BobAmplitude,float,0
+BobPeriod,float,3
+Color,vector3,1,0.9,0.2
+Position,vector3,-0.01,-0.77,0
+Scale,float,0.4

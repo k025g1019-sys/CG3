@@ -168,9 +168,6 @@ void BossScene::OnUpdate() {
 	// エフェクトはどの段階でも進める
 	UpdateEffects();
 
-	// ゲームオーバーの選択肢（開いている間だけ入力を受け付けて描く）
-	gameOverMenu_.Update(GetRenderAreaWidth(), GetRenderAreaHeight());
-
 	// カメラはプレイヤーが動いた後に追従させる。ボスが生きている間はボスの方へ少し寄せる
 	if (boss_.IsAlive()) {
 		cameraController_.SetFocusPosition(boss_.GetPosition());
@@ -178,6 +175,10 @@ void BossScene::OnUpdate() {
 		cameraController_.ClearFocus();
 	}
 	cameraController_.Update(GetAspectRatio());
+
+	// ゲームオーバーの選択肢（開いている間だけ入力を受け付けて描く）。
+	// 文字はカメラの前に置くので、カメラを動かした後に更新する
+	gameOverMenu_.Update(GetRenderAreaWidth(), GetRenderAreaHeight(), camera_.GetTransform().translate);
 
 	// UI はライフと HP の割合を映す
 	playerGauge_.Update(static_cast<float>(player_.GetLife()) / static_cast<float>(player_.GetMaxLife()));

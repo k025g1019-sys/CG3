@@ -2,6 +2,8 @@
 
 #include "Engine/Rendering/Object3D.h"
 #include "Engine/Scene/BaseScene.h"
+#include "Game/Stage/Skydome.h"
+#include "Game/Object/TextObjects.h"
 #include "Game/UI/Fade.h"
 
 /// <summary>
@@ -31,7 +33,9 @@ private:
 		kFadeOut,  // フェードアウト（終わったらボス戦へ）
 	};
 
-	Engine::Object3D logo_;         // タイトルロゴの代わりの仮モデル（回転する立方体）
+	Skydome skydome_;               // 天球（背景の空）
+	TextObjects logo_;              // タイトルロゴ（上下にゆっくり揺れる）
+	TextObjects pressSpace_;        // 「press space」の表示
 	Fade fade_;                     // 画面の出入りのフェード
 	Phase phase_ = Phase::kFadeIn;  // 現在の段階
 };

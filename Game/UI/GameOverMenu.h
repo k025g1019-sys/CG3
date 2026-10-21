@@ -1,13 +1,16 @@
 #pragma once
 
+#include "Engine/Math/Vector3.h"
 #include "Engine/Rendering/Sprite.h"
+#include "Game/Object/TextObjects.h"
 
 /// <summary>
 /// ゲームオーバーの選択肢（リトライ / タイトルへ）。プレイヤーがやられた後、シーンを変えずにその場に重ねて出す。
 /// A / D（または ← / →）で選び、Space / Enter で決める。左がリトライ、右がタイトルへ。
-/// 文字の画像がまだ無いので、色付きの板で仮に表示している（上の赤い板が GAME OVER、緑がリトライ、青がタイトルへ。
-/// 選んでいる方は明るく、白い枠が付く）。画像ができたら各スプライトのテクスチャを差し替える。
-/// 位置と大きさは 1280x720 基準のピクセルで、左上の角を基準にする
+/// 文字は 3D のモデル（TextObjects）で、カメラの少し前に毎フレーム置き直して画面に貼り付いたように見せる。
+/// 選んでいる方は元の色、選んでいない方は暗くする。位置・大きさ・色は ImGui の
+/// GameOverText / RetryText / ReturnToTitleText で調整する（Position はカメラからの相対位置。z がカメラからの距離）。
+/// 画面を暗くする板はスプライトで、深度を奥（ステージより手前、文字より奥）にずらして文字を隠さないようにしている
 /// </summary>
 class GameOverMenu {
 public:
@@ -21,7 +24,7 @@ public:
 	};
 
 	/// <summary>
-	/// スプライトを作る（閉じた状態から始まる）
+	/// スプライトと文字のモデルを作る（閉じた状態から始まる）
 	/// </summary>
 	void Initialize();
 
@@ -36,11 +39,13 @@ public:
 	void Close();
 
 	/// <summary>
-	/// 入力の受け付けとスプライトの更新（毎フレーム呼ぶ。閉じている間は何もしない）
+	/// 入力の受け付けと、スプライト・文字の更新（毎フレーム呼ぶ。閉じている間は何もしない）。
+	/// 文字がカメラから遅れないよう、カメラを動かした後に呼ぶ
 	/// </summary>
 	/// <param name="screenWidth">描画先の幅（px。シーンの GetRenderAreaWidth()）</param>
 	/// <param name="screenHeight">描画先の高さ（px。シーンの GetRenderAreaHeight()）</param>
-	void Update(float screenWidth, float screenHeight);
+	/// <param name="cameraPosition">このフレームのカメラの位置（文字を置く基準）</param>
+	void Update(float screenWidth, float screenHeight, const Engine::Vector3& cameraPosition);
 
 	/// <summary>
 	/// 開いている間だけ描く（OnDraw の最後、フェードの手前で呼ぶ）
@@ -62,11 +67,10 @@ private:
 	static inline const float kInputDelay = 0.3f;         // 表示してから入力を受け付けるまでの時間（秒）
 	static inline const float kFrameTime = 1.0f / 60.0f;  // 1 フレームの秒数
 
-	Engine::Sprite backdrop_;     // 画面全体を少し暗くする板
-	Engine::Sprite banner_;       // GAME OVER の表示の代わりの板
-	Engine::Sprite cursor_;       // 選んでいる方の後ろに付く白い枠
-	Engine::Sprite retryPanel_;   // リトライの表示の代わりの板（左）
-	Engine::Sprite titlePanel_;   // タイトルへの表示の代わりの板（右）
+	Engine::Sprite backdrop_;        // 画面全体を少し暗くする板
+	TextObjects gameOverText_;       // GAME OVER の文字
+	TextObjects retryText_;          // リトライの文字（左）
+	TextObjects returnToTitleText_;  // タイトルへの文字（右）
 
 	bool isOpen_ = false;             // 表示中か
 	bool isDecided_ = false;          // 選択が決まったか
@@ -76,6 +80,6 @@ private:
 	// 左右の入力で選び、決定の入力で決める
 	void UpdateInput();
 
-	// 選択に合わせて板の色と枠の位置を決め、スプライトを更新する
-	void UpdateSprites(float screenWidth, float screenHeight);
+	// 選択に合わせて文字の明るさを決め、スプライトと文字を更新する
+	void UpdateDisplay(float screenWidth, float screenHeight, const Engine::Vector3& cameraPosition);
 };

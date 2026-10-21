@@ -89,6 +89,7 @@
     <ClCompile Include="Util\ScreenToWorld.cpp">
       <Filter>Util</Filter>
     </ClCompile>
+    <ClCompile Include="Object\TextObjects.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyGame.h" />
@@ -164,5 +165,6 @@
     <ClInclude Include="Util\ScreenToWorld.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="Object\TextObjects.h" />
   </ItemGroup>
 </Project>

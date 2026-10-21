@@ -73,6 +73,7 @@
     <ClCompile Include="Object\FallingRock.cpp" />
     <ClCompile Include="Object\Player.cpp" />
     <ClCompile Include="Object\Shockwave.cpp" />
+    <ClCompile Include="Object\TextObjects.cpp" />
     <ClCompile Include="Scene\BossScene.cpp" />
     <ClCompile Include="Scene\ClearScene.cpp" />
     <ClCompile Include="Scene\TitleScene.cpp" />
@@ -100,6 +101,7 @@
     <ClInclude Include="Object\Hazard.h" />
     <ClInclude Include="Object\Player.h" />
     <ClInclude Include="Object\Shockwave.h" />
+    <ClInclude Include="Object\TextObjects.h" />
     <ClInclude Include="Scene\BossScene.h" />
     <ClInclude Include="Scene\ClearScene.h" />
     <ClInclude Include="Scene\TitleScene.h" />

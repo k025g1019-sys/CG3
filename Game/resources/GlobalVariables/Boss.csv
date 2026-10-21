@@ -22,7 +22,7 @@ CrushRiseDuration,float,0.45
 CrushRiseMaxDistance,float,5
 CrushRockDelay,float,0.5
 CrushTrackSpeed,float,0.12
-DeathDuration,float,1.5
+DeathDuration,float,1.8
 DeathSinkSpeed,float,0.02
 FirstIdleDuration,float,1.9
 FlashDuration,float,0.15

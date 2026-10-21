@@ -15,8 +15,10 @@ void ClearScene::OnInitialize() {
 	// 球の陰影が分かるよう、光を斜め上から当てる
 	directionalLight_.direction = { 0.4f, -1.0f, 0.6f };
 
-	mark_.Initialize(Primitive::kSphere);
-	mark_.SetColor({ 0.3f, 0.9f, 0.4f, 1.0f });
+	skydome_.Initialize();
+	// 文字。GameClear だけ上下にゆっくり揺らす（press space はタイトルと調整値を共通にする）
+	clearObj_.Initialize("resources/textObjects/GameClear.obj", "ClearText", { 0.0f, 0.5f, 0.0f }, 0.7f, 0.15f);
+	pressSpace_.Initialize("resources/textObjects/pressSpace.obj", "PressSpace", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);
 
 	// フェードインから始める
 	fade_.Initialize();
@@ -25,9 +27,12 @@ void ClearScene::OnInitialize() {
 }
 
 void ClearScene::OnUpdate() {
-	// 仮モデルをゆっくり回す
-	mark_.GetTransform().rotate.y += 0.02f;
-	mark_.Update();
+
+	// 天球（背景）はどの段階でも描くので、毎フレーム更新する
+	skydome_.Update();
+
+	clearObj_.Update();
+	pressSpace_.Update();
 
 	// フェードの時間の調整値を反映（ImGui での変更をこのシーンでも反映する）
 	Fade::ApplyGlobalVariables();
@@ -59,7 +64,10 @@ void ClearScene::OnUpdate() {
 }
 
 void ClearScene::OnDraw() {
-	mark_.Draw();
+	// 不透明なものを先に描く（背景の天球が一番奥）
+	skydome_.Draw();
+	clearObj_.Draw();
+	pressSpace_.Draw();
 
 	// フェードは一番最後（最前面）
 	fade_.Draw();

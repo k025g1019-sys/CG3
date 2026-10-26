@@ -23,6 +23,9 @@ void TitleScene::OnInitialize() {
 	// 「press space」の表示（調整値はクリア画面と共通）
 	pressSpace_.Initialize("resources/textObjects/pressSpace.obj", "PressSpace", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);
 
+	// 「マウス推奨」の文字
+	caution_.Initialize("resources/textObjects/Caution_.obj", "Caution", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);
+
 	// フェードインから始める
 	fade_.Initialize();
 	fade_.Start(Fade::Status::kFadeIn, Fade::GetDefaultDuration());
@@ -37,6 +40,8 @@ void TitleScene::OnUpdate() {
 	logo_.Update();
 
 	pressSpace_.Update();
+
+	caution_.Update();
 
 	// フェードの時間の調整値を反映（ImGui での変更をこのシーンでも反映する）
 	Fade::ApplyGlobalVariables();
@@ -72,6 +77,7 @@ void TitleScene::OnDraw() {
 	skydome_.Draw();
 	logo_.Draw();
 	pressSpace_.Draw();
+	caution_.Draw();
 
 	// フェードは一番最後（最前面）
 	fade_.Draw();

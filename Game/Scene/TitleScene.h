@@ -36,6 +36,7 @@ private:
 	Skydome skydome_;               // 天球（背景の空）
 	TextObjects logo_;              // タイトルロゴ（上下にゆっくり揺れる）
 	TextObjects pressSpace_;        // 「press space」の表示
+	TextObjects caution_;			// 「マウス推奨」の文字
 	Fade fade_;                     // 画面の出入りのフェード
 	Phase phase_ = Phase::kFadeIn;  // 現在の段階
 };

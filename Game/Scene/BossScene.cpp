@@ -97,6 +97,10 @@ void BossScene::OnInitialize() {
 	player_.Initialize(&stage_);
 	boss_.Initialize(&stage_, &player_);
 
+	// チュートリアルから始める（ボスは宙で眠らせておく）
+	boss_.Sleep();
+	tutorial_.Initialize(&player_);
+
 	// カメラはプレイヤーに追従させる。開始時は補間なしで位置を合わせる
 	cameraController_.Initialize(&camera_, &player_, &stage_);
 	cameraController_.Reset(GetAspectRatio());
@@ -112,7 +116,7 @@ void BossScene::OnInitialize() {
 	fade_.Initialize();
 	fade_.Start(Fade::Status::kFadeIn, Fade::GetDefaultDuration());
 
-	phase_ = Phase::kPlay;
+	phase_ = Phase::kTutorial;
 	deathTimer_ = 0.0f;
 	deathParticles_.reset();
 	effects_.clear();
@@ -151,6 +155,9 @@ void BossScene::OnUpdate() {
 	skydome_.Update();
 
 	switch (phase_) {
+	case Phase::kTutorial:
+		UpdateTutorial();
+		break;
 	case Phase::kPlay:
 		UpdatePlay();
 		break;
@@ -180,6 +187,11 @@ void BossScene::OnUpdate() {
 	// 文字はカメラの前に置くので、カメラを動かした後に更新する
 	gameOverMenu_.Update(GetRenderAreaWidth(), GetRenderAreaHeight(), camera_.GetTransform().translate);
 
+	// チュートリアルの説明文（チュートリアルの間だけ。文字はカメラの前に置くので、カメラを動かした後に更新する）
+	if (phase_ == Phase::kTutorial) {
+		tutorial_.Update(camera_.GetTransform().translate);
+	}
+
 	// UI はライフと HP の割合を映す
 	playerGauge_.Update(static_cast<float>(player_.GetLife()) / static_cast<float>(player_.GetMaxLife()));
 	bossGauge_.Update(static_cast<float>(boss_.GetHp()) / static_cast<float>(boss_.GetMaxHp()));
@@ -188,6 +200,17 @@ void BossScene::OnUpdate() {
 	fade_.Update(GetRenderAreaWidth(), GetRenderAreaHeight());
 	if (fade_.GetStatus() == Fade::Status::kFadeIn && fade_.IsFinished()) {
 		fade_.Stop();
+	}
+}
+
+void BossScene::UpdateTutorial() {
+	// 戦闘中と同じように動かして当たり判定もする（ボスは眠っていて攻撃しない。下からの攻撃は弾き、上から当たると起きる）
+	UpdateObjects();
+	CheckAllCollisions();
+
+	// ボスが起きたら、そのままボス戦を始める（ボスは床へ落ちてから最初の攻撃を待つ）
+	if (!boss_.IsSleeping()) {
+		phase_ = Phase::kPlay;
 	}
 }
 
@@ -336,6 +359,7 @@ void BossScene::UpdateBoss() {
 		cameraController_.StartShake(kCrushLandShakeAmplitude, kCrushLandShakeDuration);
 		break;
 	case Boss::Landing::kShotDown:
+	case Boss::Landing::kWakeUp:
 		cameraController_.StartShake(kShotDownShakeAmplitude, kShotDownShakeDuration);
 		break;
 	case Boss::Landing::kNone:
@@ -367,6 +391,8 @@ bool BossScene::IsPlayerVisible() const {
 
 const char* BossScene::GetPhaseName() const {
 	switch (phase_) {
+	case Phase::kTutorial:
+		return "tutorial";
 	case Phase::kPlay:
 		return "play";
 	case Phase::kDeath:
@@ -521,6 +547,7 @@ void BossScene::SpawnBossHitEffect(Boss::HitResult result, const Vector3& attack
 		SpawnHitEffect(boss_.GetCoreSphere().center, kCoreHitColor);
 		break;
 	case Boss::HitResult::kDamaged:
+	case Boss::HitResult::kWokenUp:
 		SpawnHitEffect(attackPosition, kEnemyHitColor);
 		break;
 	case Boss::HitResult::kNone:
@@ -554,9 +581,16 @@ void BossScene::OnDraw() {
 		deathParticles_->Draw();
 	}
 
-	// UI とフェードはスプライトなので一番最後（フェードが最前面）
+	// チュートリアルの説明文（カメラのすぐ前にあるので、ほかの 3D のものより手前に出る）
+	if (phase_ == Phase::kTutorial) {
+		tutorial_.Draw();
+	}
+
+	// UI とフェードはスプライトなので一番最後（フェードが最前面）。ボスの HP はボス戦が始まってから出す
 	playerGauge_.Draw();
-	bossGauge_.Draw();
+	if (phase_ != Phase::kTutorial) {
+		bossGauge_.Draw();
+	}
 	gameOverMenu_.Draw();
 	fade_.Draw();
 }
@@ -587,6 +621,9 @@ void BossScene::OnDrawImGui() {
 	}
 	ImGui::Text("phase: %s  fade: %s  deathTimer: %.2f  particles: %s  effects: %d",
 		GetPhaseName(), fadeName, deathTimer_, particlesName, static_cast<int>(effects_.size()));
+	if (phase_ == Phase::kTutorial) {
+		ImGui::Text("tutorial step: %s", tutorial_.GetStepName());
+	}
 
 	// ゲームオーバーの選択肢（画像ができるまでは色付きの板なので、ここに文字で出しておく）
 	if (gameOverMenu_.IsOpen()) {

@@ -77,6 +77,9 @@
     <ClCompile Include="UI\Gauge.cpp">
       <Filter>UI</Filter>
     </ClCompile>
+    <ClCompile Include="UI\Tutorial.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
     <ClCompile Include="Util\Easing.cpp">
       <Filter>Util</Filter>
     </ClCompile>
@@ -151,6 +154,9 @@
       <Filter>UI</Filter>
     </ClInclude>
     <ClInclude Include="UI\Gauge.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Tutorial.h">
       <Filter>UI</Filter>
     </ClInclude>
     <ClInclude Include="Util\Easing.h">

@@ -25,6 +25,7 @@ class Stage;
 /// 下向きに曲げたブーメランで下から回り込むとコアを狙える（浮いている間に怯むと、体を傾けながらゆっくり床へ落ち、着地してから怯む）。
 /// ダメージを受けると一瞬止まって揺れる（ヒットストップ。行動は止まるだけで打ち切られない）。
 /// 近接攻撃を短い間隔で続けて受けるとヒットストップに耐性がつき、揺れるだけで止まらなくなる（しばらく近接を受けなければ戻る）。
+/// チュートリアルの間は眠って宙に浮き、盾を体の下に構える。下からの攻撃は弾き、曲げたブーメランで上から当てると起きて床へ落ち、戦闘が始まる。
 /// HP が半分以下（第 2 段階）で、叩きつけのあとに浮遊ビットを呼び、押しつぶしの着地のあとに岩を降らせる。1/3 以下（第 3 段階）で突進が 2 連続になる。
 /// </summary>
 class Boss {
@@ -34,6 +35,7 @@ public:
 	/// 振る舞い（状態）
 	/// </summary>
 	enum class Behavior {
+		kSleep,     // 眠っている（チュートリアル。宙に浮いたまま動かず、下からの攻撃は盾で弾く）
 		kIdle,      // 待機（プレイヤーの方へ向き直り、次の攻撃を待つ）
 		kCharge,    // 突進（予備動作 → 走る）
 		kTired,     // 突進後の疲れ（盾が下がる）
@@ -51,6 +53,7 @@ public:
 		kNone,      // 着いていない
 		kCrush,     // 押しつぶしで落ちてきて着いた
 		kShotDown,  // 押しつぶしの途中で打ち落とされて着いた
+		kWakeUp,    // 起こされて落ちてきて着いた
 	};
 
 	/// <summary>
@@ -61,6 +64,7 @@ public:
 		kBlocked,  // 盾に弾かれた
 		kDamaged,  // 体に当たった
 		kCoreHit,  // 弱点のコアに当たった
+		kWokenUp,  // 眠っているところに当たって起こした（ダメージはなし）
 	};
 
 	/// <summary>
@@ -83,6 +87,12 @@ public:
 	/// 最初の状態に戻す（位置・HP・行動など。リトライで使う。モデルは作り直さず、出ている攻撃物は消す）
 	/// </summary>
 	void Reset();
+
+	/// <summary>
+	/// 眠らせる（チュートリアルの開始で呼ぶ）。開始時の画面に入る位置に浮かせ、盾を体の下に構える。
+	/// 下からの攻撃は弾き、それより上から当たると起きて床へ落ち、戦闘を始める
+	/// </summary>
+	void Sleep();
 
 	/// <summary>
 	/// 状態機械と攻撃物の更新（毎フレーム呼ぶ）
@@ -154,6 +164,9 @@ public:
 
 	// ヒットストップに耐性がついているか（近接攻撃を続けて受けた。揺れるだけで止まらない）
 	bool IsHitStopResistant() const { return meleeHitCount_ >= kHitStopResistHitCount; }
+
+	// 眠っているか（チュートリアルの間。起こされると false になる）
+	bool IsSleeping() const { return behavior_ == Behavior::kSleep; }
 
 	bool IsAlive() const { return hp_ > 0; }
 	bool IsDeathFinished() const { return isDeathFinished_; }
@@ -263,6 +276,9 @@ private:
 	static inline float kFlashDuration = 0.15f;     // ダメージを受けたときの白い点滅
 	static inline float kShieldFlashDuration = 0.12f;  // 弾いたときの盾の白い点滅
 	static inline float kBitAnchorOffsetY = 1.0f;   // ビットが回る中心の高さ（中心から上へ）
+	static inline float kSleepX = -1.0f;            // 眠っている位置の X（ステージの中心から。開始時の画面に入る位置にしておく）
+	static inline float kSleepHeight = 6.0f;        // 眠っている高さ（体の下端の、床からの高さ。プレイヤーのジャンプでは届かない高さにしておく）
+	static inline float kSleepGuardOffsetY = 0.0f;  // 眠っている間、攻撃してきた側がこの高さ（体の中心から上へ）より下なら弾く
 
 	Engine::Object3D body_;    // 体（仮モデル：箱）
 	Engine::Object3D shield_;  // 盾（仮モデル：薄い板。盾が有効なときだけ描く）
@@ -295,6 +311,7 @@ private:
 	float crushTargetX_ = 0.0f;                        // 跳び上がる先の X（跳ぶ瞬間のプレイヤーの位置。遠ければ進める上限まで）
 	float fallSpeed_ = 0.0f;                           // 落ちる速さ（押しつぶしの落下と、空中で怯んだときの落下）
 	bool isShotDown_ = false;                          // 押しつぶしの途中で打ち落とされて、床へ落ちている最中か
+	bool isWakingUp_ = false;                          // 起こされて、床へ落ちている最中か
 	float bodyTilt_ = 0.0f;                            // 打ち落とされたときの体の傾き（ラジアン。0 で真っすぐ）
 	Landing landing_ = Landing::kNone;                 // このフレームに床へ着いたか
 	int32_t attackCycle_ = 0;                          // 攻撃の順番（突進 → 叩きつけ → 落石 → …）
@@ -324,6 +341,7 @@ private:
 	void StartBehavior(Behavior next);
 
 	// 振る舞いごとの更新
+	void UpdateSleep();
 	void UpdateIdle();
 	void UpdateCharge();
 	void UpdateTired();
@@ -332,6 +350,9 @@ private:
 	void UpdateCrush();
 	void UpdateStagger();
 	void UpdateDead();
+
+	// 起きる（眠っているところに上から当たった。床へ落ちて、着いてから最初の攻撃までを待つ）
+	void WakeUp();
 
 	// 次の攻撃を選ぶ（順番に出し、距離に合わないものは差し替える）
 	void ChooseNextAttack();

@@ -14,6 +14,7 @@
 #include "Game/UI/Fade.h"
 #include "Game/UI/GameOverMenu.h"
 #include "Game/UI/Gauge.h"
+#include "Game/UI/Tutorial.h"
 
 #include <memory>
 #include <vector>
@@ -21,8 +22,9 @@
 /// <summary>
 /// ボス戦のシーン。ステージ・プレイヤー・ボス・カメラ・UI を持ち、オブジェクト同士の当たり判定をまとめて行う。
 /// カーソルの位置をゲームの平面（Z=0）上のワールド座標に直してプレイヤーへ渡す。
+/// 最初はチュートリアル（ボスは宙で眠り、説明文をブロックごとに出す）。ボスを起こすと、そのままボス戦が始まる。
 /// プレイヤーのライフが尽きると やられ演出 → その場でゲームオーバーの選択肢（リトライ / タイトルへ）。
-/// リトライは暗転なしですぐに最初からやり直し、タイトルへはフェードアウトしてから戻る。
+/// リトライは暗転なしですぐにボス戦の最初からやり直し（チュートリアルは飛ばす）、タイトルへはフェードアウトしてから戻る。
 /// ボスを倒すと フェードアウト → クリア画面へ。
 /// 勝敗がついた後は、プレイヤーもボスも進行中の行動を最後に、新しい行動を始めない。
 /// 開発中は Esc でタイトルへ、C でクリアへ、P でボスの AI の ON / OFF、H でプレイヤーにダメージ。
@@ -53,7 +55,8 @@ private:
 	/// シーンの段階
 	/// </summary>
 	enum class Phase {
-		kPlay,      // 戦闘中（開始時のフェードインも含む）
+		kTutorial,  // チュートリアル（開始時のフェードインも含む。ボスは眠っていて、起こすと戦闘へ）
+		kPlay,      // 戦闘中
 		kDeath,     // プレイヤーのやられ演出（止まる → パーティクル）
 		kGameOver,  // ゲームオーバーの選択肢（リトライ → その場でやり直し / タイトルへ → フェードアウト → タイトル）
 		kClear,     // ボスを倒した（フェードアウト → クリア画面）
@@ -83,15 +86,17 @@ private:
 	Gauge bossGauge_;                     // ボスの HP（下）
 	Fade fade_;                           // シーンの出入りのフェード
 	GameOverMenu gameOverMenu_;           // ゲームオーバーの選択肢（リトライ / タイトルへ）
+	Tutorial tutorial_;                   // チュートリアルの説明文（チュートリアルの段階だけ出す）
 	std::unique_ptr<DeathParticles> deathParticles_;  // やられ演出（やられたときに作る）
 	std::vector<std::unique_ptr<BaseEffect>> effects_;  // ヒットや弾きのエフェクト（終わったものは取り除く）
 
-	Phase phase_ = Phase::kPlay;          // 現在の段階
+	Phase phase_ = Phase::kTutorial;      // 現在の段階
 	float deathTimer_ = 0.0f;             // やられてからの時間（秒）
 
 	Engine::Vector3 cursorWorldPosition_ = { 0.0f, 0.0f, 0.0f };  // カーソルのワールド座標（Z=0 平面）
 
 	// 段階ごとの更新
+	void UpdateTutorial();
 	void UpdatePlay();
 	void UpdateDeath();
 	void UpdateGameOver();
@@ -108,7 +113,7 @@ private:
 	// カーソルの位置をワールド座標に直してプレイヤーへ渡し、ステージ・プレイヤー・ボスを更新する
 	void UpdateObjects();
 
-	// ボスを更新し、床に落ちたフレームならカメラを揺らす（押しつぶしは弱く長め、打ち落としは強く短め）
+	// ボスを更新し、床に落ちたフレームならカメラを揺らす（押しつぶしは弱く長め、打ち落としと起こされて落ちたときは強く短め）
 	void UpdateBoss();
 
 	// カーソルのスクリーン座標をゲームの平面上のワールド座標に変換する

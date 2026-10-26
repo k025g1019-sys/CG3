@@ -28,6 +28,7 @@ namespace {
 
 // 体の色（状態ごと）
 const Vector4 kBodyColor = { 0.45f, 0.5f, 0.6f, 1.0f };     // 通常
+const Vector4 kSleepColor = { 0.3f, 0.33f, 0.45f, 1.0f };   // 眠っている
 const Vector4 kWindupColor = { 0.9f, 0.6f, 0.3f, 1.0f };    // 予備動作（攻撃の合図）
 const Vector4 kTiredColor = { 0.3f, 0.32f, 0.4f, 1.0f };    // 疲れ
 const Vector4 kStaggerColor = { 1.0f, 0.9f, 0.4f, 1.0f };   // 怯み
@@ -132,6 +133,9 @@ void Boss::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "FlashDuration", kFlashDuration);
 	globalVariables->AddItem(groupName, "ShieldFlashDuration", kShieldFlashDuration);
 	globalVariables->AddItem(groupName, "BitAnchorOffsetY", kBitAnchorOffsetY);
+	globalVariables->AddItem(groupName, "SleepX", kSleepX);
+	globalVariables->AddItem(groupName, "SleepHeight", kSleepHeight);
+	globalVariables->AddItem(groupName, "SleepGuardOffsetY", kSleepGuardOffsetY);
 }
 
 void Boss::ApplyGlobalVariables() {
@@ -190,6 +194,9 @@ void Boss::ApplyGlobalVariables() {
 	kFlashDuration = globalVariables->GetFloatValue(groupName, "FlashDuration");
 	kShieldFlashDuration = globalVariables->GetFloatValue(groupName, "ShieldFlashDuration");
 	kBitAnchorOffsetY = globalVariables->GetFloatValue(groupName, "BitAnchorOffsetY");
+	kSleepX = globalVariables->GetFloatValue(groupName, "SleepX");
+	kSleepHeight = globalVariables->GetFloatValue(groupName, "SleepHeight");
+	kSleepGuardOffsetY = globalVariables->GetFloatValue(groupName, "SleepGuardOffsetY");
 }
 
 #pragma endregion
@@ -246,6 +253,7 @@ void Boss::Reset() {
 	attackCycle_ = 0;
 	fallSpeed_ = 0.0f;
 	isShotDown_ = false;
+	isWakingUp_ = false;
 	bodyTilt_ = 0.0f;
 	landing_ = Landing::kNone;
 	isAttackEnabled_ = true;
@@ -262,6 +270,21 @@ void Boss::Reset() {
 	behaviorRequest_.reset();
 	StartBehavior(Behavior::kIdle);
 	idleDuration_ = kFirstIdleDuration;
+
+	UpdateModels();
+	UpdateMarks();
+}
+
+void Boss::Sleep() {
+	// 開始時の画面に入る位置に浮かせる（体の下端が床から SleepHeight の高さ）。起きたらこの真下へ落ちる
+	const float stageCenterX = (stage_->GetLeftEdge() + stage_->GetRightEdge()) * 0.5f;
+	position_.x = stageCenterX + kSleepX;
+	position_.y = GetStandY() + kSleepHeight;
+	fallSpeed_ = 0.0f;
+	isWakingUp_ = false;
+
+	behaviorRequest_.reset();
+	StartBehavior(Behavior::kSleep);
 
 	UpdateModels();
 	UpdateMarks();
@@ -310,6 +333,9 @@ void Boss::Update() {
 	}
 
 	switch (behavior_) {
+	case Behavior::kSleep:
+		UpdateSleep();
+		break;
 	case Behavior::kIdle:
 		UpdateIdle();
 		break;
@@ -339,8 +365,8 @@ void Boss::Update() {
 	}
 
 	// 宙にいたら床まで落とす（押しつぶしの途中で怯んだ・倒されたとき、開発用に宙から行動を切り替えたとき）。
-	// 押しつぶしで跳び上がってから落ちるまでは、UpdateCrush が高さを動かすので落とさない
-	if (!IsCrushAirborne()) {
+	// 押しつぶしで跳び上がってから落ちるまでは、UpdateCrush が高さを動かすので落とさない。眠っている間も浮いたままにする
+	if (!IsCrushAirborne() && behavior_ != Behavior::kSleep) {
 		UpdateFall();
 	}
 
@@ -407,6 +433,19 @@ void Boss::StartBehavior(Behavior next) {
 	default:
 		break;
 	}
+}
+
+void Boss::UpdateSleep() {
+	// 浮いたまま動かない（起こされるのを待つ）
+	timer_ += kFrameTime;
+}
+
+void Boss::WakeUp() {
+	// 白く光らせ、次の更新で待機に切り替える（床へは UpdateFall で落ちる）。着いてから最初の攻撃までを待つ
+	flashTimer_ = kFlashDuration;
+	isWakingUp_ = true;
+	behaviorRequest_ = Behavior::kIdle;
+	facePlayerRequest_ = true;
 }
 
 void Boss::UpdateIdle() {
@@ -694,6 +733,14 @@ void Boss::UpdateFall() {
 			isShotDown_ = false;
 			landing_ = Landing::kShotDown;
 		}
+
+		// 起こされて着いた（ここから最初の攻撃までの待ちを数える）
+		if (isWakingUp_) {
+			isWakingUp_ = false;
+			landing_ = Landing::kWakeUp;
+			timer_ = 0.0f;
+			idleDuration_ = kFirstIdleDuration;
+		}
 	}
 }
 
@@ -832,6 +879,9 @@ void Boss::UpdateModels() {
 
 	Vector4 color = kBodyColor;
 	switch (behavior_) {
+	case Behavior::kSleep:
+		color = kSleepColor;
+		break;
 	case Behavior::kCharge:
 		if (chargeStep_ == ChargeStep::kWindup) {
 			// 後ろへ傾いて溜める
@@ -895,9 +945,13 @@ void Boss::UpdateModels() {
 	body_.SetColor(color);
 	body_.Update();
 
-	// --- 盾（正面）。弾いた直後は白く光る ---
+	// --- 盾（正面。眠っている間は体の下に横向きに構える）。弾いた直後は白く光る ---
 	Transform3D& shield = shield_.GetTransform();
-	shield.scale = { 0.3f, kBodyHalfHeight * 2.0f + 0.2f, kBodyHalfWidth * 2.0f + 0.2f };
+	if (behavior_ == Behavior::kSleep) {
+		shield.scale = { kBodyHalfWidth * 2.0f + 0.2f, 0.3f, kBodyHalfWidth * 2.0f + 0.2f };
+	} else {
+		shield.scale = { 0.3f, kBodyHalfHeight * 2.0f + 0.2f, kBodyHalfWidth * 2.0f + 0.2f };
+	}
 	shield.translate = GetShieldPosition() + shake;
 	shield_.SetColor((shieldFlashTimer_ > 0.0f) ? kFlashColor : kShieldColor);
 	shield_.Update();
@@ -997,6 +1051,16 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 	const bool touchesBody = IsCollision(GetBodyBox(), attackSphere);
 	if (!touchesCore && !touchesBody) {
 		return HitResult::kNone;
+	}
+
+	// 眠っている間：攻撃してきた側が下にいれば体の下の盾で弾き、それより上から当たったら起きる（ダメージは受けない）
+	if (behavior_ == Behavior::kSleep) {
+		if (attackerPosition.y < position_.y + kSleepGuardOffsetY) {
+			shieldFlashTimer_ = kShieldFlashDuration;
+			return HitResult::kBlocked;
+		}
+		WakeUp();
+		return HitResult::kWokenUp;
 	}
 
 	// 盾が有効で、攻撃してきた側が正面にいるなら、判定がコアに届いていても弾く（正面から体越しにコアを殴れないようにする）
@@ -1105,6 +1169,10 @@ float Boss::CalcTiltRotateZ() const {
 }
 
 Vector3 Boss::GetShieldPosition() const {
+	// 眠っている間は体の下
+	if (behavior_ == Behavior::kSleep) {
+		return { position_.x, position_.y - kBodyHalfHeight - 0.15f, 0.0f };
+	}
 	return { position_.x + facing_ * kShieldOffsetX, position_.y + 0.1f, 0.0f };
 }
 
@@ -1244,6 +1312,8 @@ void Boss::DrawEffect() const {
 
 const char* Boss::GetBehaviorName() const {
 	switch (behavior_) {
+	case Behavior::kSleep:
+		return "sleep";
 	case Behavior::kIdle:
 		return "idle";
 	case Behavior::kCharge:

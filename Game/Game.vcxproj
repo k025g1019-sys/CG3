@@ -83,6 +83,7 @@
     <ClCompile Include="UI\Fade.cpp" />
     <ClCompile Include="UI\GameOverMenu.cpp" />
     <ClCompile Include="UI\Gauge.cpp" />
+    <ClCompile Include="UI\Tutorial.cpp" />
     <ClCompile Include="Util\Easing.cpp" />
     <ClCompile Include="Util\GlobalVariables.cpp" />
     <ClCompile Include="Util\HitStop.cpp" />
@@ -111,6 +112,7 @@
     <ClInclude Include="UI\Fade.h" />
     <ClInclude Include="UI\GameOverMenu.h" />
     <ClInclude Include="UI\Gauge.h" />
+    <ClInclude Include="UI\Tutorial.h" />
     <ClInclude Include="Util\Easing.h" />
     <ClInclude Include="Util\GlobalVariables.h" />
     <ClInclude Include="Util\HitStop.h" />

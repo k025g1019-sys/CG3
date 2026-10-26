@@ -1,6 +1,6 @@
 # Blender 5.2.1 LTS
 # www.blender.org
-mtllib GameClear.mtl
+mtllib gameClear.mtl
 o Game_Clear
 v 2.561000 0.012000 0.280000
 v 2.627000 0.012000 0.280000

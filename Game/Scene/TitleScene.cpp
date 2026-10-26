@@ -23,8 +23,8 @@ void TitleScene::OnInitialize() {
 	// 「press space」の表示（調整値はクリア画面と共通）
 	pressSpace_.Initialize("resources/textObjects/pressSpace.obj", "PressSpace", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);
 
-	// 「マウス推奨」の文字
-	caution_.Initialize("resources/textObjects/Caution_.obj", "Caution", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);
+	// 「マウス推奨」の文字（ロゴの右下に揺らさず置く）
+	caution_.Initialize("resources/textObjects/caution.obj", "Caution", { 1.63f, -0.15f, 0.0f }, 0.15f, 0.0f);
 
 	// フェードインから始める
 	fade_.Initialize();

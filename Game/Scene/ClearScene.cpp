@@ -17,7 +17,7 @@ void ClearScene::OnInitialize() {
 
 	skydome_.Initialize();
 	// 文字。GameClear だけ上下にゆっくり揺らす（press space はタイトルと調整値を共通にする）
-	clearObj_.Initialize("resources/textObjects/GameClear.obj", "ClearText", { 0.0f, 0.5f, 0.0f }, 0.7f, 0.15f);
+	clearObj_.Initialize("resources/textObjects/gameClear.obj", "ClearText", { 0.0f, 0.5f, 0.0f }, 0.7f, 0.15f);
 	pressSpace_.Initialize("resources/textObjects/pressSpace.obj", "PressSpace", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);
 
 	// フェードインから始める

@@ -1,6 +1,6 @@
 # Blender 5.2.1 LTS
 # www.blender.org
-mtllib Caution.mtl
+mtllib caution.mtl
 o press_space
 v 1.558751 0.563000 0.280000
 v 1.567257 0.549630 0.280000

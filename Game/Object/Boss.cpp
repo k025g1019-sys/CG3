@@ -426,13 +426,12 @@ void Boss::StartBehavior(Behavior next) {
 	case Behavior::kRockFall:
 		rockFallStep_ = RockFallStep::kRoar;
 		PlanRocks();  // 落下位置を先に決め、吠えている間は印を出す
-		SoundEffects::Play(SoundEffects::Id::kRoar);
+		SoundEffects::Play(SoundEffects::Id::kRockFallWindup);
 		break;
 	case Behavior::kCrush:
 		crushStep_ = CrushStep::kCrouch;
 		fallSpeed_ = 0.0f;
 		rockTargetsX_.clear();
-		SoundEffects::Play(SoundEffects::Id::kCrushWindup);
 		break;
 	case Behavior::kDead:
 		KillAllHazards();
@@ -638,6 +637,9 @@ void Boss::UpdateCrush() {
 			crushTargetX_ = std::clamp(targetX, GetMinX(), GetMaxX());
 			crushStep_ = CrushStep::kRise;
 			timer_ = 0.0f;
+
+			// 跳び上がる瞬間の音
+			SoundEffects::Play(SoundEffects::Id::kCrushJump);
 		}
 		break;
 

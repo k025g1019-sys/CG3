@@ -260,7 +260,6 @@ void BossScene::UpdateDeath() {
 	if (!deathParticles_) {
 		deathParticles_ = std::make_unique<DeathParticles>();
 		deathParticles_->Initialize(player_.GetPosition());
-		SoundEffects::Play(SoundEffects::Id::kPlayerDeath);
 	}
 	deathParticles_->Update();
 
@@ -318,6 +317,9 @@ void BossScene::StartDeath() {
 void BossScene::StartGameOver() {
 	phase_ = Phase::kGameOver;
 	gameOverMenu_.Open();
+
+	// やられのジングルは、ゲームオーバーの選択肢を出したときに鳴らす
+	SoundEffects::Play(SoundEffects::Id::kPlayerDeath);
 }
 
 void BossScene::StartClear() {
@@ -360,9 +362,12 @@ void BossScene::UpdateObjects() {
 	UpdateBoss();
 
 	// 追従中のブーメランが地面に弾かれたフレームは、盾のときより小さい弾いたエフェクト（円盤だけ）を地面の上に出す
-	const Boomerang& boomerang = player_.GetBoomerang();
-	if (boomerang.IsGroundBounced()) {
+	// 盾に弾かれたときと同じ音も鳴らす（盾のときと同じく、続けて出しすぎないよう間を空ける）
+	Boomerang& boomerang = player_.GetBoomerang();
+	if (boomerang.IsGroundBounced() && boomerang.CanShowBlockEffect()) {
+		boomerang.MarkBlockEffect();
 		SpawnGroundBounceEffect({ boomerang.GetPosition().x, boomerang.GetGroundY(), 0.0f });
+		SoundEffects::Play(SoundEffects::Id::kGuard);
 	}
 }
 

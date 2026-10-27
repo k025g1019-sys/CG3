@@ -13,7 +13,7 @@
 /// 往路で地面に触れると、そこで折り返して戻ってくる。同じ敵に続けて当たれる間隔は、当たる側（ボス）が数える。
 /// 飛んでいる間は、持ち主の操作で動きを変えられる。
 /// ・追従：押している間カーソルを追いかけ、離すと戻ってくる。追従を使った投げは、戻ってくるまでダメージが減る
-///   （半分。決めた回数だけ当てた後はさらに半分）。地面に触れると、盾に弾かれたときと同じように上へ押し返される
+///   （FollowDamage。決めた回数だけ当てた後は FollowLateDamage）。地面に触れると、盾に弾かれたときと同じように上へ押し返される
 /// ・大技：その場で止まって大きくなり、強い一撃を 1 回だけ当てられる。少し固まった後、小さくなって速く戻る（戻りは当たらない）
 /// </summary>
 class Boomerang {
@@ -31,7 +31,7 @@ public:
 		kBurstRecover,  // 大技の後の硬直（止まったまま小さくなる。当たらない）
 	};
 
-	// 普通に投げたときの 1 ヒットのダメージ（調整値。追従と大技のダメージもここから決める）
+	// 普通に投げたときの 1 ヒットのダメージ（調整値。追従と大技のダメージは、それぞれ別の調整値で決める）
 	static inline int32_t kDamage = 8;
 
 	/// <summary>
@@ -147,7 +147,7 @@ public:
 	// 今、敵に当たれるか（大技の後の硬直と戻りは当たらない。大技の一撃は 1 回だけ）
 	bool CanHit() const;
 
-	// 今当たったときのダメージ（大技は普通の何倍か。追従を使った投げは減らす）
+	// 今当たったときのダメージ（大技は BurstDamage。追従を使った投げは減らす）
 	int32_t CalcDamage() const;
 
 	// 敵にダメージを与えた（追従を使った投げの当たった回数を数える。大技の一撃はこれで終わり）
@@ -177,12 +177,14 @@ private:
 	static inline float kFollowSlowDistance = 2.0f;    // カーソルまでの距離がこれより近いと、距離に比例して遅くする（止まり際）
 	static inline float kFollowBounceSpeed = 0.25f;    // 盾か地面に弾かれたときに押し返される初速（1 フレームあたり。0 なら押し返されない）
 	static inline float kFollowBounceDuration = 0.15f; // 押し返される時間（秒。終わりにかけて遅くなる）
-	static inline int32_t kFollowHalfHitCount = 2;     // 追従を使った投げで、ダメージが半分のまま当たれる回数（これより後はさらに半分）
+	static inline int32_t kFollowDamage = 4;           // 追従を使った投げの 1 ヒットのダメージ（キャッチするまで。決めた回数を当てるまで）
+	static inline int32_t kFollowLateDamage = 2;       // 追従を使った投げで、FollowDamageHitCount 回当てた後の 1 ヒットのダメージ
+	static inline int32_t kFollowDamageHitCount = 2;   // 追従を使った投げで、FollowDamage のダメージで当たれる回数（これより後は FollowLateDamage）
 
 	// --- 大技の調整値 ---
 	static inline float kBurstDuration = 0.3f;         // 止まって大きくなる時間（秒。この間だけ当たる）
 	static inline float kBurstScale = 3.0f;            // 大きくなったときの大きさ（普通の何倍か。判定の半径も同じ倍率）
-	static inline int32_t kBurstDamageMultiplier = 3;  // 一撃のダメージ（普通の何倍か）
+	static inline int32_t kBurstDamage = 8;            // 一撃のダメージ（コアに当たるとボス側でさらに 2 倍）
 	static inline float kBurstRecoverDuration = 0.2f;  // 一撃の後に固まる時間（秒。この間に小さくなる）
 	static inline float kBurstReturnScale = 0.5f;      // 戻るときの大きさ（普通の何倍か）
 	static inline float kBurstReturnSpeedRate = 1.5f;  // 戻るときの速さ（普通の戻りの何倍か）

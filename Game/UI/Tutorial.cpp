@@ -25,13 +25,9 @@ void Tutorial::Initialize(const Player* player) {
 	attackText_.Initialize("resources/textObjects/tutorialAttack.obj", "TutorialAttack", kTextPosition, kTextScale, 0.0f);
 	curveText_.Initialize("resources/textObjects/tutorialCurve.obj", "TutorialCurve", kTextPosition, kTextScale, 0.0f);
 
-	step_ = Step::kMove;
-	clearTimer_ = 0.0f;
-	hasMovedLeft_ = false;
-	hasMovedRight_ = false;
-	hasJumped_ = false;
-	hasMeleeAttacked_ = false;
-	hasThrown_ = false;
+	wasAttacking_ = false;
+	wasFlying_ = false;
+	StartStep(Step::kMove);
 }
 
 #pragma endregion
@@ -45,11 +41,10 @@ void Tutorial::Update(const Vector3& cameraPosition) {
 	if (IsStepCleared()) {
 		clearTimer_ += kFrameTime;
 		if (clearTimer_ >= kNextStepDelay) {
-			clearTimer_ = 0.0f;
 			if (step_ == Step::kMove) {
-				step_ = Step::kAttack;
+				StartStep(Step::kAttack);
 			} else if (step_ == Step::kAttack) {
-				step_ = Step::kCurve;
+				StartStep(Step::kCurve);
 			}
 		}
 	}
@@ -73,13 +68,28 @@ void Tutorial::CheckActions() {
 		hasJumped_ = true;
 	}
 
-	// 攻撃は、今出しているかで見る
-	if (player_->IsAttacking()) {
+	// 攻撃は、出し始めた瞬間で見る（前のブロックの間に出して、まだ続いている攻撃や飛んでいるブーメランは数えない）
+	const bool isAttacking = player_->IsAttacking();
+	const bool isFlying = player_->GetBoomerang().IsFlying();
+	if (isAttacking && !wasAttacking_) {
 		hasMeleeAttacked_ = true;
 	}
-	if (player_->GetBoomerang().IsFlying()) {
+	if (isFlying && !wasFlying_) {
 		hasThrown_ = true;
 	}
+	wasAttacking_ = isAttacking;
+	wasFlying_ = isFlying;
+}
+
+void Tutorial::StartStep(Step step) {
+	// 次のブロックへ。した行動は数え直す（前のブロックの間にした行動で、次のブロックがすぐ終わらないように）
+	step_ = step;
+	clearTimer_ = 0.0f;
+	hasMovedLeft_ = false;
+	hasMovedRight_ = false;
+	hasJumped_ = false;
+	hasMeleeAttacked_ = false;
+	hasThrown_ = false;
 }
 
 bool Tutorial::IsStepCleared() const {

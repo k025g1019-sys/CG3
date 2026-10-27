@@ -45,10 +45,12 @@ void Boomerang::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "FollowSlowDistance", kFollowSlowDistance);
 	globalVariables->AddItem(groupName, "FollowBounceSpeed", kFollowBounceSpeed);
 	globalVariables->AddItem(groupName, "FollowBounceDuration", kFollowBounceDuration);
-	globalVariables->AddItem(groupName, "FollowHalfHitCount", kFollowHalfHitCount);
+	globalVariables->AddItem(groupName, "FollowDamage", kFollowDamage);
+	globalVariables->AddItem(groupName, "FollowLateDamage", kFollowLateDamage);
+	globalVariables->AddItem(groupName, "FollowDamageHitCount", kFollowDamageHitCount);
 	globalVariables->AddItem(groupName, "BurstDuration", kBurstDuration);
 	globalVariables->AddItem(groupName, "BurstScale", kBurstScale);
-	globalVariables->AddItem(groupName, "BurstDamageMultiplier", kBurstDamageMultiplier);
+	globalVariables->AddItem(groupName, "BurstDamage", kBurstDamage);
 	globalVariables->AddItem(groupName, "BurstRecoverDuration", kBurstRecoverDuration);
 	globalVariables->AddItem(groupName, "BurstReturnScale", kBurstReturnScale);
 	globalVariables->AddItem(groupName, "BurstReturnSpeedRate", kBurstReturnSpeedRate);
@@ -73,10 +75,12 @@ void Boomerang::ApplyGlobalVariables() {
 	kFollowSlowDistance = globalVariables->GetFloatValue(groupName, "FollowSlowDistance");
 	kFollowBounceSpeed = globalVariables->GetFloatValue(groupName, "FollowBounceSpeed");
 	kFollowBounceDuration = globalVariables->GetFloatValue(groupName, "FollowBounceDuration");
-	kFollowHalfHitCount = globalVariables->GetIntValue(groupName, "FollowHalfHitCount");
+	kFollowDamage = globalVariables->GetIntValue(groupName, "FollowDamage");
+	kFollowLateDamage = globalVariables->GetIntValue(groupName, "FollowLateDamage");
+	kFollowDamageHitCount = globalVariables->GetIntValue(groupName, "FollowDamageHitCount");
 	kBurstDuration = globalVariables->GetFloatValue(groupName, "BurstDuration");
 	kBurstScale = globalVariables->GetFloatValue(groupName, "BurstScale");
-	kBurstDamageMultiplier = globalVariables->GetIntValue(groupName, "BurstDamageMultiplier");
+	kBurstDamage = globalVariables->GetIntValue(groupName, "BurstDamage");
 	kBurstRecoverDuration = globalVariables->GetFloatValue(groupName, "BurstRecoverDuration");
 	kBurstReturnScale = globalVariables->GetFloatValue(groupName, "BurstReturnScale");
 	kBurstReturnSpeedRate = globalVariables->GetFloatValue(groupName, "BurstReturnSpeedRate");
@@ -392,17 +396,17 @@ bool Boomerang::CanHit() const {
 }
 
 int32_t Boomerang::CalcDamage() const {
-	// 大技の一撃は、普通の何倍か
+	// 大技の一撃は、決めたダメージ（普通のダメージとは別に 1 単位で調整する。コアならボス側でさらに 2 倍）
 	if (phase_ == Phase::kBurst) {
-		return kDamage * kBurstDamageMultiplier;
+		return kBurstDamage;
 	}
 
-	// 追従を使った投げは、戻ってくるまで半分。決めた回数だけ当てた後は、さらに半分（整数なので切り捨て）
+	// 追従を使った投げは、戻ってくるまで FollowDamage。決めた回数だけ当てた後は FollowLateDamage（どちらも 1 単位で調整する）
 	if (isFollowUsed_) {
-		if (followHitCount_ < kFollowHalfHitCount) {
-			return kDamage / 2;
+		if (followHitCount_ < kFollowDamageHitCount) {
+			return kFollowDamage;
 		}
-		return kDamage / 4;
+		return kFollowLateDamage;
 	}
 	return kDamage;
 }

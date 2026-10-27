@@ -1,6 +1,6 @@
 name,type,value
 BlockEffectCooldown,float,0.3
-BurstDamageMultiplier,int,2
+BurstDamage,int,4
 BurstDuration,float,0.3
 BurstRecoverDuration,float,0.2
 BurstReturnScale,float,0.5
@@ -8,12 +8,14 @@ BurstReturnSpeedRate,float,1.5
 BurstScale,float,3
 CatchDistance,float,0.6
 CurvePeakRate,float,1
-Damage,int,4
+Damage,int,5
 DownCurveVerticalRate,float,1
 FollowAccelTime,float,0.2
 FollowBounceDuration,float,0.15
 FollowBounceSpeed,float,0.25
-FollowHalfHitCount,int,2
+FollowDamage,int,3
+FollowDamageHitCount,int,2
+FollowLateDamage,int,1
 FollowMaxSpeed,float,0.15
 FollowSlowDistance,float,2
 OutwardDuration,float,0.56

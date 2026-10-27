@@ -2,7 +2,11 @@
 # 使い方（リポジトリの直下で）: python Game/tools/make_sounds.py Game/resources/sounds
 # 音を変えたいときは下の関数の数値（周波数・長さ・減衰の速さ）を変えて、もう一度実行する
 # swing.wav（近接の空振り）と throw.wav（ブーメランを投げる）は合成ではなく、Kenney「RPG Audio」（CC0）の
-# knifeSlice2.ogg ／ knifeSlice.ogg を wav にして、頭と終わりの無音を削ったもの（このスクリプトでは作らない）
+# knifeSlice2.ogg ／ knifeSlice.ogg を wav にして、短く切り詰めたもの（このスクリプトでは作らない）。
+# ほかにも Kenney（CC0）の音を使っているもの（このスクリプトでは作らない）:
+#   playerDeath.wav ／ clear.wav … 「Music Jingles」の jingles_NES11 ／ jingles_STEEL02
+#   bossDefeat.wav … 「Sci-Fi Sounds」の explosionCrunch_001 と lowFrequency_explosion_000 を重ねたもの
+#   rockFallWindup.wav … 合成した地響き（20〜220Hz のノイズ）に、「Impact Sounds」の impactMining_000〜004 を 0.17 秒おきに重ねたもの
 import math
 import random
 import struct
@@ -258,6 +262,38 @@ def boss_defeat():
     return soft_clip(mix(boom, scale(rumble, 1.8), scale(blast, 0.9), crackle), 2.2)
 
 
+def burst():
+    # 大技「ギュイン…バシュッ」：止まって大きくなる間（0.3 秒）に音を上げて溜め、最後に弾ける
+    n = n_samples(0.35)
+    rise = apply_env(sine_sweep(n, 300, 1400, "triangle"), attack=0.02, curve=1.0)
+    pop = apply_env(band_noise(n_samples(0.12), 600, 7000), attack=0.001, curve=4.0)
+    pop = [0.0] * n_samples(0.22) + pop
+    return mix(scale(rise, 0.6), pop)
+
+
+def burst_impact():
+    # 大技「シュゥ…ドバンッ」：音の高さが上がる成分は入れず（警報のように聞こえるため）、
+    # 風が渦を巻いて溜まる音（ノイズ）から、重い衝撃（低い音の落ち込み＋破裂）につなぐ。止まって大きくなる 0.3 秒に合わせる
+    n = n_samples(0.5)
+    swirl_n = n_samples(0.26)
+    swirl = band_noise(swirl_n, 0, 0, sweep=lambda t: (200 + 300 * t, 900 + 1500 * t))
+    swirl = [v * (i / swirl_n) ** 2 for i, v in enumerate(swirl)]
+    hit_at = n_samples(0.24)
+    thump = [0.0] * hit_at + apply_env(sine_sweep(n_samples(0.25), 140, 45), attack=0.001, curve=4.5)
+    crack = [0.0] * hit_at + apply_env(band_noise(n_samples(0.08), 400, 6000), attack=0.0005, curve=4.0)
+    tail = [0.0] * hit_at + apply_env(band_noise(n_samples(0.25), 60, 600), attack=0.002, curve=3.0)
+    return soft_clip(mix(scale(swirl, 0.8), thump, scale(crack, 0.8), scale(tail, 0.6)), 1.8)
+
+
+def crush_jump():
+    # 押しつぶしの飛び上がり「ドッ…ブワッ」：床を蹴る低い音と、上へ抜ける風の音（跳び上がる瞬間に鳴らす）
+    n = n_samples(0.5)
+    whoosh = band_noise(n, 0, 0, sweep=lambda t: (150 + 600 * t, 700 + 3000 * t))
+    whoosh = [v * math.sin(math.pi * i / n) for i, v in enumerate(whoosh)]
+    thump = apply_env(sine_sweep(n_samples(0.2), 110, 45), attack=0.002, curve=4.0)
+    return soft_clip(mix(thump, scale(whoosh, 1.2)), 1.5)
+
+
 def decide():
     # 決定「ピロン」：三角波の 2 音（ミ→シ）
     a = apply_env(sine_sweep(n_samples(0.09), 1318.5, 1318.5, "triangle"), attack=0.002, curve=2.5)
@@ -280,9 +316,12 @@ SOUNDS = {
     "decide": decide,
     "chargeWindup": charge_windup,
     "slamWindup": slam_windup,
-    "roar": roar,
-    "crushWindup": crush_windup,
-    "bossDefeat": boss_defeat,
+    "roar": (roar, None),                 # 落石の予告は rockFallWindup.wav（下の説明）に差し替え
+    "crushWindup": (crush_windup, None),  # 押しつぶしは crushJump に差し替え
+    "bossDefeat": (boss_defeat, None),    # 撃破は Kenney の爆発の音に差し替え
+    "burstRise": (burst, None),           # 前の大技の音（音の高さが上がって警報のようだったので、下の burst に差し替え）
+    "crushJump": crush_jump,
+    "burst": burst_impact,
 }
 
 if __name__ == "__main__":

@@ -28,8 +28,8 @@ public:
 		kDecide,   // 決定（タイトル・クリア画面・ゲームオーバーの選択肢）
 		kChargeWindup,  // ボスの突進の予告
 		kSlamWindup,    // ボスの叩きつけの予告
-		kRoar,          // ボスの落石の予告（吠える）
-		kCrushWindup,   // ボスの押しつぶしの予告
+		kRockFallWindup,  // ボスの落石の予告（地響きと岩の音）
+		kCrushJump,       // ボスの押しつぶしで跳び上がる
 		kBurst,         // ブーメランの大技
 		kPlayerDeath,   // プレイヤーのやられ
 		kBossDefeat,    // ボスの撃破

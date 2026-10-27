@@ -48,7 +48,7 @@ SlamRange,float,5
 SlamRecover,float,1
 SlamWindup,float,1.5
 SleepHeight,float,6
-SleepShieldHalfWidth,float,2.5
+SleepShieldHalfWidth,float,2
 SleepX,float,-1
 StaggerCooldown,float,2
 StaggerDuration,float,0.6

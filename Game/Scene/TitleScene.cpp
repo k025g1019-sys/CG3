@@ -2,6 +2,7 @@
 
 #include "Engine/Input/Input.h"
 #include "Game/Scene/BossScene.h"
+#include "Game/Sound/SoundEffects.h"
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -59,6 +60,7 @@ void TitleScene::OnUpdate() {
 	case Phase::kMain:
 		// Enter / Space でフェードアウトを始める
 		if (input->IsTrigger(DIK_RETURN) || input->IsTrigger(DIK_SPACE)) {
+			SoundEffects::Play(SoundEffects::Id::kDecide);
 			fade_.Start(Fade::Status::kFadeOut, Fade::GetDefaultDuration());
 			phase_ = Phase::kFadeOut;
 		}

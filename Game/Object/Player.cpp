@@ -3,6 +3,7 @@
 #include "Engine/Input/Input.h"
 #include "Engine/Math/Curve.h"
 #include "Engine/Rendering/DebugDraw.h"
+#include "Game/Sound/SoundEffects.h"
 #include "Game/Stage/Stage.h"
 #include "Game/Util/GlobalVariables.h"
 
@@ -210,6 +211,7 @@ void Player::UpdateBoomerang() {
 	const bool wasFlying = boomerang_.IsFlying();
 	boomerang_.Update(GetPosition());
 	if (wasFlying && !boomerang_.IsFlying()) {
+		SoundEffects::Play(SoundEffects::Id::kCatch);
 		meleeCooldownTimer_ = kCatchCooldown;
 		aimCooldownTimer_ = boomerang_.IsBurstUsed() ? kBurstCatchCooldown : kCatchCooldown;
 	}
@@ -300,6 +302,7 @@ void Player::UpdateJump() {
 	if (jumpBufferTimer_ > 0.0f && canJump) {
 		velocity_.y = kJumpSpeed;
 		isGrounded_ = false;
+		SoundEffects::Play(SoundEffects::Id::kJump);
 		coyoteTimer_ = kCoyoteTime;  // 猶予を使い切る（空中でもう一度跳べないようにする）
 		jumpBufferTimer_ = 0.0f;
 		return;
@@ -395,6 +398,7 @@ void Player::UpdateAttack() {
 			attackTimer_ = kAirAttackDuration;
 		}
 		attackHasHit_ = false;
+		SoundEffects::Play(SoundEffects::Id::kSwing);
 	}
 
 #ifndef NDEBUG
@@ -426,6 +430,7 @@ void Player::UpdateAim() {
 	if (!input->IsMousePress(kMouseRight)) {
 		if (!IsAttacking() && CanControl()) {
 			boomerang_.Throw(GetThrowOrigin(), cursorWorldPosition_, curveOffset_);
+			SoundEffects::Play(SoundEffects::Id::kThrow);
 		}
 		isAiming_ = false;
 		curveOffset_ = 0.0f;
@@ -528,6 +533,7 @@ bool Player::OnDamage(float knockbackDirectionX) {
 
 	// 一瞬止まって揺れる（ヒットストップ）。止まっている間は白っぽい色にしておく
 	hitStop_.Start(kDamageHitStopDuration, kDamageShakeAmplitude);
+	SoundEffects::Play(SoundEffects::Id::kDamage);
 	model_.SetColor(kDamagedColor);
 
 	// ライフが尽きたら、その場で止まる（やられ演出はシーンが進める）

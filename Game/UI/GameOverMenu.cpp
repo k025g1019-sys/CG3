@@ -5,6 +5,7 @@
 #include "Engine/Input/Input.h"
 #include "Engine/Math/Vector2.h"
 #include "Engine/Math/Vector4.h"
+#include "Game/Sound/SoundEffects.h"
 
 using namespace Engine;
 
@@ -94,6 +95,7 @@ void GameOverMenu::UpdateInput() {
 	// Space / Enter で決める
 	if (input->IsTrigger(DIK_SPACE) || input->IsTrigger(DIK_RETURN)) {
 		isDecided_ = true;
+		SoundEffects::Play(SoundEffects::Id::kDecide);
 	}
 }
 

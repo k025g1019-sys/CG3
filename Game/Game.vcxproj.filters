@@ -19,6 +19,9 @@
     <Filter Include="UI">
       <UniqueIdentifier>{c8e3d5b2-7f4a-4b9c-8d1e-3f2a4b5c6d7e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sound">
+      <UniqueIdentifier>{d9f4e6c3-8a5b-4cad-9e2f-4a3b5c6d7e8f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyGame.cpp" />
@@ -79,6 +82,9 @@
     </ClCompile>
     <ClCompile Include="UI\Tutorial.cpp">
       <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Sound\SoundEffects.cpp">
+      <Filter>Sound</Filter>
     </ClCompile>
     <ClCompile Include="Util\Easing.cpp">
       <Filter>Util</Filter>
@@ -158,6 +164,9 @@
     </ClInclude>
     <ClInclude Include="UI\Tutorial.h">
       <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Sound\SoundEffects.h">
+      <Filter>Sound</Filter>
     </ClInclude>
     <ClInclude Include="Util\Easing.h">
       <Filter>Util</Filter>

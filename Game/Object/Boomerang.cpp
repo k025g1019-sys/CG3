@@ -6,6 +6,7 @@
 #include "Game/Util/GlobalVariables.h"
 
 #include <algorithm>
+#include <cmath>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -106,6 +107,7 @@ void Boomerang::Reset() {
 	followHitCount_ = 0;
 	isBurstUsed_ = false;
 	hasBurstHit_ = false;
+	isCurvedThrow_ = false;
 }
 
 #pragma endregion
@@ -160,6 +162,7 @@ void Boomerang::Throw(const Vector3& start, const Vector3& target, float curveOf
 
 	// 前の投げの状態（大きさ・追従・大技など）を消してから投げる
 	Reset();
+	isCurvedThrow_ = std::fabs(curveOffset) > kCurvedThrowThreshold;
 	controlPoints_ = MakeControlPoints(start, target, curveOffset);
 	position_ = start;
 	phase_ = Phase::kOutward;

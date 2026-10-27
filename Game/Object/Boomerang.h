@@ -126,6 +126,9 @@ public:
 	// この投げで大技を出したか（キャッチした後のクールタイムに使う。次に投げるまで残る）
 	bool IsBurstUsed() const { return isBurstUsed_; }
 
+	// 今の投げで軌道を曲げたか（チュートリアルで眠っているボスを起こせるのは、曲げて投げたときだけ）
+	bool IsCurvedThrow() const { return isCurvedThrow_; }
+
 	// 当たり判定（飛行中だけ意味を持つ。大技では大きく、その後の戻りでは小さくなる）
 	Engine::Sphere GetHitSphere() const { return { position_, kRadius * size_ }; }
 
@@ -177,6 +180,7 @@ private:
 
 	// --- 固定値 ---
 	static inline const float kFrameTime = 1.0f / 60.0f;  // 1 フレームの秒数
+	static inline const float kCurvedThrowThreshold = 0.01f;  // 曲がり具合の大きさがこれより大きければ「曲げて投げた」とみなす（ホイールを戻して 0 にした誤差を除く）
 
 	Engine::Object3D model_;                              // 見た目（仮モデル：細長い立方体を回す）
 	Phase phase_ = Phase::kIdle;                          // 飛行の段階
@@ -196,6 +200,7 @@ private:
 	int32_t followHitCount_ = 0;                              // 追従を使ってから敵に当たった回数
 	bool isBurstUsed_ = false;                                // この投げで大技を出したか
 	bool hasBurstHit_ = false;                                // 大技の一撃を既に当てたか
+	bool isCurvedThrow_ = false;                              // この投げで軌道を曲げたか
 
 	// 往路：曲線に沿って目標点へ（終わりにかけて減速）
 	void UpdateOutward();

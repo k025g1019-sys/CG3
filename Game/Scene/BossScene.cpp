@@ -9,6 +9,7 @@
 #include "Game/Object/Shockwave.h"
 #include "Game/Scene/ClearScene.h"
 #include "Game/Scene/TitleScene.h"
+#include "Game/Sound/SoundEffects.h"
 #include "Game/Util/GlobalVariables.h"
 #include "Game/Util/ScreenToWorld.h"
 
@@ -59,6 +60,9 @@ void BossScene::RegisterGlobalVariables() {
 	DeathParticles::RegisterGlobalVariables();
 	Gauge::RegisterGlobalVariables();
 	Fade::RegisterGlobalVariables();
+
+	// 効果音の音量（どのシーンでも使うが、調整値の登録はここでまとめて行う）
+	SoundEffects::RegisterGlobalVariables();
 }
 
 void BossScene::ApplyGlobalVariables() {
@@ -82,6 +86,9 @@ void BossScene::ApplyGlobalVariables() {
 	DeathParticles::ApplyGlobalVariables();
 	Gauge::ApplyGlobalVariables();
 	Fade::ApplyGlobalVariables();
+
+	// 効果音の音量
+	SoundEffects::ApplyGlobalVariables();
 }
 
 #pragma endregion
@@ -353,14 +360,16 @@ void BossScene::UpdateObjects() {
 void BossScene::UpdateBoss() {
 	boss_.Update();
 
-	// ボスが床に落ちたフレームはカメラを揺らす
+	// ボスが床に落ちたフレームはカメラを揺らし、着地の音を鳴らす
 	switch (boss_.GetLanding()) {
 	case Boss::Landing::kCrush:
 		cameraController_.StartShake(kCrushLandShakeAmplitude, kCrushLandShakeDuration);
+		SoundEffects::Play(SoundEffects::Id::kLand);
 		break;
 	case Boss::Landing::kShotDown:
 	case Boss::Landing::kWakeUp:
 		cameraController_.StartShake(kShotDownShakeAmplitude, kShotDownShakeDuration);
+		SoundEffects::Play(SoundEffects::Id::kLand);
 		break;
 	case Boss::Landing::kNone:
 	default:
@@ -426,9 +435,14 @@ void BossScene::CheckAllCollisions() {
 	// --- ブーメラン → ボス（同じ相手には一定の間隔でしかダメージが入らない。間隔はボスが数え、大技の一撃は間隔に関係なく入る）---
 	if (boomerang.CanHit()) {
 		const Sphere boomerangSphere = boomerang.GetHitSphere();
-		const Boss::AttackType attackType = boomerang.IsBursting() ? Boss::AttackType::kBurst : Boss::AttackType::kBoomerang;
-		const Boss::HitResult result =
-			boss_.ApplyAttack(boomerangSphere, boomerang.CalcDamage(), boomerangSphere.center, attackType);
+		Boss::HitResult result = Boss::HitResult::kNone;
+		if (boss_.IsSleeping()) {
+			// 眠っているボス（チュートリアル）は、曲げて投げたブーメランで起きる（まっすぐ投げたものは身じろぎするだけ）
+			result = boss_.ApplySleepingAttack(boomerangSphere, boomerangSphere.center, boomerang.IsCurvedThrow());
+		} else {
+			const Boss::AttackType attackType = boomerang.IsBursting() ? Boss::AttackType::kBurst : Boss::AttackType::kBoomerang;
+			result = boss_.ApplyAttack(boomerangSphere, boomerang.CalcDamage(), boomerangSphere.center, attackType);
+		}
 		if (result == Boss::HitResult::kBlocked) {
 			// 盾に弾かれた：往路なら戻り、追従中ならボスの中心から離れる向きへ押し返される
 			Vector3 pushDirection = boomerangSphere.center - boss_.GetPosition();
@@ -462,6 +476,7 @@ void BossScene::CheckAllCollisions() {
 		if (hitByMelee || hitByBoomerang) {
 			hazard->OnHitByPlayer();
 			SpawnHitEffect(hazardSphere.center, kBreakColor);
+			SoundEffects::Play(SoundEffects::Id::kHit);
 		}
 	}
 
@@ -531,24 +546,30 @@ void BossScene::SpawnHitEffect(const Vector3& position, const Vector4& color) {
 	effects_.push_back(std::move(effect));
 }
 
-void BossScene::SpawnGuardEffect(const Vector3& position) {
+void BossScene::SpawnGuardEffect(const Vector3& position, bool isHorizontal, const Vector3& hitPosition) {
 	std::unique_ptr<GuardEffect> effect = std::make_unique<GuardEffect>();
 	effect->Initialize(position);
+	effect->SetHorizontal(isHorizontal);
+	effect->SetDiscPosition({ hitPosition.x, hitPosition.y, 0.0f });
 	effects_.push_back(std::move(effect));
 }
 
 void BossScene::SpawnBossHitEffect(Boss::HitResult result, const Vector3& attackPosition) {
 	switch (result) {
 	case Boss::HitResult::kBlocked:
-		// 盾の位置で弾いたエフェクト
-		SpawnGuardEffect(boss_.GetShieldPosition());
+		// 弾いたエフェクト。板は盾の位置、円盤は弾いた点に出す（眠っている間は盾が体の下で横向きなので、板も横長にする）
+		SpawnGuardEffect(boss_.GetShieldPosition(), boss_.IsSleeping(), attackPosition);
+		SoundEffects::Play(SoundEffects::Id::kGuard);
 		break;
 	case Boss::HitResult::kCoreHit:
 		SpawnHitEffect(boss_.GetCoreSphere().center, kCoreHitColor);
+		SoundEffects::Play(SoundEffects::Id::kCoreHit);
 		break;
 	case Boss::HitResult::kDamaged:
 	case Boss::HitResult::kWokenUp:
+	case Boss::HitResult::kStirred:
 		SpawnHitEffect(attackPosition, kEnemyHitColor);
+		SoundEffects::Play(SoundEffects::Id::kHit);
 		break;
 	case Boss::HitResult::kNone:
 	default:

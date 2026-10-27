@@ -2,6 +2,7 @@
 
 #include "Game/Scene/BossScene.h"
 #include "Game/Scene/TitleScene.h"
+#include "Game/Sound/SoundEffects.h"
 #include "Game/Util/GlobalVariables.h"
 
 void MyGame::Initialize() {
@@ -10,6 +11,9 @@ void MyGame::Initialize() {
 
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();
+
+	// 効果音をまとめて読み込む（エンジンの Audio の初期化の後）
+	SoundEffects::Load();
 
 	// 調整値: 保存済みの CSV を読んでから各クラスの既定値を登録し（読み込み済みの項目は上書きされない）、
 	// 最初のシーンを作る前に反映しておく

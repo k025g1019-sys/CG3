@@ -25,7 +25,7 @@ class Stage;
 /// 下向きに曲げたブーメランで下から回り込むとコアを狙える（浮いている間に怯むと、体を傾けながらゆっくり床へ落ち、着地してから怯む）。
 /// ダメージを受けると一瞬止まって揺れる（ヒットストップ。行動は止まるだけで打ち切られない）。
 /// 近接攻撃を短い間隔で続けて受けるとヒットストップに耐性がつき、揺れるだけで止まらなくなる（しばらく近接を受けなければ戻る）。
-/// チュートリアルの間は眠って宙に浮き、盾を体の下に構える。下からの攻撃は弾き、曲げたブーメランで上から当てると起きて床へ落ち、戦闘が始まる。
+/// チュートリアルの間は眠って宙に浮き、盾を体の下に横へ広げて構える。盾に当たった攻撃と下からの攻撃は弾き、曲げたブーメランで当てると起きて床へ落ち、戦闘が始まる（まっすぐ投げたものが当たっても身じろぎするだけ）。
 /// HP が半分以下（第 2 段階）で、叩きつけのあとに浮遊ビットを呼び、押しつぶしの着地のあとに岩を降らせる。1/3 以下（第 3 段階）で突進が 2 連続になる。
 /// </summary>
 class Boss {
@@ -65,6 +65,7 @@ public:
 		kDamaged,  // 体に当たった
 		kCoreHit,  // 弱点のコアに当たった
 		kWokenUp,  // 眠っているところに当たって起こした（ダメージはなし）
+		kStirred,  // 眠っているところに当たったが、起こせない攻撃だったので身じろぎしただけ（ダメージはなし）
 	};
 
 	/// <summary>
@@ -90,7 +91,7 @@ public:
 
 	/// <summary>
 	/// 眠らせる（チュートリアルの開始で呼ぶ）。開始時の画面に入る位置に浮かせ、盾を体の下に構える。
-	/// 下からの攻撃は弾き、それより上から当たると起きて床へ落ち、戦闘を始める
+	/// 盾に当たった攻撃と下からの攻撃は弾き、曲げたブーメランが体かコアに当たると起きて床へ落ち、戦闘を始める（ApplySleepingAttack）
 	/// </summary>
 	void Sleep();
 
@@ -136,6 +137,16 @@ public:
 	/// <param name="type">攻撃の種類（近接を続けて受けるとヒットストップに耐性がつく。ブーメランは同じ相手へ一定の間隔でしか当たらない）</param>
 	HitResult ApplyAttack(const Engine::Sphere& attackSphere, int32_t damage, const Engine::Vector3& attackerPosition, AttackType type);
 
+	/// <summary>
+	/// 眠っているボスに攻撃を当てる（チュートリアル）。盾に当たった攻撃と下から来た攻撃は弾き、
+	/// 体かコアに当たったら、起こせる攻撃なら起き、そうでなければ身じろぎ（白く光って揺れる）だけする（どちらもダメージはなし）。
+	/// 眠っていなければ何もしない（kNone）
+	/// </summary>
+	/// <param name="attackSphere">攻撃の判定</param>
+	/// <param name="attackerPosition">攻撃してきた側の位置（下から来たかの判定に使う）</param>
+	/// <param name="canWakeUp">起こせる攻撃か（曲げて投げたブーメランだけ true）</param>
+	HitResult ApplySleepingAttack(const Engine::Sphere& attackSphere, const Engine::Vector3& attackerPosition, bool canWakeUp);
+
 	// 体の判定（箱）
 	Engine::AABB3D GetBodyBox() const;
 
@@ -144,6 +155,9 @@ public:
 
 	// 盾の位置（正面。弾いたエフェクトを出す位置）
 	Engine::Vector3 GetShieldPosition() const;
+
+	// 眠っている間の盾の判定（体の下の横長の板）
+	Engine::AABB3D GetSleepShieldBox() const;
 
 	// 盾が有効か（疲れ・怯み・やられの間は無効）
 	bool IsGuarding() const;
@@ -217,6 +231,7 @@ private:
 	static inline const int32_t kAttackPatternCount = 4;   // 攻撃の種類（突進 / 叩きつけ / 落石 / 押しつぶし）
 	static inline const int32_t kMaxRockMarkers = 8;       // 落石の印の数の上限（RockCount もここまで）
 	static inline const float kFrameTime = 1.0f / 60.0f;   // 1 フレームの秒数
+	static inline const float kSleepShieldHalfThickness = 0.15f;  // 眠っている間の盾の厚みの半分
 
 	// --- HP と数の調整値 ---
 	static inline int32_t kMaxHp = 96;               // 最大 HP
@@ -279,6 +294,7 @@ private:
 	static inline float kSleepX = -1.0f;            // 眠っている位置の X（ステージの中心から。開始時の画面に入る位置にしておく）
 	static inline float kSleepHeight = 6.0f;        // 眠っている高さ（体の下端の、床からの高さ。プレイヤーのジャンプでは届かない高さにしておく）
 	static inline float kSleepGuardOffsetY = 0.0f;  // 眠っている間、攻撃してきた側がこの高さ（体の中心から上へ）より下なら弾く
+	static inline float kSleepShieldHalfWidth = 2.5f;  // 眠っている間の盾の幅の半分（体より広げ、横から背中のコアへ届く攻撃も盾に当たるようにする）
 
 	Engine::Object3D body_;    // 体（仮モデル：箱）
 	Engine::Object3D shield_;  // 盾（仮モデル：薄い板。盾が有効なときだけ描く）

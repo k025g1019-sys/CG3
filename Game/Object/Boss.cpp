@@ -136,6 +136,7 @@ void Boss::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "SleepX", kSleepX);
 	globalVariables->AddItem(groupName, "SleepHeight", kSleepHeight);
 	globalVariables->AddItem(groupName, "SleepGuardOffsetY", kSleepGuardOffsetY);
+	globalVariables->AddItem(groupName, "SleepShieldHalfWidth", kSleepShieldHalfWidth);
 }
 
 void Boss::ApplyGlobalVariables() {
@@ -197,6 +198,7 @@ void Boss::ApplyGlobalVariables() {
 	kSleepX = globalVariables->GetFloatValue(groupName, "SleepX");
 	kSleepHeight = globalVariables->GetFloatValue(groupName, "SleepHeight");
 	kSleepGuardOffsetY = globalVariables->GetFloatValue(groupName, "SleepGuardOffsetY");
+	kSleepShieldHalfWidth = globalVariables->GetFloatValue(groupName, "SleepShieldHalfWidth");
 }
 
 #pragma endregion
@@ -276,15 +278,16 @@ void Boss::Reset() {
 }
 
 void Boss::Sleep() {
-	// 開始時の画面に入る位置に浮かせる（体の下端が床から SleepHeight の高さ）。起きたらこの真下へ落ちる
-	const float stageCenterX = (stage_->GetLeftEdge() + stage_->GetRightEdge()) * 0.5f;
-	position_.x = stageCenterX + kSleepX;
-	position_.y = GetStandY() + kSleepHeight;
 	fallSpeed_ = 0.0f;
 	isWakingUp_ = false;
 
 	behaviorRequest_.reset();
 	StartBehavior(Behavior::kSleep);
+
+	// 開始時の画面に入る位置に浮かせる（体の下端が床から SleepHeight の高さ）。起きたらこの真下へ落ちる
+	const float stageCenterX = (stage_->GetLeftEdge() + stage_->GetRightEdge()) * 0.5f;
+	position_.x = stageCenterX + kSleepX;
+	position_.y = GetStandY() + kSleepHeight;
 
 	UpdateModels();
 	UpdateMarks();
@@ -390,6 +393,9 @@ void Boss::Update() {
 	if (IsAlive()) {
 		DebugDraw::DrawAABB(GetBodyBox(), { 0.4f, 0.8f, 1.0f, 1.0f });
 		DebugDraw::DrawSphere(GetCoreSphere(), { 1.0f, 0.5f, 0.1f, 1.0f });
+		if (behavior_ == Behavior::kSleep) {
+			DebugDraw::DrawAABB(GetSleepShieldBox(), { 0.6f, 0.85f, 1.0f, 1.0f });
+		}
 	}
 #endif
 }
@@ -948,7 +954,7 @@ void Boss::UpdateModels() {
 	// --- 盾（正面。眠っている間は体の下に横向きに構える）。弾いた直後は白く光る ---
 	Transform3D& shield = shield_.GetTransform();
 	if (behavior_ == Behavior::kSleep) {
-		shield.scale = { kBodyHalfWidth * 2.0f + 0.2f, 0.3f, kBodyHalfWidth * 2.0f + 0.2f };
+		shield.scale = { kSleepShieldHalfWidth * 2.0f, kSleepShieldHalfThickness * 2.0f, kBodyHalfWidth * 2.0f + 0.2f };
 	} else {
 		shield.scale = { 0.3f, kBodyHalfHeight * 2.0f + 0.2f, kBodyHalfWidth * 2.0f + 0.2f };
 	}
@@ -1047,20 +1053,15 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 	if (!IsAlive()) {
 		return HitResult::kNone;
 	}
+	// 眠っている間は、この攻撃では起きない（盾や下からなら弾き、体かコアに当たったら身じろぎだけする）
+	if (behavior_ == Behavior::kSleep) {
+		return ApplySleepingAttack(attackSphere, attackerPosition, false);
+	}
+
 	const bool touchesCore = IsCollision(attackSphere, GetCoreSphere());
 	const bool touchesBody = IsCollision(GetBodyBox(), attackSphere);
 	if (!touchesCore && !touchesBody) {
 		return HitResult::kNone;
-	}
-
-	// 眠っている間：攻撃してきた側が下にいれば体の下の盾で弾き、それより上から当たったら起きる（ダメージは受けない）
-	if (behavior_ == Behavior::kSleep) {
-		if (attackerPosition.y < position_.y + kSleepGuardOffsetY) {
-			shieldFlashTimer_ = kShieldFlashDuration;
-			return HitResult::kBlocked;
-		}
-		WakeUp();
-		return HitResult::kWokenUp;
 	}
 
 	// 盾が有効で、攻撃してきた側が正面にいるなら、判定がコアに届いていても弾く（正面から体越しにコアを殴れないようにする）
@@ -1108,6 +1109,40 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 		facePlayerRequest_ = true;
 	}
 	return HitResult::kDamaged;
+}
+
+Boss::HitResult Boss::ApplySleepingAttack(const Sphere& attackSphere, const Vector3& attackerPosition, bool canWakeUp) {
+	if (behavior_ != Behavior::kSleep) {
+		return HitResult::kNone;
+	}
+	const bool touchesShield = IsCollision(GetSleepShieldBox(), attackSphere);
+	const bool touchesCore = IsCollision(attackSphere, GetCoreSphere());
+	const bool touchesBody = IsCollision(GetBodyBox(), attackSphere);
+	if (!touchesShield && !touchesCore && !touchesBody) {
+		return HitResult::kNone;
+	}
+
+	// 体の下の盾に当たった攻撃と、下から来た攻撃は弾く
+	if (touchesShield || attackerPosition.y < position_.y + kSleepGuardOffsetY) {
+		shieldFlashTimer_ = kShieldFlashDuration;
+		return HitResult::kBlocked;
+	}
+
+	// 起こせる攻撃（曲げて投げたブーメラン）なら起きる（ダメージは受けない）
+	if (canWakeUp) {
+		WakeUp();
+		return HitResult::kWokenUp;
+	}
+
+	// 起こせない攻撃は、白く光って揺れる（身じろぎ）だけで眠ったまま。
+	// 同じ攻撃が重なっている間に毎フレーム揺れ直さないよう、ブーメランのダメージと同じ間隔を空ける
+	if (boomerangHitTimer_ < kBoomerangHitInterval) {
+		return HitResult::kNone;
+	}
+	boomerangHitTimer_ = 0.0f;
+	flashTimer_ = kFlashDuration;
+	StartHitStop(kCoreHitStopDuration, false);
+	return HitResult::kStirred;
 }
 
 void Boss::StartHitStop(float duration, bool isMelee) {
@@ -1171,9 +1206,13 @@ float Boss::CalcTiltRotateZ() const {
 Vector3 Boss::GetShieldPosition() const {
 	// 眠っている間は体の下
 	if (behavior_ == Behavior::kSleep) {
-		return { position_.x, position_.y - kBodyHalfHeight - 0.15f, 0.0f };
+		return { position_.x, position_.y - kBodyHalfHeight - kSleepShieldHalfThickness, 0.0f };
 	}
 	return { position_.x + facing_ * kShieldOffsetX, position_.y + 0.1f, 0.0f };
+}
+
+AABB3D Boss::GetSleepShieldBox() const {
+	return MakeAABB(GetShieldPosition(), { kSleepShieldHalfWidth, kSleepShieldHalfThickness, kBodyHalfWidth + 0.1f });
 }
 
 bool Boss::IsGuarding() const {

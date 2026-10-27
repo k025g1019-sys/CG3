@@ -43,7 +43,11 @@ void GuardEffect::Update() {
 	const float scale = kStartScale + (kEndScale - kStartScale) * EaseOutQuad(t);
 	const Vector4 color = { kGuardColor.x, kGuardColor.y, kGuardColor.z, kMaxAlpha * (1.0f - t) };
 
-	plate_.GetTransform().scale = { kPlateWidth, kPlateHeight * scale, kPlateDepth * scale };
+	if (isHorizontal_) {
+		plate_.GetTransform().scale = { kPlateHeight * scale, kPlateWidth, kPlateDepth * scale };
+	} else {
+		plate_.GetTransform().scale = { kPlateWidth, kPlateHeight * scale, kPlateDepth * scale };
+	}
 	plate_.SetColor(color);
 	plate_.Update();
 

@@ -29,6 +29,6 @@ LimitRunSpeed,float,0.14
 MaxCurveOffset,float,4
 MaxFallSpeed,float,0.32
 MaxLife,int,6
-MeleeDamage,int,4
-ThrowOffsetY,float,0.2
+MeleeDamage,int,3
+ThrowOffsetY,float,0.21
 WheelAwayCurvesUp,int,1

@@ -27,7 +27,10 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <!-- 全構成で静的デバッグCRT（Release構成でも _DEBUG が定義される。Release判定には NDEBUG を使う） -->
+      <!--
+        静的CRT。Debug・Development はデバッグCRT（/MTd。_DEBUG が定義される）、Release は通常のCRT（/MT。下の Release で上書き）。
+        DirectXTex も構成ごとに同じ CRT にそろえてある。Release判定には NDEBUG を使う
+      -->
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(RepoRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -61,10 +64,11 @@
     </ClCompile>
   </ItemDefinitionGroup>
 
-  <!-- Release：ImGui・デバッグカメラなし、NDEBUG定義 -->
+  <!-- Release：ImGui・デバッグカメラ・D3D12デバッグレイヤーなし、NDEBUG定義、通常の静的CRT（_DEBUG は定義されない） -->
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
     </ClCompile>

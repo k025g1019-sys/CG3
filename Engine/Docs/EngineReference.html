@@ -539,12 +539,13 @@ void TitleScene::OnDraw() {
     <tbody>
       <tr><td class="m">Debug</td><td class="m">_DEBUG, USE_IMGUI</td><td>あり</td><td>あり</td><td>有効</td><td>なし</td><td>エンジンの中をデバッグするとき</td></tr>
       <tr><td class="m">Development</td><td class="m">_DEBUG, USE_IMGUI</td><td>あり</td><td>あり</td><td>有効</td><td>エンジンだけあり</td><td>ふだんのゲーム開発</td></tr>
-      <tr><td class="m">Release</td><td class="m">_DEBUG, NDEBUG</td><td>なし</td><td>なし</td><td>無効</td><td>すべてあり（LTCG）</td><td>提出・配布用。ImGui のない見た目の確認</td></tr>
+      <tr><td class="m">Release</td><td class="m">NDEBUG</td><td>なし</td><td>なし</td><td>無効</td><td>すべてあり（LTCG）</td><td>提出・配布用。ImGui のない見た目の確認</td></tr>
     </tbody>
   </table></div>
   <ul>
     <li>Development はゲームのコード（<code>Game/</code>）を最適化せずにビルドするので、ブレークポイントで止めて変数を見たり、ステップ実行したりできる（ImGui も使える）。エンジン（<code>Engine.lib</code>）は最適化されるので、エンジンの中を追いたいときは Debug に切り替える。</li>
-    <li><code>_DEBUG</code> は全構成で定義されるので、分岐には使わない。ImGui のコードは <code>#ifdef USE_IMGUI</code>、開発中だけのコードは <code>#ifndef NDEBUG</code> で囲む。</li>
+    <li>CRT は静的リンク。Debug・Development はデバッグ用（<code>/MTd</code>）、Release は通常のもの（<code>/MT</code>）なので、exe だけで動き、VC++ ランタイムのインストールはいらない。D3D12 デバッグレイヤーとリソースリークチェックは Debug・Development だけで有効。</li>
+    <li><code>_DEBUG</code> は Debug と Development で定義される（<code>/MTd</code> による）が、分岐には使わない。ImGui のコードは <code>#ifdef USE_IMGUI</code>、開発中だけのコードは <code>#ifndef NDEBUG</code> で囲む。</li>
     <li>全構成で警告レベル4・警告はエラー扱い。使っていない変数や引数があるとビルドが止まる（引数名を消す、<code>[[maybe_unused]]</code> を付ける、など）。</li>
     <li><code>Input.h</code>・<code>WinApp.h</code>・<code>Audio.h</code> などは <code>&lt;Windows.h&gt;</code> を含み、<code>min</code>/<code>max</code> マクロが有効なままです。これらを含むファイルで <code>std::min</code>/<code>std::max</code> はコンパイルエラーになるので、比較（<code>a &lt; b ? a : b</code>）で書くか <code>(std::min)(a, b)</code> と括弧で囲む。</li>
   </ul>

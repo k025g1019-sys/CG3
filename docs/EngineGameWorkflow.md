@@ -111,4 +111,4 @@ git worktree add ../DirectXGame-game AL4_develop
 - ビルド構成は3つで、ソリューションの構成はそれぞれ同じ名前のプロジェクト構成でビルドされます
   - `Debug` … ImGui・デバッグカメラあり、エンジンも含めて最適化なし。エンジンの中をデバッグするときに使う
   - `Development` … ふだんのゲーム開発用。ImGui・デバッグカメラあり、assert 有効。ゲーム（`Game/`・`Sandbox/`）のコードは最適化なしなので、ブレークポイントで止めて変数を見たりステップ実行したりできる。エンジン（`Engine.lib`）は最適化あり
-  - `Release` … 提出・配布用。ImGui・デバッグカメラなし、すべて最適化あり（プログラム全体の最適化も）、assert なし（`NDEBUG`）。ImGui のない見た目もこれで確かめる
+  - `Release` … 提出・配布用。ImGui・デバッグカメラなし、すべて最適化あり（プログラム全体の最適化も）、assert なし（`NDEBUG`）、D3D12 デバッグレイヤーなし、CRT は通常の静的リンク（`/MT`。Debug・Development は `/MTd`）。ImGui のない見た目もこれで確かめる

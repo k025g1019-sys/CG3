@@ -164,8 +164,8 @@ private:
 	static inline float kAttenuation = 0.15f;        // 入力が無いときの減衰率（1 フレームでこの割合だけ速度が減る）
 	static inline float kBrakeAttenuation = 0.3f;    // 逆方向へ入力したときの減衰率（急ブレーキ）
 	static inline float kLimitRunSpeed = 0.16f;      // 左右移動の最高速度
-	static inline float kJumpSpeed = 0.4f;           // ジャンプの初速
-	static inline float kJumpCutRate = 0.8f;         // 上昇中にキーを離している間、毎フレーム上昇速度に掛ける倍率（小さいほど低く跳ぶ）
+	static inline float kJumpSpeed = 0.424f;         // ジャンプの初速（2026-10-27 に高さ 2 → 1 で立つ位置が 0.5 下がったので、最高点が前と同じになるよう 0.4 から上げた）
+	static inline float kJumpCutRate = 0.87f;        // 上昇中にキーを離している間、毎フレーム上昇速度に掛ける倍率（小さいほど低く跳ぶ。同じ理由で 0.8 から上げ、小ジャンプの最高点も前と同じにした）
 	static inline float kGravity = 0.02f;            // 重力（毎フレーム速度から引く）
 	static inline float kMaxFallSpeed = 0.32f;       // 落下速度の上限
 	static inline float kGlideFallSpeed = 0.04f;     // ゆっくり降下中の落下速度の上限
@@ -201,7 +201,7 @@ private:
 
 	// --- 固定値 ---
 	static inline const float kWidth = 1.0f;              // 当たり判定の幅
-	static inline const float kHeight = 2.0f;             // 当たり判定の高さ
+	static inline const float kHeight = 1.0f;             // 当たり判定の高さ（見た目の立方体と同じ。床に立つ位置は床 + 高さの半分）
 	static inline const float kBodyRadius = 0.5f;         // 体の判定の半径
 	static inline const float kFrameTime = 1.0f / 60.0f;  // 1 フレームの秒数
 	static inline const float kWheelNotch = 120.0f;       // ホイール 1 目盛りぶんの入力値

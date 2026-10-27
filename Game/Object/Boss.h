@@ -248,12 +248,13 @@ private:
 	static inline float kCoreOffsetX = 1.2f;       // コアの位置（中心から背中へ）
 	static inline float kCoreOffsetY = 0.4f;       // コアの高さ（中心から上へ）
 	static inline float kCoreRadius = 0.45f;       // コアの半径
+	static inline float kEdgeMargin = 0.8f;        // 体の端を、ステージの左右の壁からこれだけ離す（コアが体から 0.65 はみ出すので、それより少し大きくして壁に埋まらないようにする）
 
 	// --- 行動の調整値（秒、1 フレームあたりの量。2026-10-13 に動きを 8 割の速さにした）---
 	static inline float kFirstIdleDuration = 1.9f;  // 戦闘開始から最初の攻撃までの待ち
 	static inline float kIdleDuration = 1.5f;       // 攻撃と攻撃の間の待ち
 	static inline float kTurnDelay = 0.6f;          // 待機中、背後に回られてから向き直るまでの遅れ
-	static inline float kChargeWindup = 0.75f;      // 突進の予備動作
+	static inline float kChargeWindup = 0.85f;      // 突進の予備動作（2026-10-27 に 0.75 から少し伸ばした）
 	static inline float kChargeSpeed = 0.24f;       // 突進の速さ
 	static inline float kChargeDistance = 14.0f;    // 突進で走る距離の上限（壁に着いても止まる）
 	static inline float kTiredDuration = 1.9f;      // 突進後の疲れ（盾が下がる時間）

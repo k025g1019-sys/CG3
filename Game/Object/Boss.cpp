@@ -91,6 +91,7 @@ void Boss::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "CoreOffsetX", kCoreOffsetX);
 	globalVariables->AddItem(groupName, "CoreOffsetY", kCoreOffsetY);
 	globalVariables->AddItem(groupName, "CoreRadius", kCoreRadius);
+	globalVariables->AddItem(groupName, "EdgeMargin", kEdgeMargin);
 	globalVariables->AddItem(groupName, "FirstIdleDuration", kFirstIdleDuration);
 	globalVariables->AddItem(groupName, "IdleDuration", kIdleDuration);
 	globalVariables->AddItem(groupName, "TurnDelay", kTurnDelay);
@@ -152,6 +153,7 @@ void Boss::ApplyGlobalVariables() {
 	kCoreOffsetX = globalVariables->GetFloatValue(groupName, "CoreOffsetX");
 	kCoreOffsetY = globalVariables->GetFloatValue(groupName, "CoreOffsetY");
 	kCoreRadius = globalVariables->GetFloatValue(groupName, "CoreRadius");
+	kEdgeMargin = globalVariables->GetFloatValue(groupName, "EdgeMargin");
 	kFirstIdleDuration = globalVariables->GetFloatValue(groupName, "FirstIdleDuration");
 	kIdleDuration = globalVariables->GetFloatValue(groupName, "IdleDuration");
 	kTurnDelay = globalVariables->GetFloatValue(groupName, "TurnDelay");
@@ -400,6 +402,9 @@ void Boss::Update() {
 }
 
 void Boss::StartBehavior(Behavior next) {
+	// 押しつぶしで真下へ落ちている最中だったか（やられたときの落ち方を決めるのに使う）
+	const bool wasCrushDropping = (behavior_ == Behavior::kCrush) && (crushStep_ == CrushStep::kDrop);
+
 	behavior_ = next;
 	timer_ = 0.0f;
 
@@ -436,6 +441,11 @@ void Boss::StartBehavior(Behavior next) {
 	case Behavior::kDead:
 		KillAllHazards();
 		SoundEffects::Play(SoundEffects::Id::kBossDefeat);
+		// 宙で倒されたら、打ち落とされたときと同じようにゆっくり落とす（押しつぶしで真下へ落ちている最中なら、急に遅くならないようそのまま落とす）
+		if (position_.y > GetStandY() && !wasCrushDropping && !isShotDown_) {
+			isShotDown_ = true;
+			fallSpeed_ = 0.0f;
+		}
 		break;
 	case Behavior::kTired:
 	case Behavior::kStagger:
@@ -741,8 +751,8 @@ void Boss::UpdateFall() {
 		position_.y = standY;
 		fallSpeed_ = 0.0f;
 
-		// 打ち落とされて着いた（ここから怯みの時間を数える）
-		if (isShotDown_) {
+		// 打ち落とされて着いた（ここから怯みの時間を数える）。宙で倒されて着いたときも同じ揺れと音にする
+		if (isShotDown_ || behavior_ == Behavior::kDead) {
 			isShotDown_ = false;
 			landing_ = Landing::kShotDown;
 		}
@@ -785,6 +795,20 @@ void Boss::UpdateStagger() {
 }
 
 void Boss::UpdateDead() {
+	// 宙で倒されたときは、打ち落とされたときと同じように前のめりに傾けながら落ちる（落とすのは UpdateFall）。
+	// 傾ききった落下の途中から倒れる動きを始め（傾きに続けて回すのでなめらかにつながる）、沈むのは床に着いてから
+	if (position_.y > GetStandY()) {
+		if (bodyTilt_ < kShotDownMaxTilt) {
+			bodyTilt_ += kShotDownTiltSpeed;
+			if (bodyTilt_ > kShotDownMaxTilt) {
+				bodyTilt_ = kShotDownMaxTilt;
+			}
+			return;
+		}
+		timer_ += kFrameTime;
+		return;
+	}
+
 	timer_ += kFrameTime;
 
 	// 沈みながら倒れる
@@ -1265,11 +1289,12 @@ float Boss::CalcPlayerSide() const {
 }
 
 float Boss::GetMinX() const {
-	return stage_->GetLeftEdge() + kBodyHalfWidth;
+	// 壁から少し離す（背中のコアは体からはみ出しているので、壁にくっつくとコアが壁に埋まってブーメランを当てにくい）
+	return stage_->GetLeftEdge() + kBodyHalfWidth + kEdgeMargin;
 }
 
 float Boss::GetMaxX() const {
-	return stage_->GetRightEdge() - kBodyHalfWidth;
+	return stage_->GetRightEdge() - kBodyHalfWidth - kEdgeMargin;
 }
 
 float Boss::GetStandY() const {

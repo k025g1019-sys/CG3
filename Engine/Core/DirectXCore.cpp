@@ -50,7 +50,8 @@ void DirectXCore::Initialize(WinApp* winApp) {
 
 void DirectXCore::InitializeDXGIDevice() {
 
-#ifdef _DEBUG
+    // D3D12デバッグレイヤーは開発中（Debug・Development）だけ有効にする。Release では使わない
+#ifndef NDEBUG
 
     ComPtr<ID3D12Debug1> debugController;
 
@@ -121,7 +122,7 @@ void DirectXCore::InitializeDXGIDevice() {
 
     assert(device_ != nullptr);
 
-#ifdef _DEBUG
+#ifndef NDEBUG
     // 危険なエラーで停止し、既知の偽エラーは抑制する
     {
         ComPtr<ID3D12InfoQueue> infoQueue;

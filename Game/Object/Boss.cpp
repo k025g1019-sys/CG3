@@ -7,6 +7,7 @@
 #include "Game/Object/FallingRock.h"
 #include "Game/Object/Player.h"
 #include "Game/Object/Shockwave.h"
+#include "Game/Sound/SoundEffects.h"
 #include "Game/Stage/Stage.h"
 #include "Game/Util/Easing.h"
 #include "Game/Util/GlobalVariables.h"
@@ -135,7 +136,6 @@ void Boss::RegisterGlobalVariables() {
 	globalVariables->AddItem(groupName, "BitAnchorOffsetY", kBitAnchorOffsetY);
 	globalVariables->AddItem(groupName, "SleepX", kSleepX);
 	globalVariables->AddItem(groupName, "SleepHeight", kSleepHeight);
-	globalVariables->AddItem(groupName, "SleepGuardOffsetY", kSleepGuardOffsetY);
 	globalVariables->AddItem(groupName, "SleepShieldHalfWidth", kSleepShieldHalfWidth);
 }
 
@@ -197,7 +197,6 @@ void Boss::ApplyGlobalVariables() {
 	kBitAnchorOffsetY = globalVariables->GetFloatValue(groupName, "BitAnchorOffsetY");
 	kSleepX = globalVariables->GetFloatValue(groupName, "SleepX");
 	kSleepHeight = globalVariables->GetFloatValue(groupName, "SleepHeight");
-	kSleepGuardOffsetY = globalVariables->GetFloatValue(groupName, "SleepGuardOffsetY");
 	kSleepShieldHalfWidth = globalVariables->GetFloatValue(groupName, "SleepShieldHalfWidth");
 }
 
@@ -418,21 +417,26 @@ void Boss::StartBehavior(Behavior next) {
 	case Behavior::kCharge:
 		chargeStep_ = ChargeStep::kWindup;
 		chargeRemaining_ = (phase_ >= 3) ? 2 : 1;  // 第 3 段階は 2 連続
+		SoundEffects::Play(SoundEffects::Id::kChargeWindup);
 		break;
 	case Behavior::kSlam:
 		slamStep_ = SlamStep::kWindup;
+		SoundEffects::Play(SoundEffects::Id::kSlamWindup);
 		break;
 	case Behavior::kRockFall:
 		rockFallStep_ = RockFallStep::kRoar;
 		PlanRocks();  // 落下位置を先に決め、吠えている間は印を出す
+		SoundEffects::Play(SoundEffects::Id::kRoar);
 		break;
 	case Behavior::kCrush:
 		crushStep_ = CrushStep::kCrouch;
 		fallSpeed_ = 0.0f;
 		rockTargetsX_.clear();
+		SoundEffects::Play(SoundEffects::Id::kCrushWindup);
 		break;
 	case Behavior::kDead:
 		KillAllHazards();
+		SoundEffects::Play(SoundEffects::Id::kBossDefeat);
 		break;
 	case Behavior::kTired:
 	case Behavior::kStagger:
@@ -542,10 +546,11 @@ void Boss::UpdateCharge() {
 		if (hitWall || ranEnough) {
 			chargeRemaining_--;
 			if (chargeRemaining_ > 0) {
-				// 2 連続：向き直ってもう一度
+				// 2 連続：向き直ってもう一度（予告の音も鳴らし直す）
 				FacePlayer();
 				chargeStep_ = ChargeStep::kWindup;
 				timer_ = 0.0f;
+				SoundEffects::Play(SoundEffects::Id::kChargeWindup);
 			} else {
 				behaviorRequest_ = Behavior::kTired;
 			}
@@ -1072,7 +1077,8 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 
 	// ブーメランは、前にブーメランでダメージを受けてから一定の時間がたつまで当たらない（同じ相手へ続けて当たりすぎないように）。
 	// 大技の一撃は間隔に関係なく当たり、そこから数え直す
-	if (type == AttackType::kBoomerang && boomerangHitTimer_ < kBoomerangHitInterval) {
+	const bool isBoomerang = (type == AttackType::kBoomerang) || (type == AttackType::kFollowBoomerang);
+	if (isBoomerang && boomerangHitTimer_ < kBoomerangHitInterval) {
 		return HitResult::kNone;
 	}
 	if (type != AttackType::kMelee) {
@@ -1080,19 +1086,25 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 	}
 	const bool isMelee = (type == AttackType::kMelee);
 
+	// 押しつぶしで宙に浮いている間は、追従を使っていない投げ（通常の投げと大技）が体かコアに当たれば打ち落とす
+	// （下から当てると先に体に当たり、そのあと攻撃の間隔のあいだはコアに当たらないので、体でも打ち落とせるようにする）。
+	// 追従を使った投げは打ち落とせない（ダメージだけ）
+	const bool isCrushAirborne = (behavior_ == Behavior::kCrush) && (position_.y > GetStandY());
+	const bool canShootDown = (type == AttackType::kBoomerang) || (type == AttackType::kBurst);
+
 	// 弱点のコア：ダメージ 2 倍。怯むのは攻撃していないときと、押しつぶしで浮いている間だけ（ほかの攻撃は続ける）。
 	// 怯みは間隔を空ける（連続で怯ませて封じられないように）
 	if (touchesCore) {
 		TakeDamage(damage * kWeakPointMultiplier);
 		StartHitStop(kCoreHitStopDuration, isMelee);
 		if (IsAlive()) {
-			if (CanStagger() && staggerCooldownTimer_ <= 0.0f) {
-				// 押しつぶしで浮いている間なら打ち落とす（体を傾けながらゆっくり落ち、着地してから怯む）。
-				// 跳び上がる瞬間でまだ床にいるときは、打ち落とさずにその場で怯む（床の上で打ち落とすと着地しないので、怯みが終わらない）
-				if (behavior_ == Behavior::kCrush && position_.y > GetStandY()) {
-					isShotDown_ = true;
-					fallSpeed_ = 0.0f;
+			if (isCrushAirborne) {
+				// 浮いている間は、打ち落とせる攻撃のときだけ打ち落とす
+				if (canShootDown && CanStagger() && staggerCooldownTimer_ <= 0.0f) {
+					ShootDown();
 				}
+			} else if (CanStagger() && staggerCooldownTimer_ <= 0.0f) {
+				// 床の上なら、その場で怯む（押しつぶしの跳び上がる瞬間でまだ床にいるときも。床の上で打ち落とすと着地しないので、怯みが終わらない）
 				behaviorRequest_ = Behavior::kStagger;
 				staggerCooldownTimer_ = kStaggerCooldown;
 			} else if (behavior_ == Behavior::kIdle) {
@@ -1108,6 +1120,10 @@ Boss::HitResult Boss::ApplyAttack(const Sphere& attackSphere, int32_t damage, co
 	if (IsAlive() && behavior_ == Behavior::kIdle) {
 		facePlayerRequest_ = true;
 	}
+	// 押しつぶしで浮いている間は、打ち落とせる攻撃なら体に当たっても打ち落とす
+	if (IsAlive() && isCrushAirborne && canShootDown && CanStagger() && staggerCooldownTimer_ <= 0.0f) {
+		ShootDown();
+	}
 	return HitResult::kDamaged;
 }
 
@@ -1122,8 +1138,10 @@ Boss::HitResult Boss::ApplySleepingAttack(const Sphere& attackSphere, const Vect
 		return HitResult::kNone;
 	}
 
-	// 体の下の盾に当たった攻撃と、下から来た攻撃は弾く
-	if (touchesShield || attackerPosition.y < position_.y + kSleepGuardOffsetY) {
+	// 体の下の盾で弾くのは、盾に当たっていて、体の下端より下から来たか、体にもコアにも当たっていないとき。
+	// 体の側面に当たったときは、盾の端に触れていても弾かない（見た目どおり体に当たった扱いにする）
+	const bool isFromBelow = attackerPosition.y < position_.y - kBodyHalfHeight;
+	if (touchesShield && (isFromBelow || (!touchesBody && !touchesCore))) {
 		shieldFlashTimer_ = kShieldFlashDuration;
 		return HitResult::kBlocked;
 	}
@@ -1159,6 +1177,14 @@ void Boss::StartHitStop(float duration, bool isMelee) {
 	// 耐性があるときは揺れるだけで止めない（攻撃のタイミングが遅れない）
 	isHitStopFreezing_ = !IsHitStopResistant();
 	hitStop_.Start(duration, kHitShakeAmplitude);
+}
+
+void Boss::ShootDown() {
+	// 押しつぶしで浮いているところを打ち落とす（体を傾けながらゆっくり床へ落ち、着地してから怯む）
+	isShotDown_ = true;
+	fallSpeed_ = 0.0f;
+	behaviorRequest_ = Behavior::kStagger;
+	staggerCooldownTimer_ = kStaggerCooldown;
 }
 
 bool Boss::CanStagger() const {

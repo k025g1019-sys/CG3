@@ -10,7 +10,7 @@ namespace {
 
 // --- 文字の既定値（Position はカメラからの相対位置。z がカメラからの距離）---
 const Vector3 kTextPosition = { -1.1f, 0.75f, 6.0f };  // 画面の左上（ライフのゲージの下。右上に浮いているボスと重ならないように）
-const float kTextScale = 0.12f;
+const float kTextScale = 0.14f;
 
 } // namespace
 

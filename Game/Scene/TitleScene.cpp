@@ -18,8 +18,8 @@ void TitleScene::OnInitialize() {
 
 	skydome_.Initialize();
 
-	// タイトルロゴ（上下にゆっくり揺らす。大きさなどは ImGui の TitleLogo で調整する）
-	logo_.Initialize("resources/textObjects/title.obj", "TitleLogo", { 0.0f, 0.3f, 0.0f }, 0.8f, 0.1f);
+	// タイトルロゴ「グルまげストライカー」（上下にゆっくり揺らす。大きさなどは ImGui の TitleLogo で調整する）
+	logo_.Initialize("resources/textObjects/title.obj", "TitleLogo", { 0.0f, 0.3f, 0.0f }, 0.42f, 0.1f);
 
 	// 「press space」の表示（調整値はクリア画面と共通）
 	pressSpace_.Initialize("resources/textObjects/pressSpace.obj", "PressSpace", { 0.0f, -0.6f, 0.0f }, 0.4f, 0.0f);

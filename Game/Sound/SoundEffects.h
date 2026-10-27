@@ -26,6 +26,14 @@ public:
 		kDamage,   // プレイヤーが攻撃を受けた
 		kLand,     // ボスが床に落ちた（押しつぶし・打ち落とし・起こされたとき）
 		kDecide,   // 決定（タイトル・クリア画面・ゲームオーバーの選択肢）
+		kChargeWindup,  // ボスの突進の予告
+		kSlamWindup,    // ボスの叩きつけの予告
+		kRoar,          // ボスの落石の予告（吠える）
+		kCrushWindup,   // ボスの押しつぶしの予告
+		kBurst,         // ブーメランの大技
+		kPlayerDeath,   // プレイヤーのやられ
+		kBossDefeat,    // ボスの撃破
+		kClear,         // クリア
 		kCount,    // 種類の数
 	};
 
@@ -47,7 +55,8 @@ private:
 	// --- 調整値 ---
 	static inline float kMasterVolume = 0.8f;                     // 全体の音量
 	static inline std::array<float, kSoundCount> kVolumes = {     // 種類ごとの音量（Id の順）
-		0.5f, 0.6f, 0.6f, 0.6f, 0.8f, 0.8f, 0.7f, 0.8f, 1.0f, 0.6f,
+		0.5f, 0.5f, 0.5f, 0.6f, 0.8f, 0.8f, 0.7f, 0.8f, 1.0f, 0.6f,
+		0.7f, 0.7f, 0.8f, 0.6f, 0.7f, 0.7f, 1.0f, 0.7f,
 	};
 
 	static inline std::array<size_t, kSoundCount> handles_ = {};  // エンジンの Audio のハンドル（Id の順）

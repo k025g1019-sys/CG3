@@ -25,6 +25,9 @@ void ClearScene::OnInitialize() {
 	fade_.Initialize();
 	fade_.Start(Fade::Status::kFadeIn, Fade::GetDefaultDuration());
 	phase_ = Phase::kFadeIn;
+
+	// クリアのジングル
+	SoundEffects::Play(SoundEffects::Id::kClear);
 }
 
 void ClearScene::OnUpdate() {

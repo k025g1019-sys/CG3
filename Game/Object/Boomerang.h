@@ -13,7 +13,7 @@
 /// 往路で地面に触れると、そこで折り返して戻ってくる。同じ敵に続けて当たれる間隔は、当たる側（ボス）が数える。
 /// 飛んでいる間は、持ち主の操作で動きを変えられる。
 /// ・追従：押している間カーソルを追いかけ、離すと戻ってくる。追従を使った投げは、戻ってくるまでダメージが減る
-///   （半分。決めた回数だけ当てた後はさらに半分）
+///   （半分。決めた回数だけ当てた後はさらに半分）。地面に触れると、盾に弾かれたときと同じように上へ押し返される
 /// ・大技：その場で止まって大きくなり、強い一撃を 1 回だけ当てられる。少し固まった後、小さくなって速く戻る（戻りは当たらない）
 /// </summary>
 class Boomerang {
@@ -126,6 +126,15 @@ public:
 	// この投げで大技を出したか（キャッチした後のクールタイムに使う。次に投げるまで残る）
 	bool IsBurstUsed() const { return isBurstUsed_; }
 
+	// このフレームに追従中に地面に弾かれたか（シーンが小さめの弾いたエフェクトを出すのに使う。Update のたびに false に戻る）
+	bool IsGroundBounced() const { return isGroundBounced_; }
+
+	// 地面の高さ（地面に弾かれたエフェクトの位置に使う）
+	float GetGroundY() const { return groundY_; }
+
+	// 今の投げで追従を使ったか（追従を使った投げでは、ボスの押しつぶしを打ち落とせない）
+	bool IsFollowUsed() const { return isFollowUsed_; }
+
 	// 今の投げで軌道を曲げたか（チュートリアルで眠っているボスを起こせるのは、曲げて投げたときだけ）
 	bool IsCurvedThrow() const { return isCurvedThrow_; }
 
@@ -166,7 +175,7 @@ private:
 	static inline float kFollowMaxSpeed = 0.3f;        // 追いかける速さの上限（1 フレームあたり）
 	static inline float kFollowAccelTime = 0.2f;       // 動き出しで、速さを 0 から上限まで上げるのにかける時間（秒。EaseInOut）
 	static inline float kFollowSlowDistance = 2.0f;    // カーソルまでの距離がこれより近いと、距離に比例して遅くする（止まり際）
-	static inline float kFollowBounceSpeed = 0.25f;    // 盾に弾かれたときに押し返される初速（1 フレームあたり。0 なら押し返されない）
+	static inline float kFollowBounceSpeed = 0.25f;    // 盾か地面に弾かれたときに押し返される初速（1 フレームあたり。0 なら押し返されない）
 	static inline float kFollowBounceDuration = 0.15f; // 押し返される時間（秒。終わりにかけて遅くなる）
 	static inline int32_t kFollowHalfHitCount = 2;     // 追従を使った投げで、ダメージが半分のまま当たれる回数（これより後はさらに半分）
 
@@ -201,6 +210,7 @@ private:
 	bool isBurstUsed_ = false;                                // この投げで大技を出したか
 	bool hasBurstHit_ = false;                                // 大技の一撃を既に当てたか
 	bool isCurvedThrow_ = false;                              // この投げで軌道を曲げたか
+	bool isGroundBounced_ = false;                            // このフレームに追従中に地面に弾かれたか
 
 	// 往路：曲線に沿って目標点へ（終わりにかけて減速）
 	void UpdateOutward();

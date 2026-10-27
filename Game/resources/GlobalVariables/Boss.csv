@@ -47,7 +47,6 @@ ShotDownTiltSpeed,float,0.03
 SlamRange,float,5
 SlamRecover,float,1
 SlamWindup,float,1.5
-SleepGuardOffsetY,float,0
 SleepHeight,float,6
 SleepShieldHalfWidth,float,2.5
 SleepX,float,-1

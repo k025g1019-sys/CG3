@@ -40,7 +40,7 @@ void GuardEffect::Update() {
 
 	// 最初が速く広がりながら、まっすぐ薄くなる
 	const float t = std::clamp(counter_ / kDuration, 0.0f, 1.0f);
-	const float scale = kStartScale + (kEndScale - kStartScale) * EaseOutQuad(t);
+	const float scale = (kStartScale + (kEndScale - kStartScale) * EaseOutQuad(t)) * sizeScale_;
 	const Vector4 color = { kGuardColor.x, kGuardColor.y, kGuardColor.z, kMaxAlpha * (1.0f - t) };
 
 	if (isHorizontal_) {
@@ -60,6 +60,8 @@ void GuardEffect::Draw() const {
 	if (isFinished_) {
 		return;
 	}
-	plate_.Draw();
+	if (isPlateVisible_) {
+		plate_.Draw();
+	}
 	disc_.Draw();
 }

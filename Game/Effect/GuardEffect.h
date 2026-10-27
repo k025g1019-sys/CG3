@@ -16,6 +16,12 @@ public:
 	// 板を横長にするか（既定は縦長。Initialize の後、最初の Update の前に呼ぶ）
 	void SetHorizontal(bool isHorizontal) { isHorizontal_ = isHorizontal; }
 
+	// 板を描くか（既定は描く。地面に弾かれたときは円盤だけにする）
+	void SetPlateVisible(bool isPlateVisible) { isPlateVisible_ = isPlateVisible; }
+
+	// 全体の大きさの倍率（既定は 1。地面に弾かれたときは小さめにする。Initialize の後、最初の Update の前に呼ぶ）
+	void SetSizeScale(float sizeScale) { sizeScale_ = sizeScale; }
+
 	// 円盤だけを別の位置（弾いた点）に出す（既定は板と同じ位置。Initialize の後、最初の Update の前に呼ぶ）
 	void SetDiscPosition(const Engine::Vector3& position) { disc_.GetTransform().translate = position; }
 
@@ -37,4 +43,6 @@ private:
 	Engine::Object3D plate_;  // 盾に重なる板
 	Engine::Object3D disc_;   // 弾いた点の円盤
 	bool isHorizontal_ = false;  // 板を横長にするか
+	float sizeScale_ = 1.0f;     // 全体の大きさの倍率
+	bool isPlateVisible_ = true; // 板を描くか
 };

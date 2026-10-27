@@ -32,6 +32,8 @@ const Vector4 kCoreHitColor = { 1.0f, 0.6f, 0.2f, 1.0f };      // コアに当�
 const Vector4 kBreakColor = { 0.9f, 0.9f, 0.9f, 1.0f };        // 攻撃物を壊した
 const Vector4 kPlayerHitColor = { 1.0f, 0.3f, 0.3f, 1.0f };    // プレイヤーが被弾した
 
+const float kGroundGuardEffectScale = 0.5f;  // 地面に弾かれたときの弾いたエフェクトの大きさ（盾のときの何倍か）
+
 } // namespace
 
 #pragma region 調整値
@@ -258,6 +260,7 @@ void BossScene::UpdateDeath() {
 	if (!deathParticles_) {
 		deathParticles_ = std::make_unique<DeathParticles>();
 		deathParticles_->Initialize(player_.GetPosition());
+		SoundEffects::Play(SoundEffects::Id::kPlayerDeath);
 	}
 	deathParticles_->Update();
 
@@ -355,6 +358,12 @@ void BossScene::UpdateObjects() {
 	stage_.Update();
 	player_.Update();
 	UpdateBoss();
+
+	// 追従中のブーメランが地面に弾かれたフレームは、盾のときより小さい弾いたエフェクト（円盤だけ）を地面の上に出す
+	const Boomerang& boomerang = player_.GetBoomerang();
+	if (boomerang.IsGroundBounced()) {
+		SpawnGroundBounceEffect({ boomerang.GetPosition().x, boomerang.GetGroundY(), 0.0f });
+	}
 }
 
 void BossScene::UpdateBoss() {
@@ -440,8 +449,14 @@ void BossScene::CheckAllCollisions() {
 			// 眠っているボス（チュートリアル）は、曲げて投げたブーメランで起きる（まっすぐ投げたものは身じろぎするだけ）
 			result = boss_.ApplySleepingAttack(boomerangSphere, boomerangSphere.center, boomerang.IsCurvedThrow());
 		} else {
-			const Boss::AttackType attackType = boomerang.IsBursting() ? Boss::AttackType::kBurst : Boss::AttackType::kBoomerang;
-			result = boss_.ApplyAttack(boomerangSphere, boomerang.CalcDamage(), boomerangSphere.center, attackType);
+			// 大技の一撃・追従を使った投げ・通常の投げ（押しつぶしを打ち落とせるのは大技と通常の投げ）
+			Boss::AttackType attackType = Boss::AttackType::kBoomerang;
+			if (boomerang.IsBursting()) {
+				attackType = Boss::AttackType::kBurst;
+			} else if (boomerang.IsFollowUsed()) {
+				attackType = Boss::AttackType::kFollowBoomerang;
+			}
+			result =boss_.ApplyAttack(boomerangSphere, boomerang.CalcDamage(), boomerangSphere.center, attackType);
 		}
 		if (result == Boss::HitResult::kBlocked) {
 			// 盾に弾かれた：往路なら戻り、追従中ならボスの中心から離れる向きへ押し返される
@@ -551,6 +566,15 @@ void BossScene::SpawnGuardEffect(const Vector3& position, bool isHorizontal, con
 	effect->Initialize(position);
 	effect->SetHorizontal(isHorizontal);
 	effect->SetDiscPosition({ hitPosition.x, hitPosition.y, 0.0f });
+	effects_.push_back(std::move(effect));
+}
+
+void BossScene::SpawnGroundBounceEffect(const Vector3& position) {
+	// 盾で弾いたときのエフェクトの円盤だけを、小さめに出す
+	std::unique_ptr<GuardEffect> effect = std::make_unique<GuardEffect>();
+	effect->Initialize(position);
+	effect->SetPlateVisible(false);
+	effect->SetSizeScale(kGroundGuardEffectScale);
 	effects_.push_back(std::move(effect));
 }
 

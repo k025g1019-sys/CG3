@@ -7,7 +7,7 @@
 
 void MyGame::Initialize() {
 	// ウィンドウのタイトル（エンジンの初期化より前に設定すると、最初からこのタイトルで開く）
-	SetWindowTitle(L"AL4 Game");
+	SetWindowTitle(L"LE2B_11_スズキ_ダイスケ_グルまげストライカー");
 
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();

@@ -2,6 +2,7 @@
 
 #include "Engine/Math/Curve.h"
 #include "Engine/Math/Matrix4x4.h"
+#include "Game/Sound/SoundEffects.h"
 #include "Game/Util/Easing.h"
 #include "Game/Util/GlobalVariables.h"
 
@@ -108,6 +109,7 @@ void Boomerang::Reset() {
 	isBurstUsed_ = false;
 	hasBurstHit_ = false;
 	isCurvedThrow_ = false;
+	isGroundBounced_ = false;
 }
 
 #pragma endregion
@@ -115,6 +117,9 @@ void Boomerang::Reset() {
 #pragma region 更新
 
 void Boomerang::Update(const Vector3& ownerPosition) {
+	// 地面に弾かれたかはフレームごとの出来事なので、毎回いったん戻す
+	isGroundBounced_ = false;
+
 	// 盾に弾かれた演出の間隔
 	if (blockEffectTimer_ > 0.0f) {
 		blockEffectTimer_ -= kFrameTime;
@@ -209,6 +214,7 @@ void Boomerang::StartBurst() {
 	phase_ = Phase::kBurst;
 	timer_ = 0.0f;
 	isBurstUsed_ = true;
+	SoundEffects::Play(SoundEffects::Id::kBurst);
 	hasBurstHit_ = false;
 }
 
@@ -304,7 +310,11 @@ void Boomerang::UpdateFollow() {
 		const float rate = (kFollowBounceDuration > 0.0f) ? (bounceTimer_ / kFollowBounceDuration) : 0.0f;
 		position_ += bounceDirection_ * (kFollowBounceSpeed * rate);
 		bounceTimer_ -= kFrameTime;
-		ResolveGroundCollision();
+
+		// 滑っている途中で地面に触れたら、下向きの分を上向きに反転する（地面に沿って押し付けられないように）
+		if (ResolveGroundCollision() && bounceDirection_.y < 0.0f) {
+			bounceDirection_.y = -bounceDirection_.y;
+		}
 		return;
 	}
 
@@ -329,8 +339,11 @@ void Boomerang::UpdateFollow() {
 		position_ += toTarget * (step / distance);
 	}
 
-	// カーソルが地面より下にあっても、地面にはもぐらない
-	ResolveGroundCollision();
+	// 地面に触れたら、盾に弾かれたときと同じように上へ押し返される（カーソルが地面より下にあっても、地面にはもぐらない）
+	if (ResolveGroundCollision()) {
+		Repel({ 0.0f, 1.0f, 0.0f });
+		isGroundBounced_ = true;
+	}
 }
 
 void Boomerang::UpdateBurst() {

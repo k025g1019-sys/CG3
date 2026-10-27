@@ -127,7 +127,10 @@ private:
 
 	// エフェクトの発生
 	void SpawnHitEffect(const Engine::Vector3& position, const Engine::Vector4& color);
-	void SpawnGuardEffect(const Engine::Vector3& position, bool isHorizontal, const Engine::Vector3& hitPosition);  // position: 板（盾の位置）、isHorizontal: 板を横長にする（眠っているボスの体の下の盾）、hitPosition: 円盤（弾いた点）
+	// position: 板（盾の位置）、isHorizontal: 板を横長にする（眠っているボスの体の下の盾）、hitPosition: 円盤（弾いた点）
+	void SpawnGuardEffect(const Engine::Vector3& position, bool isHorizontal, const Engine::Vector3& hitPosition);
+	// 追従中のブーメランが地面に弾かれたときのエフェクト（盾のときより小さい円盤だけ）
+	void SpawnGroundBounceEffect(const Engine::Vector3& position);
 	void SpawnBossHitEffect(Boss::HitResult result, const Engine::Vector3& attackPosition);  // ボスへの攻撃の結果に合わせて出す
 
 	// プレイヤーを描くか（やられ演出で止まって見せた後は消す）

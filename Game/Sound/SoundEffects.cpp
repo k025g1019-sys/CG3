@@ -26,6 +26,14 @@ const SoundInfo kSoundInfos[] = {
 	{ "damage.wav", "DamageVolume" },
 	{ "land.wav", "LandVolume" },
 	{ "decide.wav", "DecideVolume" },
+	{ "chargeWindup.wav", "ChargeWindupVolume" },
+	{ "slamWindup.wav", "SlamWindupVolume" },
+	{ "roar.wav", "RoarVolume" },
+	{ "crushWindup.wav", "CrushWindupVolume" },
+	{ "burst.wav", "BurstVolume" },
+	{ "playerDeath.wav", "PlayerDeathVolume" },
+	{ "bossDefeat.wav", "BossDefeatVolume" },
+	{ "clear.wav", "ClearVolume" },
 };
 
 const char* kGroupName = "Sound";  // 調整項目のグループ名

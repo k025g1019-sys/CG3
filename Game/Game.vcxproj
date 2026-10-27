@@ -61,6 +61,10 @@
     <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <!-- 提出・配布用の Release だけ、exe 名を提出用の名前にする（Debug・Development は Game.exe のまま） -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetName>LE2B_11_スズキ_ダイスケ_グルまげストライカー</TargetName>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="MyGame.cpp" />
     <ClCompile Include="main.cpp" />

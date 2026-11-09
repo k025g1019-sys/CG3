@@ -41,7 +41,7 @@ void Skydome::Update(const Matrix4x4& centerView) {
 	}
 
 	Matrix4x4 world = MakeAffineMatrix({ scale_, scale_, scale_ }, { 0.0f, 0.0f, 0.0f }, center);
-	TransformationMatrix transformData{ world };
+	TransformationMatrix transformData = MakeTransformationMatrix(world);
 
 	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
 	transformCB_.Write(frameIndex, transformData);

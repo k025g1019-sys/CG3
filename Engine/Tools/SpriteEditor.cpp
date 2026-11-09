@@ -148,6 +148,29 @@ namespace {
         return ImVec4(SrgbToLinear(color.x), SrgbToLinear(color.y), SrgbToLinear(color.z), color.w);
     }
 
+    // --- imgui.ini へのウィンドウ開閉の保存（[SpriteEditor][State] の Open=0/1）---
+    // ImGuiはウィンドウの位置・大きさは保存するが、開いているかどうかは保存しないため、独自の項目として足す。
+    // iniの読み込みは最初のNewFrameで行われるので、それより前のSetOpenは「保存が無いとき（初回起動）」の既定になる
+
+    // 項目 [SpriteEditor][...] に入ったとき。nullptr以外を返すと、以降の行がReadLineへ渡される
+    void* SettingsReadOpen(ImGuiContext*, ImGuiSettingsHandler*, const char*) {
+        return SpriteEditor::GetInstance();
+    }
+
+    // 項目内の1行（"Open=1" など）
+    void SettingsReadLine(ImGuiContext*, ImGuiSettingsHandler*, void*, const char* line) {
+        int open = 0;
+        if (sscanf_s(line, "Open=%d", &open) == 1) {
+            SpriteEditor::GetInstance()->SetOpen(open != 0);
+        }
+    }
+
+    // iniを書き出すとき
+    void SettingsWriteAll(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buffer) {
+        buffer->appendf("[%s][State]\n", handler->TypeName);
+        buffer->appendf("Open=%d\n\n", SpriteEditor::GetInstance()->IsOpen() ? 1 : 0);
+    }
+
 } // namespace
 
 SpriteEditor* SpriteEditor::GetInstance() {
@@ -166,6 +189,15 @@ void SpriteEditor::Initialize() {
     uploadedWidth_ = canvas_.GetWidth();
     uploadedHeight_ = canvas_.GetHeight();
     UploadTextureIfChanged();
+
+    // ウィンドウの開閉をimgui.iniに保存・復元する（ImGuiManager::Initializeの後、最初のNewFrameより前に登録する）
+    ImGuiSettingsHandler settingsHandler;
+    settingsHandler.TypeName = "SpriteEditor";
+    settingsHandler.TypeHash = ImHashStr("SpriteEditor");
+    settingsHandler.ReadOpenFn = SettingsReadOpen;
+    settingsHandler.ReadLineFn = SettingsReadLine;
+    settingsHandler.WriteAllFn = SettingsWriteAll;
+    ImGui::AddSettingsHandler(&settingsHandler);
 }
 
 void SpriteEditor::DrawImGui() {
@@ -188,6 +220,12 @@ void SpriteEditor::DrawImGui() {
             DrawCanvasView();
         }
         ImGui::End();
+    }
+
+    // 開閉が変わったら（×ボタン・SetOpenのどちらでも）imgui.iniの書き出しを予約する
+    if (open_ != savedOpen_) {
+        savedOpen_ = open_;
+        ImGui::MarkIniSettingsDirty();
     }
 
     // ウィンドウが閉じていても、未反映の内容はテクスチャへ送る（ゲーム側のSpriteが最新を映すように）

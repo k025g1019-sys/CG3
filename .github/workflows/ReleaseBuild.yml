@@ -1,0 +1,52 @@
+# Release 構成でソリューション全体をビルドできるかを確かめるワークフロー。
+# GitHub の「MSBuild based projects」テンプレートをもとに作成した。
+# Debug / Development / Release は、それぞれ別のワークフロー（別のバッジ）にしている。
+# テンプレートにある NuGet パッケージの復元は、NuGet を使っていないので省いた。
+name: ReleaseBuild
+
+on:
+  # main と feature/〇〇 にプッシュしたとき
+  push:
+    branches: [ "main", "feature/**" ]
+  # main へのプルリクエストを作ったとき
+  pull_request:
+    branches: [ "main" ]
+  # Actions タブの「Run workflow」ボタンから手動で実行するとき
+  workflow_dispatch:
+
+env:
+  # ソリューションファイルのパス（リポジトリ直下からの相対パス）
+  SOLUTION_FILE_PATH: project/CG3.slnx
+
+  # ビルドする構成
+  BUILD_CONFIGURATION: Release
+
+  # ビルドするプラットフォーム
+  BUILD_PLATFORM: x64
+
+permissions:
+  contents: read
+
+# 同じブランチに続けてプッシュしたときは、古いほうのビルドを止めて新しいほうだけ行う
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Visual Studio 2026（ツールセット v145）が入っている Windows の実行環境
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+
+    steps:
+    # リポジトリの中身を取ってくる
+    - uses: actions/checkout@v7
+
+    # msbuild コマンドを使えるようにする
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v3
+
+    # ビルドする（プロジェクトは警告もエラー扱いなので、警告が1つでも出ると失敗になる）
+    - name: Build
+      working-directory: ${{ github.workspace }}
+      run: msbuild ${{ env.SOLUTION_FILE_PATH }} /m /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=${{ env.BUILD_PLATFORM }} /nologo /verbosity:minimal

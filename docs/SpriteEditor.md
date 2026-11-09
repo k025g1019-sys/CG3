@@ -9,6 +9,7 @@
 ## 開き方
 
 Sandbox では起動時に開いています。閉じたときは「Display」ウィンドウの **Sprite Editor** チェック、または「2D Objects」→「Sprite Editor Preview」の **Open Sprite Editor** ボタンで開き直せます。
+開いているかどうかは `imgui.ini` に保存され、次に起動したときもそのままになります（閉じて終了すれば、次回は閉じた状態で始まります）。`imgui.ini` を消すと、初回と同じく開いた状態に戻ります。
 ゲーム側のコードから開くときは次の 1 行です。
 
 ```cpp
@@ -66,7 +67,7 @@ Sprite Editor を操作している間は、同じキーやマウス操作がゲ
 
 ## 保存と読み込み
 
-- **Save**: File のパス（実行ディレクトリ＝`Sandbox/` や `Game/` からの相対パス）に保存します。既定は `resources/sprite.png` です
+- **Save**: File のパス（実行ディレクトリ＝`project/Sandbox/` や `project/Game/` からの相対パス）に保存します。既定は `resources/sprite.png` です
   - `resources/sprites/player.png` のようにサブフォルダを書けば、無いフォルダは自動で作られます。後でフォルダ構成を分けるときは、パスを変えるだけで済みます
   - 形式は Format で選びます（既定 PNG）。パスの拡張子を `.png` / `.jpg` にすると、Format もそれに合わせて切り替わります
   - **PNG** は塗っていない所を透過として保存します。**JPG** は塗っていない所を白にして保存します（JPG に透過はありません）

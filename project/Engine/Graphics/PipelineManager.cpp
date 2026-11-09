@@ -1,0 +1,487 @@
+#include "PipelineManager.h"
+#include <cassert>
+#include "ShaderCompiler.h"
+#include "../Diagnostics/Log.h"
+
+using Microsoft::WRL::ComPtr;
+
+namespace Engine {
+
+PipelineManager* PipelineManager::GetInstance() {
+    static PipelineManager instance;
+    return &instance;
+}
+
+void PipelineManager::Initialize(ID3D12Device* device) {
+    // 標準シェーダーをコンパイルする
+    ComPtr<IDxcBlob> vertexShader =
+        ShaderCompiler::GetInstance()->Compile(L"Object3d.VS.hlsl", L"vs_6_0");
+    assert(vertexShader != nullptr);
+    ComPtr<IDxcBlob> pixelShader =
+        ShaderCompiler::GetInstance()->Compile(L"Object3d.PS.hlsl", L"ps_6_0");
+    assert(pixelShader != nullptr);
+
+    // RootSignatureと用途別PSOを生成する
+    rootSignature_ = CreateRootSignature(device);
+
+    pipelines_[size_t(Pipeline::kStandard)] = CreateStandardPipeline(
+        device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get(), D3D12_CULL_MODE_BACK);
+
+    pipelines_[size_t(Pipeline::kNoCull)] = CreateStandardPipeline(
+        device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get(), D3D12_CULL_MODE_NONE);
+
+    // 最前面に描く用：標準と同じで、深度テスト・書き込みだけ無効にする
+    pipelines_[size_t(Pipeline::kOverlay)] = CreateStandardPipeline(
+        device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get(), D3D12_CULL_MODE_BACK, false);
+
+    pipelines_[size_t(Pipeline::kLine)] = CreateLinePipeline(
+        device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get());
+
+    // --- パーティクル（Instancing）用：シェーダーとRootSignatureはObject3d用とは別 ---
+    ComPtr<IDxcBlob> particleVertexShader =
+        ShaderCompiler::GetInstance()->Compile(L"Particle.VS.hlsl", L"vs_6_0");
+    assert(particleVertexShader != nullptr);
+    ComPtr<IDxcBlob> particlePixelShader =
+        ShaderCompiler::GetInstance()->Compile(L"Particle.PS.hlsl", L"ps_6_0");
+    assert(particlePixelShader != nullptr);
+
+    particleRootSignature_ = CreateParticleRootSignature(device);
+
+    // InputLayoutは標準と同じ。ブレンドは加算合成、深度は書き込まない
+    pipelines_[size_t(Pipeline::kParticle)] = CreateParticlePipeline(
+        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get(),
+        BlendMode::kAdd);
+
+    // InstancedObject3D用：シェーダーとRootSignatureはパーティクルと同じ。ブレンドは通常のα、深度は書き込む
+    pipelines_[size_t(Pipeline::kInstanced)] = CreateParticlePipeline(
+        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get(),
+        BlendMode::kNormal);
+}
+
+void PipelineManager::Finalize() {
+    for (auto& pipeline : pipelines_) {
+        pipeline.Reset();
+    }
+    particleRootSignature_.Reset();
+    rootSignature_.Reset();
+}
+
+ID3D12PipelineState* PipelineManager::Get(Pipeline pipeline) const {
+    assert(pipeline < Pipeline::kCount);
+    return pipelines_[size_t(pipeline)].Get();
+}
+
+void PipelineManager::SetPipeline(ID3D12GraphicsCommandList* commandList, Pipeline pipeline) const {
+    commandList->SetPipelineState(Get(pipeline));
+    commandList->IASetPrimitiveTopology(
+        pipeline == Pipeline::kLine ? D3D_PRIMITIVE_TOPOLOGY_LINELIST : D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+ComPtr<ID3D12PipelineState> PipelineManager::CreateGraphicsPipeline(const PipelineConfig& config) {
+    ID3D12Device* device = config.device;
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
+    desc.pRootSignature = config.rootSignature;
+    desc.InputLayout = config.inputLayout;
+    desc.BlendState = config.blendDesc;
+    desc.RasterizerState = config.rasterizerDesc;
+    desc.DepthStencilState = config.depthStencilDesc;
+
+    desc.VS = {
+        config.vertexShader->GetBufferPointer(),
+        config.vertexShader->GetBufferSize()
+    };
+
+    desc.PS = {
+        config.pixelShader->GetBufferPointer(),
+        config.pixelShader->GetBufferSize()
+    };
+
+    desc.NumRenderTargets = 1;
+    desc.RTVFormats[0] = config.rtvFormat;
+
+    desc.DSVFormat = config.dsvFormat;
+
+    desc.PrimitiveTopologyType = config.topologyType;
+    desc.SampleDesc.Count = 1;
+    desc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+
+    ComPtr<ID3D12PipelineState> pso;
+    [[maybe_unused]] HRESULT hr = device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pso));
+    assert(SUCCEEDED(hr));
+
+    return pso;
+}
+
+ComPtr<ID3D12RootSignature> PipelineManager::CreateRootSignature(ID3D12Device* device) {
+    // RootSignatureの基本設定
+    D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
+    descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    // SRV用のDescriptorRange（t0）
+    D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
+    descriptorRange[0].BaseShaderRegister = 0; // 0から始まる
+    descriptorRange[0].NumDescriptors = 1; // 数は1つ
+    descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
+    descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // Offsetを自動計算
+
+    // RootParameter（並びは RootParameter 列挙と一致させる）
+    D3D12_ROOT_PARAMETER rootParameters[kRootParameterCount] = {};
+    rootParameters[kRootMaterial].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootMaterial].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootMaterial].Descriptor.ShaderRegister = 0;
+
+    rootParameters[kRootWorldTransform].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootWorldTransform].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[kRootWorldTransform].Descriptor.ShaderRegister = 0;
+
+    rootParameters[kRootDirectionalLight].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootDirectionalLight].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootDirectionalLight].Descriptor.ShaderRegister = 1;
+
+    rootParameters[kRootTexture].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[kRootTexture].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootTexture].DescriptorTable.pDescriptorRanges = descriptorRange;
+    rootParameters[kRootTexture].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+
+    // 視点ごとのビュー射影（b1, VS）。立体視で視点ごとに差し替える。
+    rootParameters[kRootViewProjection].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootViewProjection].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[kRootViewProjection].Descriptor.ShaderRegister = 1;
+
+    // 点光源の配列（b2, PS）。シーン共通で1回だけバインドする。
+    rootParameters[kRootPointLights].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kRootPointLights].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kRootPointLights].Descriptor.ShaderRegister = 2;
+
+    // 鏡面反射用定数バッファ（b3, PS）
+    rootParameters[kRootSpecular].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_CBV;
+
+    rootParameters[kRootSpecular].ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
+
+    rootParameters[kRootSpecular].Descriptor.ShaderRegister = 3;
+
+    descriptionRootSignature.pParameters = rootParameters;
+    descriptionRootSignature.NumParameters = _countof(rootParameters);
+
+    // Samplerの設定（s0, バイリニア, WRAP）
+    D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+    staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR; // バイリニアフィルタ
+    staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // 0～1の範囲外をリピート
+    staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER; // 比較しない
+    staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX; // ありったけのMipmapを使う
+    staticSamplers[0].ShaderRegister = 0; // レジスタ番号0を使う
+    staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // PixelShaderで使う
+    descriptionRootSignature.pStaticSamplers = staticSamplers;
+    descriptionRootSignature.NumStaticSamplers = _countof(staticSamplers);
+
+    // シリアライズしてバイナリにする
+    ComPtr<ID3DBlob> signatureBlob;
+    ComPtr<ID3DBlob> errorBlob;
+    HRESULT hr = D3D12SerializeRootSignature(&descriptionRootSignature,
+        D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
+    if (FAILED(hr)) {
+        Log(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+        assert(false);
+    }
+
+    // バイナリを元に生成
+    ComPtr<ID3D12RootSignature> rootSignature;
+    hr = device->CreateRootSignature(0,
+        signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
+        IID_PPV_ARGS(&rootSignature));
+    assert(SUCCEEDED(hr));
+
+    return rootSignature;
+}
+
+ComPtr<ID3D12RootSignature> PipelineManager::CreateParticleRootSignature(ID3D12Device* device) {
+    // RootSignatureの基本設定
+    D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
+    descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    // Instancing用（StructuredBuffer）のDescriptorRange（VSのt0）
+    D3D12_DESCRIPTOR_RANGE descriptorRangeForInstancing[1] = {};
+    descriptorRangeForInstancing[0].BaseShaderRegister = 0; // 0から始まる
+    descriptorRangeForInstancing[0].NumDescriptors = 1; // 数は1つ
+    descriptorRangeForInstancing[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
+    descriptorRangeForInstancing[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // Offsetを自動計算
+
+    // テクスチャ用のDescriptorRange（PSのt0）
+    D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
+    descriptorRange[0].BaseShaderRegister = 0; // 0から始まる
+    descriptorRange[0].NumDescriptors = 1; // 数は1つ
+    descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
+    descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // Offsetを自動計算
+
+    // RootParameter（並びは ParticleRootParameter 列挙と一致させる）
+    D3D12_ROOT_PARAMETER rootParameters[kParticleRootParameterCount] = {};
+    rootParameters[kParticleRootMaterial].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kParticleRootMaterial].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kParticleRootMaterial].Descriptor.ShaderRegister = 0;
+
+    // Object3d用ではCBV（ワールド行列）だった[1]を、StructuredBufferのSRV（DescriptorTable）にする
+    rootParameters[kParticleRootInstancing].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // DescriptorTableを使う
+    rootParameters[kParticleRootInstancing].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; // VertexShaderで使う
+    rootParameters[kParticleRootInstancing].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancing; // Tableの中身の配列を指定
+    rootParameters[kParticleRootInstancing].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancing); // Tableで利用する数
+
+    rootParameters[kParticleRootTexture].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[kParticleRootTexture].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[kParticleRootTexture].DescriptorTable.pDescriptorRanges = descriptorRange;
+    rootParameters[kParticleRootTexture].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+
+    // 視点ごとのビュー射影（b1, VS）。立体視で視点ごとに差し替える。
+    rootParameters[kParticleRootViewProjection].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[kParticleRootViewProjection].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[kParticleRootViewProjection].Descriptor.ShaderRegister = 1;
+
+    descriptionRootSignature.pParameters = rootParameters;
+    descriptionRootSignature.NumParameters = _countof(rootParameters);
+
+    // Samplerの設定（s0, バイリニア, WRAP。標準RootSignatureと同じ）
+    D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+    staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR; // バイリニアフィルタ
+    staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // 0～1の範囲外をリピート
+    staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER; // 比較しない
+    staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX; // ありったけのMipmapを使う
+    staticSamplers[0].ShaderRegister = 0; // レジスタ番号0を使う
+    staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // PixelShaderで使う
+    descriptionRootSignature.pStaticSamplers = staticSamplers;
+    descriptionRootSignature.NumStaticSamplers = _countof(staticSamplers);
+
+    // シリアライズしてバイナリにする
+    ComPtr<ID3DBlob> signatureBlob;
+    ComPtr<ID3DBlob> errorBlob;
+    HRESULT hr = D3D12SerializeRootSignature(&descriptionRootSignature,
+        D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
+    if (FAILED(hr)) {
+        Log(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+        assert(false);
+    }
+
+    // バイナリを元に生成
+    ComPtr<ID3D12RootSignature> rootSignature;
+    hr = device->CreateRootSignature(0,
+        signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
+        IID_PPV_ARGS(&rootSignature));
+    assert(SUCCEEDED(hr));
+
+    return rootSignature;
+}
+
+ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
+    ID3D12Device* device,
+    ID3D12RootSignature* rootSignature,
+    IDxcBlob* vertexShader,
+    IDxcBlob* pixelShader,
+    D3D12_CULL_MODE cullMode,
+    bool depthEnabled) {
+    // InputLayout（POSITION / TEXCOORD / NORMAL）
+    D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
+    inputElementDescs[0].SemanticName = "POSITION";
+    inputElementDescs[0].SemanticIndex = 0;
+    inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[1].SemanticName = "TEXCOORD";
+    inputElementDescs[1].SemanticIndex = 0;
+    inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+    inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[2].SemanticName = "NORMAL";
+    inputElementDescs[2].SemanticIndex = 0;
+    inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+    inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+    inputLayoutDesc.pInputElementDescs = inputElementDescs;
+    inputLayoutDesc.NumElements = _countof(inputElementDescs);
+
+    // BlendState（全色要素を書き込む）
+    D3D12_BLEND_DESC blendDesc{};
+
+    auto& rt = blendDesc.RenderTarget[0];
+
+    rt.BlendEnable = TRUE;
+
+    rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    rt.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    rt.BlendOp = D3D12_BLEND_OP_ADD;
+
+    rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rt.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+    rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    // RasterizerState（カリング(既定は裏面), 塗りつぶし）
+    D3D12_RASTERIZER_DESC rasterizerDesc{};
+    rasterizerDesc.CullMode = cullMode;
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+
+    // DepthStencilState（深度有効, 書き込み, LessEqual）
+    // depthEnabledがfalseなら深度テストも書き込みもしない（先に描いた物の前後関係を無視して、常に手前に描かれる）
+    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+    depthStencilDesc.DepthEnable = depthEnabled;
+    depthStencilDesc.DepthWriteMask = depthEnabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+    depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+    PipelineConfig config{};
+    config.device = device;
+    config.rootSignature = rootSignature;
+    config.inputLayout = inputLayoutDesc;
+    config.blendDesc = blendDesc;
+    config.rasterizerDesc = rasterizerDesc;
+    config.depthStencilDesc = depthStencilDesc;
+    config.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    config.dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    config.vertexShader = vertexShader;
+    config.pixelShader = pixelShader;
+
+    return CreateGraphicsPipeline(config);
+}
+
+ComPtr<ID3D12PipelineState> PipelineManager::CreateParticlePipeline(
+    ID3D12Device* device,
+    ID3D12RootSignature* rootSignature,
+    IDxcBlob* vertexShader,
+    IDxcBlob* pixelShader,
+    BlendMode blendMode) {
+    // InputLayout（標準と同じPOSITION / TEXCOORD / NORMAL。頂点構造を共有する）
+    D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
+    inputElementDescs[0].SemanticName = "POSITION";
+    inputElementDescs[0].SemanticIndex = 0;
+    inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[1].SemanticName = "TEXCOORD";
+    inputElementDescs[1].SemanticIndex = 0;
+    inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+    inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[2].SemanticName = "NORMAL";
+    inputElementDescs[2].SemanticIndex = 0;
+    inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+    inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+    inputLayoutDesc.pInputElementDescs = inputElementDescs;
+    inputLayoutDesc.NumElements = _countof(inputElementDescs);
+
+    D3D12_BLEND_DESC blendDesc{};
+
+    auto& rt = blendDesc.RenderTarget[0];
+
+    rt.BlendEnable = TRUE;
+
+    if (blendMode == BlendMode::kAdd) {
+        // BlendState（加算合成。結果 = Src.rgb * Src.a + Dest.rgb）
+        // 重なるほど明るくなり、描く順番によらず同じ結果になる
+        rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        rt.DestBlend = D3D12_BLEND_ONE;
+        rt.BlendOp = D3D12_BLEND_OP_ADD;
+
+        // α値は描画先のものをそのまま残す（光を足すだけで、描画先の不透明度は変えない）
+        rt.SrcBlendAlpha = D3D12_BLEND_ZERO;
+        rt.DestBlendAlpha = D3D12_BLEND_ONE;
+        rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    } else {
+        // BlendState（通常のαブレンド。結果 = Src.rgb * Src.a + Dest.rgb * (1 - Src.a)）
+        // 標準のパイプライン（Object3D）と同じ
+        rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        rt.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        rt.BlendOp = D3D12_BLEND_OP_ADD;
+
+        rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+        rt.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    }
+
+    rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    // RasterizerState（裏面カリング, 塗りつぶし）
+    D3D12_RASTERIZER_DESC rasterizerDesc{};
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+
+    // DepthStencilState（深度テストは有効, LessEqual）
+    // 加算合成では深度を書き込まない（書き込むと、手前のパーティクルの透明な部分が奥のパーティクルを隠してしまう）。
+    // 通常のαブレンドでは、不透明な物体と同じように深度を書き込む（前後関係が正しく描かれる）
+    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+    depthStencilDesc.DepthEnable = true;
+    depthStencilDesc.DepthWriteMask =
+        (blendMode == BlendMode::kAdd) ? D3D12_DEPTH_WRITE_MASK_ZERO : D3D12_DEPTH_WRITE_MASK_ALL;
+    depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+    PipelineConfig config{};
+    config.device = device;
+    config.rootSignature = rootSignature;
+    config.inputLayout = inputLayoutDesc;
+    config.blendDesc = blendDesc;
+    config.rasterizerDesc = rasterizerDesc;
+    config.depthStencilDesc = depthStencilDesc;
+    config.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    config.dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    config.vertexShader = vertexShader;
+    config.pixelShader = pixelShader;
+
+    return CreateGraphicsPipeline(config);
+}
+
+ComPtr<ID3D12PipelineState> PipelineManager::CreateLinePipeline(
+    ID3D12Device* device,
+    ID3D12RootSignature* rootSignature,
+    IDxcBlob* vertexShader,
+    IDxcBlob* pixelShader) {
+    // InputLayout（標準と同じPOSITION / TEXCOORD / NORMAL。頂点構造を共有する）
+    D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
+    inputElementDescs[0].SemanticName = "POSITION";
+    inputElementDescs[0].SemanticIndex = 0;
+    inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[1].SemanticName = "TEXCOORD";
+    inputElementDescs[1].SemanticIndex = 0;
+    inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+    inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+    inputElementDescs[2].SemanticName = "NORMAL";
+    inputElementDescs[2].SemanticIndex = 0;
+    inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+    inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+    inputLayoutDesc.pInputElementDescs = inputElementDescs;
+    inputLayoutDesc.NumElements = _countof(inputElementDescs);
+
+    // BlendState（全色要素を書き込む）
+    D3D12_BLEND_DESC blendDesc{};
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    // RasterizerState（線分にカリングは意味を持たないため無効）
+    D3D12_RASTERIZER_DESC rasterizerDesc{};
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+
+    // DepthStencilState（深度無効。ギズモが他オブジェクトに隠れず常に手前に表示される）
+    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+    depthStencilDesc.DepthEnable = false;
+
+    PipelineConfig config{};
+    config.device = device;
+    config.rootSignature = rootSignature;
+    config.inputLayout = inputLayoutDesc;
+    config.blendDesc = blendDesc;
+    config.rasterizerDesc = rasterizerDesc;
+    config.depthStencilDesc = depthStencilDesc;
+    config.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    config.dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    config.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+    config.vertexShader = vertexShader;
+    config.pixelShader = pixelShader;
+
+    return CreateGraphicsPipeline(config);
+}
+
+} // namespace Engine

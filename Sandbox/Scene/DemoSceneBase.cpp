@@ -275,6 +275,25 @@ void DemoSceneBase::DrawLightingModeCombo(Material& material) {
 	}
 }
 
+void DemoSceneBase::DrawSpecularEditor(Object3D& object) {
+	// 値は一度取り出して編集し、変わったときだけSetterで戻す（Setter側の下限がそのまま効く）
+	static const char* kModelItems[] = { "Phong", "Blinn-Phong" };
+	int model = static_cast<int>(object.GetSpecularModel());
+	if (ImGui::Combo("Specular", &model, kModelItems, IM_ARRAYSIZE(kModelItems))) {
+		object.SetSpecularModel(static_cast<Object3D::SpecularModel>(model));
+	}
+
+	float shininess = object.GetShininess();
+	if (ImGui::DragFloat("Shininess", &shininess, 0.5f, 1.0f, 256.0f)) {
+		object.SetShininess(shininess);
+	}
+
+	float specularStrength = object.GetSpecularStrength();
+	if (ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 2.0f)) {
+		object.SetSpecularStrength(specularStrength);
+	}
+}
+
 void DemoSceneBase::DrawMaterialEditor(Object3D& object) {
 	const uint32_t materialCount = object.GetMaterialCount();
 	const bool useTreeNode = materialCount > 1;

@@ -80,6 +80,9 @@ protected:
     // 複数（マルチマテリアルOBJ）ならmtlのマテリアル名のTreeNodeに分けて個別に編集する
     static void DrawMaterialEditor(Engine::Object3D& object);
 
+    // 鏡面反射の編集UI（Phong/Blinn-Phongの選択・光沢度・強さ）。設定はオブジェクト単位
+    static void DrawSpecularEditor(Engine::Object3D& object);
+
     // OBJモデル用のテクスチャCombo。0:"MTL (default)"＝サブメッシュごとのmtl由来テクスチャ、
     // 1以降:共有テクスチャ（textureHandles_）で全サブメッシュを一括上書き
     void DrawModelTextureCombo(Engine::Object3D& object, int& textureIndex);

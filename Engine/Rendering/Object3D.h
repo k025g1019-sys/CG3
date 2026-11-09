@@ -82,6 +82,9 @@ public:
     void SetShininess(float shininess);
     void SetSpecularStrength(float strength);
     void SetSpecularModel(SpecularModel model);
+    float GetShininess() const { return shininess_; }
+    float GetSpecularStrength() const { return specularStrength_; }
+    SpecularModel GetSpecularModel() const { return specularModel_; }
 
     // CPU側マテリアル（ImGuiで色・ライティングを編集し、Updateで定数バッファへ反映される）
     Material& GetMaterial(uint32_t index = 0) { return materials_[index]; }

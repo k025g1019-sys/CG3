@@ -170,6 +170,7 @@ void AxisScene::OnDrawObjectsImGui() {
 
 		ImGui::ColorEdit4("Color", &triangle_.GetMaterial().color.x);
 		DrawLightingModeCombo(triangle_.GetMaterial());
+		DrawSpecularEditor(triangle_);
 
 		if (ImGui::Combo("Texture", &triangleTextureIndex_, kTextureItems, kTextureCount)) {
 			triangle_.SetTextureHandle(textureHandles_[triangleTextureIndex_]);
@@ -203,6 +204,7 @@ void AxisScene::OnDrawObjectsImGui() {
 
 			ImGui::ColorEdit4("Color", &entry.object->GetMaterial().color.x);
 			DrawLightingModeCombo(entry.object->GetMaterial());
+			DrawSpecularEditor(*entry.object);
 			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
 
 			ImGui::Separator();
@@ -237,6 +239,7 @@ void AxisScene::OnDrawObjectsImGui() {
 
 		ImGui::ColorEdit4("Color", &sphere_.GetMaterial().color.x);
 		DrawLightingModeCombo(sphere_.GetMaterial());
+		DrawSpecularEditor(sphere_);
 
 		if (ImGui::Combo("Texture", &sphereTextureIndex_, kTextureItems, kTextureCount)) {
 			sphere_.SetTextureHandle(textureHandles_[sphereTextureIndex_]);
@@ -266,6 +269,7 @@ void AxisScene::OnDrawObjectsImGui() {
 			ImGui::Separator();
 
 			DrawMaterialEditor(*entry.object);
+			DrawSpecularEditor(*entry.object);
 			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
 
 			ImGui::Separator();

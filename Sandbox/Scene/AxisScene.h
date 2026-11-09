@@ -7,9 +7,9 @@
 #include "Engine/Rendering/Sprite.h"
 #include "Sandbox/Scene/DemoSceneBase.h"
 
-// 2つ目のデモシーン。三角形・球・axis.obj・teapot.obj・multiMesh.objと、
+// 3つ目のデモシーン（鏡面反射の調整もここで行う）。三角形・球・axis.obj・teapot.obj・multiMesh.objと、
 // GameSceneから移した5つのOBJモデル（plane・bunny・multiMaterial・suzanne・fence）・2Dスプライトを描画する
-// （Tabキーで最初のシーンと切り替え）。
+// （Tabキーで次の板ポリのシーン（PlaneScene）へ切り替わる）。
 // Debug・Developmentではスプライトエディタで描いた内容をそのまま映すプレビュー用スプライトも置く。
 // カメラ・天球・光源・サウンド・デバッグカメラ等の標準機能はDemoSceneBase（とエンジンのBaseScene）が提供する。
 class AxisScene : public DemoSceneBase {

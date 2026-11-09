@@ -58,6 +58,12 @@ void StereoDemoScene::OnInitialize() {
 	// --- 選択立方体の回転軸ギズモ ---
 	axisGizmo_.Initialize();
 
+	// --- 画面左上の操作説明（Tキーで通常デモシーンへ戻る）---
+	// 立体視で文字が飛び出して見えないよう、収束距離の既定値（視差ゼロの面。10）の位置に置く
+	returnText_.Initialize(
+		"resources/textObjects/tReturnScene.obj", "resources/textObjects/tReturnSceneFace.obj");
+	returnText_.SetDistance(10.0f);
+
 	// --- 平行光源（立方体の面の向きが分かるよう、斜め下向きにする。点光源は使わない）---
 	directionalLight_.direction = { 0.4f, -1.0f, 0.6f };
 
@@ -106,6 +112,9 @@ void StereoDemoScene::OnUpdate() {
 
 	// 天球（カメラ追従ON時は中心がカメラ位置へ追従する）
 	skydome_.Update(CalcViewMatrix());
+
+	// 画面左上の文字（デバッグカメラの更新後に、描画に使うカメラの前へ置き直す）
+	returnText_.Update(CalcViewMatrix(), camera_.GetFovY(), GetAspectRatio());
 }
 
 #ifndef NDEBUG
@@ -185,6 +194,9 @@ void StereoDemoScene::OnDrawImGui() {
 	// ----Skydome----
 	skydome_.DrawImGui();
 
+	// ----画面左上の文字----
+	returnText_.DrawImGui("Text (T: Return Scene)");
+
 	ImGui::End();
 
 	// --- カメラ（変換・立体視・視線追跡）---
@@ -227,6 +239,9 @@ void StereoDemoScene::OnDraw() {
 	for (const std::unique_ptr<Object3D>& cube : cubes_) {
 		cube->Draw();
 	}
+
+	// --- 画面左上の文字（立方体の後に、深度を無視して最前面に描く）---
+	returnText_.Draw();
 
 	// --- 選択立方体の回転軸ギズモ（最後に描画。深度無効で他オブジェクトに隠れない）---
 	axisGizmo_.Draw();

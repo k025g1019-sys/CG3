@@ -79,8 +79,14 @@ void Object3D::Initialize(Mesh* mesh, uint32_t textureHandle, LightingMode light
 }
 
 void Object3D::Update() {
+	// 親なし（単位行列を親にするのと同じ）
+	Update(MakeIdentity4x4());
+}
+
+void Object3D::Update(const Matrix4x4& parentMatrix) {
 	// ワールド行列（と法線用の逆転置行列）を計算して定数バッファへ書き込む
-	Matrix4x4 world = MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+	// （自分のTransformの行列に親の行列を掛ける。親が単位行列ならTransformの行列そのまま）
+	Matrix4x4 world = MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate) * parentMatrix;
 	TransformationMatrix transformData = MakeTransformationMatrix(world);
 
 	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
@@ -96,8 +102,16 @@ void Object3D::Update() {
 		materialCBs_[i].Write(frameIndex, materials_[i]);
 	}
 
-	// 視錐台カリング用の範囲（判定はカメラが確定した後のDrawで行う）
-	worldBoundingSphere_ = CalcWorldBoundingSphere();
+	// 視錐台カリング用の範囲（判定はカメラが確定した後のDrawで行う）。
+	// 親の行列も含めたワールド行列で、中心を移し、拡大率（各軸の行の長さ）の最大で半径をスケールする
+	// （親が単位行列なら CalcWorldBoundingSphere と同じ結果になる）
+	float maxScale = 0.0f;
+	for (int row = 0; row < 3; ++row) {
+		float scale = std::sqrt(
+			world.m[row][0] * world.m[row][0] + world.m[row][1] * world.m[row][1] + world.m[row][2] * world.m[row][2]);
+		if (scale > maxScale) { maxScale = scale; }
+	}
+	worldBoundingSphere_ = Sphere{ Transform(mesh_->GetLocalCenter(), world), mesh_->GetLocalRadius() * maxScale };
 }
 
 void Object3D::Draw() const {

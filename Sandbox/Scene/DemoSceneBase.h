@@ -11,6 +11,7 @@
 #include "Engine/Scene/BaseScene.h"
 #include "Sandbox/Object/AxisGizmo.h"
 #include "Sandbox/Object/PadObjectController.h"
+#include "Sandbox/Object/ScreenText.h"
 #include "Sandbox/Object/Skydome.h"
 // デバッグカメラはRelease以外。このプロジェクトはReleaseでも_DEBUGが定義される
 // （RuntimeLibrary=MultiThreadedDebug）ため、Release判定にはNDEBUGを使う。
@@ -30,10 +31,10 @@ protected:
     // 共通リソースを生成し、最後に OnInitializeObjects を呼ぶ
     void OnInitialize() override;
 
-    // サウンド入力 → パッド操作 → OnUpdateObjects → デバッグカメラ → 天球 の順で更新する
+    // サウンド入力 → パッド操作 → OnUpdateObjects → デバッグカメラ → 天球 → 左上の文字 の順で更新する
     void OnUpdate() override;
 
-    // 天球 → OnDrawObjects → 軸ギズモ の順で描画する
+    // 天球 → OnDrawObjects → 左上の文字 → 軸ギズモ の順で描画する
     void OnDraw() override;
 
 #ifdef USE_IMGUI
@@ -123,6 +124,9 @@ protected:
     // 選択オブジェクトのローカル回転軸ギズモ（X=赤/Y=緑/Z=青）
     AxisGizmo axisGizmo_;
 
+    // 画面左上の操作説明「Tab:SceneChange」（3Dテキストモデル。全デモシーンで最前面に表示する）
+    ScreenText sceneChangeText_;
+
     // --- デバッグ線描画のデモ（ImGuiの"Debug Draw"で切り替え）---
     bool showColliders_ = false;  // 各オブジェクトのバウンディング球（他と重なっていれば赤、それ以外は緑）
     bool showGrid_ = false;       // XZ平面のグリッド
@@ -133,5 +137,8 @@ protected:
 #ifndef NDEBUG
     // デバッグカメラ（Release以外。Enterで有効・無効を切り替える）
     Engine::DebugCamera debugCamera_;
+
+    // 「Tab:SceneChange」の下の操作説明「Enter:DebugCamera」（デバッグカメラがあるRelease以外だけ表示する）
+    ScreenText debugCameraText_;
 #endif
 };

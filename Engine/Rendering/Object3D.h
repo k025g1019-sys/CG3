@@ -58,6 +58,10 @@ public:
     // ビュー射影は視点ごとの共有CBuffer（VSのb1）で供給されるため、ここでは扱わない。
     void Update();
 
+    // 親の行列を掛けてワールド行列を作る版（ワールド行列 = 自分のTransformの行列 × parentMatrix）。
+    // カメラのワールド行列を渡すと、カメラに付いて動く（画面の決まった位置に表示する文字など）
+    void Update(const Matrix4x4& parentMatrix);
+
     // 描画する（シーンのOnDrawの中で呼ぶ）。
     // シーンのカメラの視錐台の外にあるときは描画しない（視錐台カリング）。
     // （RootSignature・PSO・ライト・ビュー射影はシーン側で設定済みの前提）

@@ -1,6 +1,7 @@
 #include "Sandbox/Scene/AxisScene.h"
 
 #include "Engine/Core/DirectXCore.h"
+#include "Engine/Core/WinApp.h"
 #include "Engine/Rendering/VertexData.h"
 
 #ifdef USE_IMGUI
@@ -82,8 +83,31 @@ void AxisScene::OnInitializeObjects() {
 	fence_.Initialize("resources/fence.obj");
 	fence_.GetTransform().translate = { -9.55f, -5.95f, 24.0f };
 
-	// --- スプライト（画面の左上。3Dオブジェクトに重ならないよう、画面の縦横1/4の大きさにする）---
-	sprite_.Initialize(textureHandles_[spriteTextureIndex_], { 320.0f, 180.0f });
+	// ---- 鏡面反射のデモ ----
+	// 平行光源：やや暖かい白の太陽光を、カメラ側の左上から奥へ向けて少し強めに当てる
+	// （真上からの光だとハイライトが物体の上面にしか出ず、カメラから見えにくいため）
+	directionalLight_.color = { 1.0f, 0.96f, 0.9f, 1.0f };
+	directionalLight_.direction = Normalize(Vector3{ 0.5f, -0.6f, 0.6f });
+	directionalLight_.intensity = 1.2f;
+	directionalLight_.enabled = 1;
+
+	// 3Dオブジェクトはすべて Blinn-Phong の鏡面反射にする。
+	// 光が強めで拡散反射だけでも明るいため、ハイライトが埋もれないよう鏡面反射の強さを上げる
+	// （球は上で設定した光沢度・強さのまま）
+	for (Object3D* object : { &triangle_, &axis_, &teapot_, &multiMesh_,
+			&plane_, &bunny_, &multiMaterial_, &suzanne_, &fence_ }) {
+		object->SetSpecularModel(Object3D::SpecularModel::kBlinnPhong);
+		object->SetShininess(48.0f);
+		object->SetSpecularStrength(1.0f);
+	}
+	sphere_.SetSpecularModel(Object3D::SpecularModel::kBlinnPhong);
+
+	// --- スプライト（画面の右上。画面の縦横1/4の大きさにする）---
+	// 左上の角には操作説明の文字（Tab: SceneChange / Enter: DebugCamera）があるため、右上の角に置く
+	// （位置は基準解像度のピクセル。右端 = 基準解像度の幅 - スプライトの幅）
+	const Vector2 spriteSize = { 320.0f, 180.0f };
+	sprite_.Initialize(textureHandles_[spriteTextureIndex_], spriteSize);
+	sprite_.GetTransform().translate = { float(WinApp::kClientWidth) - spriteSize.x, 0.0f, 0.0f };
 
 #ifdef USE_IMGUI
 	// --- スプライトエディタのプレビュー ---

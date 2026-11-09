@@ -238,12 +238,13 @@ PixelShaderOutput main(VertexShaderOutput input)
 
     // 透明度はライティングの影響を受けない（マテリアル×テクスチャのみ）    
     // 拡散反射 + 鏡面反射
+    // 鏡面反射は表面で光がそのまま跳ね返ったものなので、物体の色（マテリアル・テクスチャ）は掛けず、
+    // 光の色のまま足す（白い光なら白いハイライトになる）
     output.color.rgb =
         material.color.rgb *
         textureColor.rgb *
         diffuseLight
         +
-        textureColor.rgb *
         specularLight;
 
     output.color.a = material.color.a * textureColor.a;

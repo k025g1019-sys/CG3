@@ -10,6 +10,7 @@
 #include "Engine/Scene/BaseScene.h"
 #include "Sandbox/Object/AxisGizmo.h"
 #include "Sandbox/Object/PadObjectController.h"
+#include "Sandbox/Object/ScreenText.h"
 #include "Sandbox/Object/Skydome.h"
 // デバッグカメラはRelease以外。このプロジェクトはReleaseでも_DEBUGが定義される
 // （RuntimeLibrary=MultiThreadedDebug）ため、Release判定にはNDEBUGを使う。
@@ -30,7 +31,7 @@ protected:
     // デバッグカメラ・パッド操作・各立方体・天球の更新
     void OnUpdate() override;
 
-    // 天球 → 立方体 → 軸ギズモ の順で描画する
+    // 天球 → 立方体 → 左上の文字 → 軸ギズモ の順で描画する
     void OnDraw() override;
 
 #ifdef USE_IMGUI
@@ -64,6 +65,9 @@ private:
 
     // --- 選択立方体のローカル回転軸ギズモ（X=赤/Y=緑/Z=青）---
     AxisGizmo axisGizmo_;
+
+    // --- 画面左上の操作説明「T: Return Scene」（3Dテキストモデル。Tキーで通常デモシーンへ戻れることを示す）---
+    ScreenText returnText_;
 
 #ifndef NDEBUG
     // --- デバッグカメラ（Release以外）---

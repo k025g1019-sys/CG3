@@ -3,6 +3,7 @@
 [![DebugBuild](https://github.com/k025g1019-sys/CG3/actions/workflows/DebugBuild.yml/badge.svg)](https://github.com/k025g1019-sys/CG3/actions/workflows/DebugBuild.yml)
 [![DevelopmentBuild](https://github.com/k025g1019-sys/CG3/actions/workflows/DevelopmentBuild.yml/badge.svg)](https://github.com/k025g1019-sys/CG3/actions/workflows/DevelopmentBuild.yml)
 [![ReleaseBuild](https://github.com/k025g1019-sys/CG3/actions/workflows/ReleaseBuild.yml/badge.svg)](https://github.com/k025g1019-sys/CG3/actions/workflows/ReleaseBuild.yml)
+[![UnwantedFilesCheck](https://github.com/k025g1019-sys/CG3/actions/workflows/UnwantedFilesCheck.yml/badge.svg)](https://github.com/k025g1019-sys/CG3/actions/workflows/UnwantedFilesCheck.yml)
 
 DirectX 12 で作っている自作エンジン（静的ライブラリ）と、それを使うアプリのリポジトリです。
 `main` にはエンジンと、エンジンの動作確認用アプリ（Sandbox）が入っています。
@@ -54,3 +55,15 @@ Debug・Development・Release の3つの構成をそれぞれ GitHub 上でビ�
 - 上のバッジは `main` の最新のビルド結果です。緑の「passing」ならビルド成功、赤の「failing」なら失敗です
 - バッジをクリックすると、そのワークフローの実行結果の一覧が開きます
 - リポジトリの「Actions」タブで各ワークフローを選び、「Run workflow」から手動で実行することもできます
+
+## 不要ファイルのチェック（GitHub Actions）
+
+`main` へのプッシュのたびに、Git で管理する必要のないファイルがリポジトリに入っていないかを調べます
+（`.github/workflows/UnwantedFilesCheck.yml`）。1つでも見つかると失敗（バッジが赤）になります。
+
+- `.gitignore` で除外しているのに Git で管理されているファイル（`git add -f` で追加したものなど）
+- 名前で不要と分かるファイル（exe・dll・pdb などのビルドの出力、`x64/`・`generated/`・`.vs/` の中身、`.user`・`imgui.ini`・ログなど）。
+  `resources/` の中の `.obj`（3D モデル）は対象外です
+
+見つかったファイルは、実行結果のページの Summary に一覧で出ます。
+`git rm --cached <ファイル>` で Git の管理から外し（手元のファイルは残ります）、必要なら `.gitignore` に追加してください。

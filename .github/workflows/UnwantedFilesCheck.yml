@@ -1,0 +1,67 @@
+# Git で管理する必要のないファイルが、リポジトリに入っていないかを確かめるワークフロー。
+#   例: ビルドの出力・中間ファイル（exe・dll・lib・pdb・obj など）、Visual Studio の個人設定やキャッシュ、
+#       実行時に作られるファイル（ログ・imgui.ini・ダンプ）
+# main にプッシュしたときに、そのコミットのすべてのファイルを調べ、1つでも見つかったら失敗にする。
+name: UnwantedFilesCheck
+
+on:
+  # main にプッシュしたとき
+  push:
+    branches: [ "main" ]
+  # Actions タブの「Run workflow」ボタンから手動で実行するとき
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Git の操作だけなので、起動の速い Linux の実行環境で行う
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    # リポジトリの中身を取ってくる
+    - uses: actions/checkout@v7
+
+    # 不要なファイルを探す
+    - name: Check unwanted files
+      shell: bash
+      run: |
+        list_dir="$RUNNER_TEMP"
+
+        # (1) .gitignore で除外しているのに、Git で管理されてしまっているファイル
+        #     （git add -f で追加した、.gitignore に書く前に追加していた、など）
+        git -c core.quotePath=false ls-files --cached --ignored --exclude-standard > "$list_dir/ignored.txt"
+
+        # (2) .gitignore の書き方に関係なく、名前で不要と分かるファイル
+        #     ・ビルドの出力・中間ファイル: exe dll lib pdb ilk exp idb iobj ipdb pch tlog lastbuildstate obj
+        #     ・ビルドの出力フォルダ: x64/ x86/ Debug/ Release/ Development/ generated/
+        #     ・Visual Studio の個人設定・キャッシュ: .vs/ ipch/ .suo .user .aps .sdf .opendb .VC.db
+        #     ・実行時に作られるファイル: logs/ Dumps/ .log .dmp imgui.ini
+        #     ・Blender の自動バックアップ: .blend1 など
+        #     ※ resources/ の中の .obj は 3D モデルなので対象外
+        git -c core.quotePath=false ls-files \
+          | grep -E -i '(^|/)(x64|x86|Debug|Release|Development|generated|\.vs|ipch|logs|Dumps)/|\.(exe|dll|lib|pdb|ilk|exp|idb|iobj|ipdb|pch|tlog|lastbuildstate|obj|suo|user|aps|sdf|opendb|log|dmp)$|\.VC\.db$|(^|/)imgui\.ini$|\.blend[0-9]+$' \
+          | grep -E -v -i '(^|/)resources/.*\.obj$' > "$list_dir/named.txt" || true
+
+        sort -u "$list_dir/ignored.txt" "$list_dir/named.txt" > "$list_dir/unwanted.txt"
+        count=$(wc -l < "$list_dir/unwanted.txt")
+
+        if [ "$count" -eq 0 ]; then
+          echo "Git で管理する必要のないファイルは見つかりませんでした。" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        # 見つかったファイルを、実行結果のページ（Summary）と注釈（Annotations）に出す
+        {
+          echo "### Git で管理する必要のないファイルが ${count} 個見つかりました"
+          echo ""
+          echo "\`git rm --cached <ファイル>\` で Git の管理から外し（手元のファイルは残ります）、必要なら .gitignore に追加してください。"
+          echo ""
+          sed 's/^/- `/; s/$/`/' "$list_dir/unwanted.txt"
+        } >> "$GITHUB_STEP_SUMMARY"
+        while IFS= read -r file; do
+          echo "::error file=${file}::Git で管理する必要のないファイルです: ${file}"
+        done < "$list_dir/unwanted.txt"
+        exit 1

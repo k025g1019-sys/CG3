@@ -33,6 +33,11 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+# This repository's build outputs, kept outside the project folder (see project/Engine/Engine.props)
+#   generated/outputs/<config>/            exe / lib / dll
+#   generated/obj/<project>/<config>/      intermediate files
+/generated/
+
 # Visual Studio 2015/2017 cache/options directory
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot

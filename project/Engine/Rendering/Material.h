@@ -1,0 +1,27 @@
+#pragma once
+#include <cstdint>
+#include "../Math/Color.h"
+#include "../Math/Vector4.h"
+#include "../Math/Matrix4x4.h"
+
+namespace Engine {
+
+// ライティングの計算方式（シェーダー側Object3d.PS.hlslのkLightingMode定数と一致させる）
+enum class LightingMode : int32_t {
+    kNone = 0,         // ライティングなし（マテリアル×テクスチャの色をそのまま表示）
+    kLambert = 1,      // ランバート反射（N・Lをそのまま使う。陰影の境界がはっきり出る）
+    kHalfLambert = 2,  // ハーフランバート反射（N・Lを0..1へ写して2乗。陰が柔らかくなる）
+};
+
+struct Material {
+    Vector4 color;
+    LightingMode lightingMode;
+    float padding[3];
+    Matrix4x4 uvTransform;
+
+    // 色を設定する（Vector4 または 0xRRGGBBAA の16進数）
+    void SetColor(const Vector4& value) { color = value; }
+    void SetColor(uint32_t rgba) { color = ColorFromHex(rgba); }
+};
+
+} // namespace Engine

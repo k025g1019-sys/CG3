@@ -3,9 +3,11 @@
     Merge the engine branch into the current game branch.
 
 .DESCRIPTION
-    Run this on the game branch (the branch that has Game/Game.vcxproj).
+    Run this on the game branch (the branch that has project/Game/Game.vcxproj,
+    or Game/Game.vcxproj before the move into project/).
     It merges the engine branch (main by default) and removes the engine-only
-    test app (Sandbox/) from the merge, so the game branch keeps only the engine and the game.
+    test app (project/Sandbox/, or Sandbox/ in the old layout) from the merge,
+    so the game branch keeps only the engine and the game.
 
     Usage (from anywhere inside the repository):
         powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1
@@ -21,8 +23,8 @@ param(
 # Work from the repository root
 Set-Location (git rev-parse --show-toplevel)
 
-if (-not (Test-Path "Game/Game.vcxproj")) {
-    Write-Host "This is not the game branch (Game/Game.vcxproj was not found)." -ForegroundColor Red
+if (-not ((Test-Path "project/Game/Game.vcxproj") -or (Test-Path "Game/Game.vcxproj"))) {
+    Write-Host "This is not the game branch (project/Game/Game.vcxproj was not found)." -ForegroundColor Red
     exit 1
 }
 
@@ -48,9 +50,10 @@ if (-not (git rev-parse -q --verify MERGE_HEAD)) {
     exit 0
 }
 
-# The engine test app (Sandbox/) never goes into the game branch.
-# This also resolves "modified in engine / deleted in game" conflicts under Sandbox/.
-git rm -r -q --ignore-unmatch -- Sandbox | Out-Null
+# The engine test app (project/Sandbox/, or Sandbox/ in the old layout) never goes into the game branch.
+# This also resolves "modified in engine / deleted in game" conflicts under it.
+# -f is needed when the engine side added new files there (they are staged by the merge).
+git rm -r -q -f --ignore-unmatch -- project/Sandbox Sandbox | Out-Null
 
 $conflicts = git diff --name-only --diff-filter=U
 if ($conflicts) {

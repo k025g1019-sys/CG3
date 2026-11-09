@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  エンジン（Engine.vcxproj）と、エンジンを使うアプリ（Sandbox.vcxproj / Game.vcxproj）の共通ビルド設定。
+  各プロジェクトの PropertySheets からこのファイルを読み込む。
+
+  ・ビルドで生成されるファイルは、プロジェクトフォルダ（project\）の外の generated\ に出す
+      出力（exe・lib・dll）    : generated\outputs\<構成>\
+      中間ファイル（obj など） : generated\obj\<プロジェクト名>\<構成>\
+    $(SolutionDir) は CG3.slnx のあるフォルダ（project\）。ソリューションからビルドする前提
+  ・インクルード
+      エンジン : そのファイルからの相対パスで書く（"../Core/WinApp.h"）。ここでは何も追加しない
+      アプリ   : 下の「アプリだけの設定」で $(SolutionDir) と $(ProjectDir) を追加する
+                 （"Engine/Core/WinApp.h" "externals/imgui/imgui.h" "Scene/GameScene.h" のように書ける）
+  ・アプリ（ConfigurationType=Application）では、Engine・外部ライブラリ（DirectXTex・imgui）への参照、
+    リンク設定、実行に必要なDLL（dxcompiler / dxil）のコピーもここで追加する。
+    エンジン側で依存ライブラリが増えても、ゲーム側のプロジェクトファイルは変更しなくてよい。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)..\generated\outputs\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+
+  <!-- ===== コンパイル設定（全プロジェクト共通）===== -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <!--
+        静的CRT。Debug・Development はデバッグCRT（/MTd。_DEBUG が定義される）、Release は通常のCRT（/MT。下の Release で上書き）。
+        外部ライブラリ（DirectXTex・imgui）も構成ごとに同じ CRT にそろえてある。Release判定には NDEBUG を使う
+      -->
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Debug：ImGui（USE_IMGUI）とデバッグカメラが有効 -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!--
+    Development：ふだんのゲーム開発用。Release をもとに、次の点だけを変えた構成。
+    ・NDEBUG を定義しない（assert が有効）
+    ・ImGui（USE_IMGUI）が使える。USE_IMGUI はエンジンのクラスの中身を変えるので、エンジンとアプリで必ずそろえる
+    ・アプリ（Sandbox / Game）は最適化なし・プログラム全体の最適化なし（デバッガで変数やステップ実行を追える）
+    ・エンジン（Engine.lib）は Release と同じく最適化あり（/O2。/GL は Engine.vcxproj の WholeProgramOptimization）
+    エンジンの中をデバッグするときは Debug に切り替える。
+  -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Development'">
+    <ClCompile>
+      <PreprocessorDefinitions>_WINDOWS;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Development' and '$(ConfigurationType)'=='Application'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Release：ImGui・デバッグカメラ・D3D12デバッグレイヤーなし、NDEBUG定義、通常の静的CRT（_DEBUG は定義されない） -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- ===== アプリ（exe）だけの設定 ===== -->
+  <ItemDefinitionGroup Condition="'$(ConfigurationType)'=='Application'">
+    <ClCompile>
+      <!--
+        $(SolutionDir) : project\ を基準に、エンジン・外部ライブラリを "Engine/..." "externals/..." と書く
+        $(ProjectDir)  : アプリ自身のフォルダを基準に、自分のファイルを "Scene/..." "Object/..." と書く
+      -->
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <!-- シェーダーを実行時にコンパイルするDXCのDLLを、exeの隣へコピーする -->
+    <PostBuildEvent>
+      <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(ConfigurationType)'=='Application' and '$(Configuration)'=='Debug'">
+    <Link>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Condition="'$(ConfigurationType)'=='Application'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Engine.vcxproj">
+      <Project>{6f1d4c3a-2b8e-4e57-9a61-0c5d7e3b9f24}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
+      <Project>{371b9fa9-4c90-4ac6-a123-aced756d6c77}</Project>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- ImGui は Debug・Development だけ（Release ではビルドもリンクもしない） -->
+  <ItemGroup Condition="'$(ConfigurationType)'=='Application' and '$(Configuration)'!='Release'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\externals\imgui\imgui.vcxproj">
+      <Project>{64640494-a615-434a-bf05-d8dc0687977f}</Project>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,415 @@
+#include "Scene/AxisScene.h"
+
+#include "Engine/Core/DirectXCore.h"
+#include "Engine/Core/WinApp.h"
+#include "Engine/Rendering/VertexData.h"
+
+#ifdef USE_IMGUI
+#include "Engine/Tools/SpriteEditor.h"
+#include "externals/imgui/imgui.h"
+#endif
+
+using namespace Engine;
+
+void AxisScene::OnInitializeObjects() {
+	ID3D12Device* device = DirectXCore::GetInstance()->GetDevice();
+
+	// --- 三角形（2枚。2枚目は1枚目を貫通する）---
+	VertexData triangleVertices[6]{};
+	triangleVertices[0].position = { -0.5f, -0.5f, 0.0f, 1.0f }; // 左下
+	triangleVertices[0].texcoord = { 0.0f, 1.0f };
+	triangleVertices[1].position = { 0.0f, 0.5f, 0.0f, 1.0f }; // 上
+	triangleVertices[1].texcoord = { 0.5f, 0.0f };
+	triangleVertices[2].position = { 0.5f, -0.5f, 0.0f, 1.0f }; // 右下
+	triangleVertices[2].texcoord = { 1.0f, 1.0f };
+	triangleVertices[3].position = { -0.5f, -0.5f, 0.5f, 1.0f }; // 左下
+	triangleVertices[3].texcoord = { 0.0f, 1.0f };
+	triangleVertices[4].position = { 0.0f, 0.0f, 0.0f, 1.0f }; // 上
+	triangleVertices[4].texcoord = { 0.5f, 0.0f };
+	triangleVertices[5].position = { 0.5f, -0.5f, -0.5f, 1.0f }; // 右下
+	triangleVertices[5].texcoord = { 1.0f, 1.0f };
+	for (VertexData& vertex : triangleVertices) {
+		vertex.normal = { 0.0f, 0.0f, -1.0f };
+	}
+	triangleMesh_.Create(device, triangleVertices, 6);
+	triangle_.Initialize(&triangleMesh_, textureHandles_[triangleTextureIndex_]);
+	triangle_.GetTransform().translate = { 2.6f, 3.0f, 6.0f };
+
+	// --- axis.obj ---
+	axis_.Initialize("resources/axis.obj");
+	axis_.GetTransform().translate = { 1.4f, 2.4f, 6.0f };
+	axis_.GetTransform().rotate.y = 3.1415f;
+
+	// --- teapot.obj（ユタ・ティーポット。mtl由来のcheckerBoardで描かれる）---
+	teapot_.Initialize("resources/teapot.obj");
+	teapot_.GetTransform().translate = { -1.6f, 1.1f, 6.0f };
+
+	// --- multiMesh.obj（2サブメッシュ・1マテリアル）---
+	multiMesh_.Initialize("resources/multiMesh.obj");
+	multiMesh_.GetTransform().translate = { -1.2f, -1.7f, 9.0f };
+
+	// --- 球 ---
+	sphereMesh_.CreateSphere(device, subdivision_);
+	sphere_.Initialize(&sphereMesh_, textureHandles_[sphereTextureIndex_]);
+	sphere_.GetTransform().translate = { 2.2f, 0.7f, 6.0f };
+	sphere_.GetTransform().rotate.y = 4.9f;
+	sphere_.SetSpecularModel(
+		Engine::Object3D::SpecularModel::kBlinnPhong
+	);
+	sphere_.SetShininess(64.0f);
+	sphere_.SetSpecularStrength(0.8f);
+
+	// ---- GameSceneから移したオブジェクト ----
+	// 上のオブジェクトと画面上で重ならないよう、左右の空いている所に置く。
+	// 大きいモデルは奥に置いて見かけを小さくし、左右の空きに収める。
+
+	// --- plane.obj（右下）---
+	plane_.Initialize("resources/plane.obj");
+	plane_.GetTransform().translate = { 4.5f, -1.4f, 6.0f };
+
+	// --- bunny.obj（スタンフォードバニー。右の中段。mtl由来のuvCheckerで描かれる）---
+	bunny_.Initialize("resources/bunny.obj");
+	bunny_.GetTransform().translate = { 4.65f, 0.9f, 6.0f };
+
+	// --- multiMaterial.obj（2サブメッシュ・2マテリアル。左の奥。monsterBallとuvCheckerの2色になる）---
+	multiMaterial_.Initialize("resources/multiMaterial.obj");
+	multiMaterial_.GetTransform().translate = { -10.8f, 1.3f, 24.0f };
+
+	// --- suzanne.obj（UVなし。右上の少し奥。mtlにmap_Kdも無いので白テクスチャ＋ライティングの単色で描かれる）---
+	suzanne_.Initialize("resources/suzanne.obj");
+	suzanne_.GetTransform().translate = { 5.6f, 4.2f, 10.0f };
+
+	// --- fence.obj（透明部分をdiscardで抜く。左下の奥）---
+	fence_.Initialize("resources/fence.obj");
+	fence_.GetTransform().translate = { -9.55f, -5.95f, 24.0f };
+
+	// ---- 鏡面反射のデモ ----
+	// 平行光源：やや暖かい白の太陽光を、カメラ側の左上から奥へ向けて少し強めに当てる
+	// （真上からの光だとハイライトが物体の上面にしか出ず、カメラから見えにくいため）
+	directionalLight_.color = { 1.0f, 0.96f, 0.9f, 1.0f };
+	directionalLight_.direction = Normalize(Vector3{ 0.5f, -0.6f, 0.6f });
+	directionalLight_.intensity = 1.2f;
+	directionalLight_.enabled = 1;
+
+	// 3Dオブジェクトはすべて Blinn-Phong の鏡面反射にする。
+	// 光が強めで拡散反射だけでも明るいため、ハイライトが埋もれないよう鏡面反射の強さを上げる
+	// （球は上で設定した光沢度・強さのまま）
+	for (Object3D* object : { &triangle_, &axis_, &teapot_, &multiMesh_,
+			&plane_, &bunny_, &multiMaterial_, &suzanne_, &fence_ }) {
+		object->SetSpecularModel(Object3D::SpecularModel::kBlinnPhong);
+		object->SetShininess(48.0f);
+		object->SetSpecularStrength(1.0f);
+	}
+	sphere_.SetSpecularModel(Object3D::SpecularModel::kBlinnPhong);
+
+	// --- スプライト（画面の右上。画面の縦横1/4の大きさにする）---
+	// 左上の角には操作説明の文字（Tab: SceneChange / Enter: DebugCamera）があるため、右上の角に置く
+	// （位置は基準解像度のピクセル。右端 = 基準解像度の幅 - スプライトの幅）
+	const Vector2 spriteSize = { 320.0f, 180.0f };
+	sprite_.Initialize(textureHandles_[spriteTextureIndex_], spriteSize);
+	sprite_.GetTransform().translate = { float(WinApp::kClientWidth) - spriteSize.x, 0.0f, 0.0f };
+
+#ifdef USE_IMGUI
+	// --- スプライトエディタのプレビュー ---
+	// エディタのキャンバスのテクスチャハンドルをそのまま渡す。描いた内容は毎フレーム反映され、
+	// サイズ（ピクセル）はキャンバスのサイズと同じにする（OnUpdateObjectsで追従させる）。
+	SpriteEditor* editor = SpriteEditor::GetInstance();
+	editorSprite_.Initialize(
+		editor->GetTextureHandle(),
+		{ float(editor->GetCanvasWidth()), float(editor->GetCanvasHeight()) });
+	editorSprite_.GetTransform().translate = { 800.0f, 400.0f, 0.0f };
+#endif
+}
+
+void AxisScene::OnUpdateObjects() {
+	triangle_.Update();
+	axis_.Update();
+	teapot_.Update();
+	multiMesh_.Update();
+	sphere_.Update();
+
+	plane_.Update();
+	bunny_.Update();
+	multiMaterial_.Update();
+	suzanne_.Update();
+	fence_.Update();
+
+	// スプライト（正射影・2Dカリング。基準解像度との比に応じて等比スケールされる）
+	sprite_.Update();
+
+#ifdef USE_IMGUI
+	// エディタでキャンバスをリサイズ／画像を読み込んだときは、スプライトのサイズも合わせる
+	{
+		const SpriteEditor* editor = SpriteEditor::GetInstance();
+		const Vector2 canvasSize{ float(editor->GetCanvasWidth()), float(editor->GetCanvasHeight()) };
+		const Vector2 spriteSize = editorSprite_.GetSize();
+		if (spriteSize.x != canvasSize.x || spriteSize.y != canvasSize.y) {
+			editorSprite_.SetSize(canvasSize);
+		}
+		editorSprite_.Update();
+	}
+#endif
+}
+
+#ifndef NDEBUG
+void AxisScene::AppendPickTargets(std::vector<DebugCamera::PickTarget>& targets) const {
+	for (const Object3D* object : {
+			&triangle_, &axis_, &teapot_, &multiMesh_, &sphere_,
+			&plane_, &bunny_, &multiMaterial_, &suzanne_, &fence_ }) {
+		Sphere sphere = object->CalcWorldBoundingSphere();
+		targets.push_back({ sphere.center, sphere.radius });
+	}
+}
+#endif
+
+void AxisScene::AppendPadTargets(std::vector<PadObjectController::Target>& targets) {
+	targets.push_back({ "Triangle", &triangle_ });
+	targets.push_back({ "Axis", &axis_ });
+	targets.push_back({ "Teapot", &teapot_ });
+	targets.push_back({ "MultiMesh", &multiMesh_ });
+	targets.push_back({ "Sphere", &sphere_ });
+	targets.push_back({ "Plane", &plane_ });
+	targets.push_back({ "Bunny", &bunny_ });
+	targets.push_back({ "MultiMaterial", &multiMaterial_ });
+	targets.push_back({ "Suzanne", &suzanne_ });
+	targets.push_back({ "fence" , &fence_ });
+}
+
+#ifdef USE_IMGUI
+void AxisScene::OnDrawObjectsImGui() {
+	// ----Triangle----
+	if (ImGui::TreeNode("Triangle")) {
+		ImGui::PushID("Triangle");
+
+		Transform3D& transform = triangle_.GetTransform();
+		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
+		ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
+		ImGui::Separator();
+		VertexData* vertices = triangleMesh_.GetMappedVertices();
+		ImGui::DragFloat4("Vertex0", &vertices[0].position.x, 0.01f);
+		ImGui::DragFloat4("Vertex1", &vertices[1].position.x, 0.01f);
+		ImGui::DragFloat4("Vertex2", &vertices[2].position.x, 0.01f);
+		ImGui::Separator();
+
+		ImGui::ColorEdit4("Color", &triangle_.GetMaterial().color.x);
+		DrawLightingModeCombo(triangle_.GetMaterial());
+		DrawSpecularEditor(triangle_);
+
+		if (ImGui::Combo("Texture", &triangleTextureIndex_, kTextureItems, kTextureCount)) {
+			triangle_.SetTextureHandle(textureHandles_[triangleTextureIndex_]);
+		}
+
+		ImGui::PopID();
+		ImGui::TreePop();
+	}
+
+	// ----OBJモデル（共通の編集UI：Transform・色・ライティング・テクスチャ・サブメッシュ表示）----
+	struct ModelEntry {
+		const char* label;
+		Engine::Object3D* object;
+		int* textureIndex;
+	};
+	const ModelEntry entries[] = {
+		{ "Axis",      &axis_,      &axisTextureIndex_ },
+		{ "Teapot",    &teapot_,    &teapotTextureIndex_ },
+		{ "MultiMesh", &multiMesh_, &multiMeshTextureIndex_ },
+	};
+
+	for (const ModelEntry& entry : entries) {
+		if (ImGui::TreeNode(entry.label)) {
+			ImGui::PushID(entry.label);
+
+			Transform3D& transform = entry.object->GetTransform();
+			ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+			ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
+			ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
+			ImGui::Separator();
+
+			ImGui::ColorEdit4("Color", &entry.object->GetMaterial().color.x);
+			DrawLightingModeCombo(entry.object->GetMaterial());
+			DrawSpecularEditor(*entry.object);
+			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
+
+			ImGui::Separator();
+			DrawSubMeshInfo(*entry.object->GetMesh());
+
+			ImGui::PopID();
+			ImGui::TreePop();
+		}
+	}
+
+	// ----Sphere----
+	if (ImGui::TreeNode("Sphere")) {
+		ImGui::PushID("Sphere");
+
+		Transform3D& transform = sphere_.GetTransform();
+		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
+		ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
+		ImGui::Separator();
+
+		ImGui::DragInt("Sphere Subdivision", reinterpret_cast<int*>(&subdivision_), 1, 3, 128);
+
+		if (subdivision_ != prevSubdivision_) {
+			// FenceでGPU完了待ちをしてから差し替える（旧頂点バッファは自動開放）
+			DirectXCore::GetInstance()->WaitForGPU();
+
+			sphereMesh_.CreateSphere(DirectXCore::GetInstance()->GetDevice(), subdivision_);
+
+			prevSubdivision_ = subdivision_;
+		}
+		ImGui::Separator();
+
+		ImGui::ColorEdit4("Color", &sphere_.GetMaterial().color.x);
+		DrawLightingModeCombo(sphere_.GetMaterial());
+		DrawSpecularEditor(sphere_);
+
+		if (ImGui::Combo("Texture", &sphereTextureIndex_, kTextureItems, kTextureCount)) {
+			sphere_.SetTextureHandle(textureHandles_[sphereTextureIndex_]);
+		}
+
+		ImGui::PopID();
+		ImGui::TreePop();
+	}
+
+	// ----GameSceneから移したOBJモデル（共通の編集UI：Transform・色・ライティング・テクスチャ・サブメッシュ表示）----
+	const ModelEntry movedEntries[] = {
+		{ "Plane",         &plane_,         &planeTextureIndex_ },
+		{ "Bunny",         &bunny_,         &bunnyTextureIndex_ },
+		{ "MultiMaterial", &multiMaterial_, &multiMaterialTextureIndex_ },
+		{ "Suzanne",       &suzanne_,       &suzanneTextureIndex_ },
+		{ "Fence",         &fence_,         &fenceTextureIndex_ },
+	};
+
+	for (const ModelEntry& entry : movedEntries) {
+		if (ImGui::TreeNode(entry.label)) {
+			ImGui::PushID(entry.label);
+
+			Transform3D& transform = entry.object->GetTransform();
+			ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+			ImGui::DragFloat3("rotate", &transform.rotate.x, 0.01f);
+			ImGui::DragFloat3("translate", &transform.translate.x, 0.01f);
+			ImGui::Separator();
+
+			DrawMaterialEditor(*entry.object);
+			DrawSpecularEditor(*entry.object);
+			DrawModelTextureCombo(*entry.object, *entry.textureIndex);
+
+			ImGui::Separator();
+			DrawSubMeshInfo(*entry.object->GetMesh());
+
+			ImGui::PopID();
+			ImGui::TreePop();
+		}
+	}
+}
+
+void AxisScene::OnDrawExtraImGui() {
+	ImGui::Begin("2D Objects");
+	if (ImGui::TreeNode("Square")) {
+		ImGui::PushID("Square");
+
+		ImGui::Checkbox("Draw Sprite", &drawSprite_);
+		ImGui::Separator();
+
+		Transform3D& transform = sprite_.GetTransform();
+		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.05f);
+		ImGui::DragFloat3("translate", &transform.translate.x, 0.35f);
+		ImGui::Separator();
+		VertexData* vertices = sprite_.GetMappedVertices();
+		ImGui::DragFloat4("Vertex0 position", &vertices[0].position.x, 0.2f);
+		ImGui::DragFloat4("Vertex1 position", &vertices[1].position.x, 0.2f);
+		ImGui::DragFloat4("Vertex2 position", &vertices[2].position.x, 0.2f);
+		ImGui::DragFloat4("Vertex3 position", &vertices[3].position.x, 0.2f);
+
+		ImGui::DragFloat2("Vertex0 texcoord", &vertices[0].texcoord.x, 0.2f);
+		ImGui::DragFloat2("Vertex1 texcoord", &vertices[1].texcoord.x, 0.2f);
+		ImGui::DragFloat2("Vertex2 texcoord", &vertices[2].texcoord.x, 0.2f);
+		ImGui::DragFloat2("Vertex3 texcoord", &vertices[3].texcoord.x, 0.2f);
+
+		ImGui::Separator();
+
+		Transform3D& uvTransform = sprite_.GetUVTransform();
+		ImGui::DragFloat2("UVTranslate", &uvTransform.translate.x, 0.01f, -10.0f, 10.0f);
+		ImGui::DragFloat2("UVScale", &uvTransform.scale.x, 0.01f, -10.0f, 10.0f);
+		ImGui::SliderAngle("UVRotate", &uvTransform.rotate.z);
+
+		ImGui::Separator();
+
+		DrawLightingModeCombo(sprite_.GetMaterial());
+
+		if (ImGui::Combo("Texture", &spriteTextureIndex_, kTextureItems, kTextureCount)) {
+			sprite_.SetTextureHandle(textureHandles_[spriteTextureIndex_]);
+		}
+
+		ImGui::PopID();
+		ImGui::TreePop();
+	}
+
+	// スプライトエディタで描いた内容のプレビュー（位置・拡大率はここで調整する）
+	if (ImGui::TreeNode("Sprite Editor Preview")) {
+		ImGui::PushID("SpriteEditorPreview");
+
+		SpriteEditor* editor = SpriteEditor::GetInstance();
+		ImGui::Checkbox("Draw", &drawEditorSprite_);
+		ImGui::SameLine();
+		if (ImGui::Button("Open Sprite Editor")) {
+			editor->SetOpen(true);
+		}
+		ImGui::Text("Canvas: %d x %d px", editor->GetCanvasWidth(), editor->GetCanvasHeight());
+		ImGui::Separator();
+
+		Transform3D& transform = editorSprite_.GetTransform();
+		ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
+		ImGui::DragFloat3("rotate", &transform.rotate.x, 0.05f);
+		ImGui::DragFloat3("translate", &transform.translate.x, 0.35f);
+
+		ImGui::PopID();
+		ImGui::TreePop();
+	}
+	ImGui::End();
+}
+
+void AxisScene::OnDrawCullingImGui() {
+	ImGui::Text("Triangle      (sphere) : %s", VisibilityText(triangle_.GetVisibility()));
+	ImGui::Text("Axis          (sphere) : %s", VisibilityText(axis_.GetVisibility()));
+	ImGui::Text("Teapot        (sphere) : %s", VisibilityText(teapot_.GetVisibility()));
+	ImGui::Text("MultiMesh     (sphere) : %s", VisibilityText(multiMesh_.GetVisibility()));
+	ImGui::Text("Sphere        (sphere) : %s", VisibilityText(sphere_.GetVisibility()));
+	ImGui::Text("Plane         (sphere) : %s", VisibilityText(plane_.GetVisibility()));
+	ImGui::Text("Bunny         (sphere) : %s", VisibilityText(bunny_.GetVisibility()));
+	ImGui::Text("MultiMaterial (sphere) : %s", VisibilityText(multiMaterial_.GetVisibility()));
+	ImGui::Text("Suzanne       (sphere) : %s", VisibilityText(suzanne_.GetVisibility()));
+	ImGui::Text("Fence         (sphere) : %s", VisibilityText(fence_.GetVisibility()));
+	ImGui::Text("Sprite        (2D AABB): %s", VisibilityText(sprite_.GetVisibility()));
+	ImGui::Text("EditorSprite  (2D AABB): %s", VisibilityText(editorSprite_.GetVisibility()));
+}
+#endif
+
+void AxisScene::OnDrawObjects() {
+	triangle_.Draw();
+	axis_.Draw();
+	teapot_.Draw();
+	multiMesh_.Draw();
+	sphere_.Draw();
+
+	plane_.Draw();
+	bunny_.Draw();
+	multiMaterial_.Draw();
+	suzanne_.Draw();
+	fence_.Draw();
+
+	// スプライト（drawSprite_がfalse、または画面外なら描かれない）
+	if (drawSprite_) {
+		sprite_.Draw();
+	}
+
+#ifdef USE_IMGUI
+	// スプライトエディタのプレビュー
+	if (drawEditorSprite_) {
+		editorSprite_.Draw();
+	}
+#endif
+}

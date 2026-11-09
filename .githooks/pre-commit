@@ -5,6 +5,8 @@
 #
 # ・ゲーム制作ブランチ（Game/Game.vcxproj があるブランチ）では、Game/ 以外のファイルはコミットできない
 # ・エンジン制作ブランチ（Sandbox/Sandbox.vcxproj があるブランチ）では、Game/ のファイルはコミットできない
+# ソース一式は project/ の下にある（project/Game/・project/Sandbox/）。
+# 移行前のブランチ（リポジトリ直下に Game/・Sandbox/ がある）でも同じように動く。
 # エンジンブランチを取り込むマージのコミットはチェックしない。
 # 意図してコミットしたいときは git commit --no-verify でチェックを飛ばせる。
 
@@ -17,12 +19,14 @@ staged=$(git diff --cached --name-only)
 [ -z "$staged" ] && exit 0
 
 # どちらのブランチかは、コミット済みのファイル構成で判断する
-if git cat-file -e HEAD:Game/Game.vcxproj 2>/dev/null; then
+if git cat-file -e HEAD:project/Game/Game.vcxproj 2>/dev/null ||
+   git cat-file -e HEAD:Game/Game.vcxproj 2>/dev/null; then
     role=game
-    bad=$(printf '%s\n' "$staged" | grep -v '^Game/')
-elif git cat-file -e HEAD:Sandbox/Sandbox.vcxproj 2>/dev/null; then
+    bad=$(printf '%s\n' "$staged" | grep -v -E '^(project/)?Game/')
+elif git cat-file -e HEAD:project/Sandbox/Sandbox.vcxproj 2>/dev/null ||
+     git cat-file -e HEAD:Sandbox/Sandbox.vcxproj 2>/dev/null; then
     role=engine
-    bad=$(printf '%s\n' "$staged" | grep '^Game/')
+    bad=$(printf '%s\n' "$staged" | grep -E '^(project/)?Game/')
 else
     exit 0
 fi
@@ -30,12 +34,12 @@ fi
 [ -z "$bad" ] && exit 0
 
 if [ "$role" = game ]; then
-    echo "[pre-commit] GAME branch: only files under Game/ can be committed." >&2
-    echo "[pre-commit] ゲーム制作ブランチでは Game/ 以外（エンジン側）のファイルはコミットできません。" >&2
+    echo "[pre-commit] GAME branch: only files under project/Game/ can be committed." >&2
+    echo "[pre-commit] ゲーム制作ブランチでは project/Game/ 以外（エンジン側）のファイルはコミットできません。" >&2
     echo "             エンジンの修正はエンジン制作ブランチで行い、tools/MergeEngine.ps1 で取り込んでください。" >&2
 else
-    echo "[pre-commit] ENGINE branch: files under Game/ cannot be committed." >&2
-    echo "[pre-commit] エンジン制作ブランチでは Game/（ゲーム側）のファイルはコミットできません。" >&2
+    echo "[pre-commit] ENGINE branch: files under project/Game/ cannot be committed." >&2
+    echo "[pre-commit] エンジン制作ブランチでは project/Game/（ゲーム側）のファイルはコミットできません。" >&2
 fi
 echo "" >&2
 printf '%s\n' "$bad" | sed 's/^/    /' >&2

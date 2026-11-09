@@ -19,9 +19,17 @@ public:
         kStandard,  // 裏面カリング（通常の3Dオブジェクト・スプライト）
         kNoCull,    // カリング無効（内側から見る天球など）
         kLine,      // ライントポロジ・深度無効（選択オブジェクトの軸ギズモなど常に手前に描く線分）
+        kOverlay,   // 裏面カリング・深度無効（画面に固定する文字など、ほかの物体より常に手前に描く3Dオブジェクト）
         kParticle,  // Instancing（パーティクル）・加算合成・深度書き込み無効。パーティクル用RootSignatureと組で使う
+        kInstanced, // Instancing（InstancedObject3D）・通常のαブレンド・深度書き込み有効。パーティクル用RootSignatureと組で使う
 
         kCount,     // PSOの総数（enumの末尾に置くこと）
+    };
+
+    // パーティクル用RootSignatureで使うPSOのブレンド方法
+    enum class BlendMode {
+        kAdd,     // 加算合成（重なるほど明るくなる。深度は書き込まない）
+        kNormal,  // 通常のαブレンド（不透明な物体と同じように深度を書き込む）
     };
 
     // 標準RootSignatureのパラメータ番号（SetGraphicsRoot～ の第1引数に使う）
@@ -96,20 +104,24 @@ public:
 
     // このプロジェクト標準のInputLayout/各種Stateで描画パイプラインを生成する。
     // cullModeで裏面カリングの挙動を変えられる（天球は内側から見るためNONEを指定する）。
+    // depthEnabledをfalseにすると深度テスト・書き込みをしない（常に手前に描かれる）。
     static Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateStandardPipeline(
         ID3D12Device* device,
         ID3D12RootSignature* rootSignature,
         IDxcBlob* vertexShader,
         IDxcBlob* pixelShader,
-        D3D12_CULL_MODE cullMode = D3D12_CULL_MODE_BACK);
+        D3D12_CULL_MODE cullMode = D3D12_CULL_MODE_BACK,
+        bool depthEnabled = true);
 
     // パーティクル用パイプラインを生成する。
-    // 加算合成（AddBlend）・深度テスト有効・深度書き込み無効（半透明どうしが重なっても互いを隠さない）。
+    // kAdd   : 加算合成（AddBlend）・深度テスト有効・深度書き込み無効（半透明どうしが重なっても互いを隠さない）。
+    // kNormal: 通常のαブレンド・深度テスト有効・深度書き込み有効（決まった位置に置く板ポリなど、不透明な物体向け）。
     static Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateParticlePipeline(
         ID3D12Device* device,
         ID3D12RootSignature* rootSignature,
         IDxcBlob* vertexShader,
-        IDxcBlob* pixelShader);
+        IDxcBlob* pixelShader,
+        BlendMode blendMode = BlendMode::kAdd);
 
     // 線分描画用パイプラインを生成する（軸ギズモなど常に手前に表示する線分向け）。
     // ライントポロジ・カリング無効・深度無効（他オブジェクトに隠れず常に手前に表示される）。

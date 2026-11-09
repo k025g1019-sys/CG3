@@ -66,10 +66,12 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Object\AxisGizmo.cpp" />
     <ClCompile Include="Object\PadObjectController.cpp" />
+    <ClCompile Include="Object\ScreenText.cpp" />
     <ClCompile Include="Object\Skydome.cpp" />
     <ClCompile Include="Scene\AxisScene.cpp" />
     <ClCompile Include="Scene\DemoSceneBase.cpp" />
     <ClCompile Include="Scene\GameScene.cpp" />
+    <ClCompile Include="Scene\PlaneScene.cpp" />
     <ClCompile Include="Scene\SceneFactory.cpp" />
     <ClCompile Include="Scene\StereoDemoScene.cpp" />
   </ItemGroup>
@@ -77,10 +79,12 @@
     <ClInclude Include="SandboxApp.h" />
     <ClInclude Include="Object\AxisGizmo.h" />
     <ClInclude Include="Object\PadObjectController.h" />
+    <ClInclude Include="Object\ScreenText.h" />
     <ClInclude Include="Object\Skydome.h" />
     <ClInclude Include="Scene\AxisScene.h" />
     <ClInclude Include="Scene\DemoSceneBase.h" />
     <ClInclude Include="Scene\GameScene.h" />
+    <ClInclude Include="Scene\PlaneScene.h" />
     <ClInclude Include="Scene\SceneFactory.h" />
     <ClInclude Include="Scene\StereoDemoScene.h" />
   </ItemGroup>

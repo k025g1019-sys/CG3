@@ -93,6 +93,7 @@
     <ClCompile Include="Rendering\MeshManager.cpp" />
     <ClCompile Include="Rendering\Object3D.cpp" />
     <ClCompile Include="Rendering\ParticleEmitter.cpp" />
+    <ClCompile Include="Rendering\InstancedObject3D.cpp" />
     <ClCompile Include="Rendering\ParticleSystem.cpp" />
     <ClCompile Include="Rendering\RenderContext.cpp" />
     <ClCompile Include="Rendering\Sprite.cpp" />
@@ -171,6 +172,7 @@
     <ClInclude Include="Rendering\MeshManager.h" />
     <ClInclude Include="Rendering\Object3D.h" />
     <ClInclude Include="Rendering\ParticleEmitter.h" />
+    <ClInclude Include="Rendering\InstancedObject3D.h" />
     <ClInclude Include="Rendering\ParticleSystem.h" />
     <ClInclude Include="Rendering\Primitive.h" />
     <ClInclude Include="Rendering\RenderContext.h" />

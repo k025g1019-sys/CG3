@@ -64,7 +64,8 @@ void SandboxApp::Finalize() {
 void SandboxApp::Update() {
 	// シーン切り替え（キーボードとXBoxコントローラーの両対応）。
 	//   T   / Viewボタン（四角2つ）  : 通常デモシーン ⇔ 立体視デモシーン（戻り先は直前にいた通常デモシーン）
-	//   Tab / Menuボタン（横三本線）: 通常デモシーン同士（kGame ⇔ kAxis）を切り替える（立体視デモ中は無効）
+	//   Tab / Menuボタン（横三本線）: 通常デモシーンを 板ポリ → パーティクル → 鏡面反射 → 板ポリ の順に切り替える
+	//                                （立体視デモ中は無効）
 	Input* input = Input::GetInstance();
 	SceneId nextSceneId = sceneId_;
 	if (input->IsTrigger(DIK_T) || input->IsPadTrigger(kPadBack)) {
@@ -76,7 +77,7 @@ void SandboxApp::Update() {
 		}
 	} else if ((input->IsTrigger(DIK_TAB) || input->IsPadTrigger(kPadStart))
 		&& sceneId_ != SceneId::kStereoDemo) {
-		nextSceneId = (sceneId_ == SceneId::kGame) ? SceneId::kAxis : SceneId::kGame;
+		nextSceneId = NextDemoSceneId(sceneId_);
 	}
 
 	// アクティブなシーンだけを保持する方針のため、新しいシーンを作って切り替えを予約する

@@ -11,7 +11,7 @@
 /// シーンの更新・描画はエンジン（SceneManager）が行い、ここでは
 /// 視線追跡（アプリ内顔検出／共有メモリ）とWebカメラ表示を現在のシーンへ配線する。
 /// Tキーで立体視デモシーンと通常デモシーン（直前にいた方）を、
-/// Tabキーで通常デモシーン同士（kGame ⇔ kAxis）を切り替える。
+/// Tabキーで通常デモシーンを 板ポリ（kPlane）→ パーティクル（kGame）→ 鏡面反射（kAxis）→ 板ポリ の順に切り替える。
 /// </summary>
 class SandboxApp : public Engine::Framework {
 protected:
@@ -35,7 +35,7 @@ private:
     SceneId sceneId_ = kInitialSceneId;
 
     // 立体視デモへ入る直前にいた通常デモシーン（Tキーで立体視デモから戻る先）
-    SceneId lastDemoSceneId_ = SceneId::kGame;
+    SceneId lastDemoSceneId_ = kInitialSceneId;
 
     // --- 視線追跡とWebカメラ ---
     Engine::CameraCapture camera_;    // Webカメラ取得・表示（使わない間はワーカー停止）

@@ -40,6 +40,15 @@ void DemoSceneBase::OnInitialize() {
 	// --- 選択オブジェクトの回転軸ギズモ ---
 	axisGizmo_.Initialize();
 
+	// --- 画面左上の操作説明（Tabキーでシーンが切り替わることを示す）---
+	sceneChangeText_.Initialize(
+		"resources/textObjects/tabSceneChange.obj", "resources/textObjects/tabSceneChangeFace.obj");
+#ifndef NDEBUG
+	// その下の行に、デバッグカメラの切り替えキー（デバッグカメラはRelease以外にだけある）
+	debugCameraText_.Initialize(
+		"resources/textObjects/enterDebugCamera.obj", "resources/textObjects/enterDebugCameraFace.obj", 1);
+#endif
+
 	// --- シーン固有のリソース生成 ---
 	OnInitializeObjects();
 }
@@ -82,6 +91,12 @@ void DemoSceneBase::OnUpdate() {
 
 	// 天球（カメラ追従ON時は中心がカメラ位置へ追従する）
 	skydome_.Update(CalcViewMatrix());
+
+	// 画面左上の文字（デバッグカメラの更新後に、描画に使うカメラの前へ置き直す）
+	sceneChangeText_.Update(CalcViewMatrix(), camera_.GetFovY(), GetAspectRatio());
+#ifndef NDEBUG
+	debugCameraText_.Update(CalcViewMatrix(), camera_.GetFovY(), GetAspectRatio());
+#endif
 
 	// デバッグ線（当たり判定・曲線・グリッド）
 	DrawDebugShapes();
@@ -134,6 +149,12 @@ void DemoSceneBase::OnDraw() {
 	// --- シーン固有オブジェクトの描画 ---
 	OnDrawObjects();
 
+	// --- 画面左上の文字（シーンの物体の後に、深度を無視して最前面に描く）---
+	sceneChangeText_.Draw();
+#ifndef NDEBUG
+	debugCameraText_.Draw();
+#endif
+
 	// --- 選択オブジェクトの回転軸ギズモ（最後に描画。深度無効で他オブジェクトに隠れない）---
 	axisGizmo_.Draw();
 }
@@ -147,6 +168,10 @@ void DemoSceneBase::OnDrawImGui() {
 	ImGui::Separator();
 	OnDrawObjectsImGui();
 	skydome_.DrawImGui();
+	sceneChangeText_.DrawImGui("Text (Tab:SceneChange)");
+#ifndef NDEBUG
+	debugCameraText_.DrawImGui("Text (Enter:DebugCamera)");
+#endif
 	ImGui::End();
 
 	// --- シーン固有の追加ウィンドウ（GameSceneの"2D Objects"など）---

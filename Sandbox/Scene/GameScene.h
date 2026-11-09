@@ -7,7 +7,8 @@
 #include "Engine/Rendering/ParticleSystem.h"
 #include "Sandbox/Scene/DemoSceneBase.h"
 
-// 最初のデモシーン。板ポリ（plane.obj）のパーティクルを、Instancingで1回の描画命令でまとめて描画する。
+// 2つ目のデモシーン（Tabキーで板ポリのシーンの次に来る）。
+// 板ポリ（plane.obj）のパーティクルを、Instancingで1回の描画命令でまとめて描画する。
 // パーティクルはエミッタから0.5秒ごとに3個ずつ発生し（最大100個）、1～3秒かけて薄くなって消える
 // （加算合成で描き、ビルボードで常にカメラを向く）。
 // 加速度場（風）の範囲内に入ったパーティクルは、+X方向へ流される。

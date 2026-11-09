@@ -30,6 +30,10 @@ void PipelineManager::Initialize(ID3D12Device* device) {
     pipelines_[size_t(Pipeline::kNoCull)] = CreateStandardPipeline(
         device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get(), D3D12_CULL_MODE_NONE);
 
+    // 最前面に描く用：標準と同じで、深度テスト・書き込みだけ無効にする
+    pipelines_[size_t(Pipeline::kOverlay)] = CreateStandardPipeline(
+        device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get(), D3D12_CULL_MODE_BACK, false);
+
     pipelines_[size_t(Pipeline::kLine)] = CreateLinePipeline(
         device, rootSignature_.Get(), vertexShader.Get(), pixelShader.Get());
 
@@ -45,7 +49,13 @@ void PipelineManager::Initialize(ID3D12Device* device) {
 
     // InputLayoutは標準と同じ。ブレンドは加算合成、深度は書き込まない
     pipelines_[size_t(Pipeline::kParticle)] = CreateParticlePipeline(
-        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get());
+        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get(),
+        BlendMode::kAdd);
+
+    // InstancedObject3D用：シェーダーとRootSignatureはパーティクルと同じ。ブレンドは通常のα、深度は書き込む
+    pipelines_[size_t(Pipeline::kInstanced)] = CreateParticlePipeline(
+        device, particleRootSignature_.Get(), particleVertexShader.Get(), particlePixelShader.Get(),
+        BlendMode::kNormal);
 }
 
 void PipelineManager::Finalize() {
@@ -271,7 +281,8 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
     ID3D12RootSignature* rootSignature,
     IDxcBlob* vertexShader,
     IDxcBlob* pixelShader,
-    D3D12_CULL_MODE cullMode) {
+    D3D12_CULL_MODE cullMode,
+    bool depthEnabled) {
     // InputLayout（POSITION / TEXCOORD / NORMAL）
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
     inputElementDescs[0].SemanticName = "POSITION";
@@ -314,9 +325,10 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateStandardPipeline(
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
     // DepthStencilState（深度有効, 書き込み, LessEqual）
+    // depthEnabledがfalseなら深度テストも書き込みもしない（先に描いた物の前後関係を無視して、常に手前に描かれる）
     D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
-    depthStencilDesc.DepthEnable = true;
-    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    depthStencilDesc.DepthEnable = depthEnabled;
+    depthStencilDesc.DepthWriteMask = depthEnabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
     depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
     PipelineConfig config{};
@@ -338,7 +350,8 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateParticlePipeline(
     ID3D12Device* device,
     ID3D12RootSignature* rootSignature,
     IDxcBlob* vertexShader,
-    IDxcBlob* pixelShader) {
+    IDxcBlob* pixelShader,
+    BlendMode blendMode) {
     // InputLayout（標準と同じPOSITION / TEXCOORD / NORMAL。頂点構造を共有する）
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
     inputElementDescs[0].SemanticName = "POSITION";
@@ -358,22 +371,34 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateParticlePipeline(
     inputLayoutDesc.pInputElementDescs = inputElementDescs;
     inputLayoutDesc.NumElements = _countof(inputElementDescs);
 
-    // BlendState（加算合成。結果 = Src.rgb * Src.a + Dest.rgb）
-    // 重なるほど明るくなり、描く順番によらず同じ結果になる
     D3D12_BLEND_DESC blendDesc{};
 
     auto& rt = blendDesc.RenderTarget[0];
 
     rt.BlendEnable = TRUE;
 
-    rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    rt.DestBlend = D3D12_BLEND_ONE;
-    rt.BlendOp = D3D12_BLEND_OP_ADD;
+    if (blendMode == BlendMode::kAdd) {
+        // BlendState（加算合成。結果 = Src.rgb * Src.a + Dest.rgb）
+        // 重なるほど明るくなり、描く順番によらず同じ結果になる
+        rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        rt.DestBlend = D3D12_BLEND_ONE;
+        rt.BlendOp = D3D12_BLEND_OP_ADD;
 
-    // α値は描画先のものをそのまま残す（光を足すだけで、描画先の不透明度は変えない）
-    rt.SrcBlendAlpha = D3D12_BLEND_ZERO;
-    rt.DestBlendAlpha = D3D12_BLEND_ONE;
-    rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        // α値は描画先のものをそのまま残す（光を足すだけで、描画先の不透明度は変えない）
+        rt.SrcBlendAlpha = D3D12_BLEND_ZERO;
+        rt.DestBlendAlpha = D3D12_BLEND_ONE;
+        rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    } else {
+        // BlendState（通常のαブレンド。結果 = Src.rgb * Src.a + Dest.rgb * (1 - Src.a)）
+        // 標準のパイプライン（Object3D）と同じ
+        rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        rt.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        rt.BlendOp = D3D12_BLEND_OP_ADD;
+
+        rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+        rt.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    }
 
     rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
@@ -382,11 +407,13 @@ ComPtr<ID3D12PipelineState> PipelineManager::CreateParticlePipeline(
     rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
-    // DepthStencilState（深度テストは有効, 書き込みはしない, LessEqual）
-    // 深度を書き込むと、手前のパーティクルの透明な部分が奥のパーティクルを隠してしまう
+    // DepthStencilState（深度テストは有効, LessEqual）
+    // 加算合成では深度を書き込まない（書き込むと、手前のパーティクルの透明な部分が奥のパーティクルを隠してしまう）。
+    // 通常のαブレンドでは、不透明な物体と同じように深度を書き込む（前後関係が正しく描かれる）
     D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
     depthStencilDesc.DepthEnable = true;
-    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    depthStencilDesc.DepthWriteMask =
+        (blendMode == BlendMode::kAdd) ? D3D12_DEPTH_WRITE_MASK_ZERO : D3D12_DEPTH_WRITE_MASK_ALL;
     depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
     PipelineConfig config{};

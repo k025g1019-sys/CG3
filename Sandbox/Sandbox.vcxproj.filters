@@ -17,6 +17,9 @@
     <ClCompile Include="Object\PadObjectController.cpp">
       <Filter>Object</Filter>
     </ClCompile>
+    <ClCompile Include="Object\ScreenText.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
     <ClCompile Include="Object\Skydome.cpp">
       <Filter>Object</Filter>
     </ClCompile>
@@ -27,6 +30,9 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\GameScene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\PlaneScene.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\SceneFactory.cpp">
@@ -44,6 +50,9 @@
     <ClInclude Include="Object\PadObjectController.h">
       <Filter>Object</Filter>
     </ClInclude>
+    <ClInclude Include="Object\ScreenText.h">
+      <Filter>Object</Filter>
+    </ClInclude>
     <ClInclude Include="Object\Skydome.h">
       <Filter>Object</Filter>
     </ClInclude>
@@ -54,6 +63,9 @@
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Scene\GameScene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\PlaneScene.h">
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Scene\SceneFactory.h">

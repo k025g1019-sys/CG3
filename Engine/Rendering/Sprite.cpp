@@ -77,7 +77,7 @@ void Sprite::Update() {
 		transform_.translate.x * scaleX, transform_.translate.y * scaleY, transform_.translate.z };
 	Matrix4x4 world = MakeAffineMatrix(scaledScale, transform_.rotate, scaledTranslate);
 	Matrix4x4 projection = MakeOrthographicMatrix(0.0f, 0.0f, screenWidth, screenHeight, 0.0f, 100.0f);
-	TransformationMatrix transformData{ world };
+	TransformationMatrix transformData = MakeTransformationMatrix(world);
 
 	// UV変換行列
 	Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransform_.scale);

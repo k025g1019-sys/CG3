@@ -4,6 +4,7 @@
 struct TransformationMatrix
 {
     float4x4 World;
+    float4x4 WorldInverseTranspose; // 法線変換用（非均一スケール対応）
 };
 
 cbuffer TransformationMatrixBuffer : register(b0)
@@ -28,10 +29,12 @@ VertexShaderOutput main(VertexShaderInput input) {
     output.position = mul(worldPosition, gViewProjection);
     output.texcoord = input.texcoord;
 
+    // 法線はワールド行列の逆転置行列で変換する
+    // （ワールド行列のままだと、非均一スケールで法線が面に垂直でなくなる）
     output.normal =
     normalize(
         mul(input.normal,
-            (float3x3) gTransformationMatrix.World)
+            (float3x3) gTransformationMatrix.WorldInverseTranspose)
     );
     output.worldPosition = worldPosition.xyz;
     return output;

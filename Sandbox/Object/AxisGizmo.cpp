@@ -75,7 +75,7 @@ void AxisGizmo::Update(const Object3D* target) {
 	Matrix4x4 world = MakeAffineMatrix({ length, length, length }, transform.rotate, transform.translate);
 
 	const uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
-	transformCB_.Write(frameIndex, TransformationMatrix{ world });
+	transformCB_.Write(frameIndex, MakeTransformationMatrix(world));
 	for (int i = 0; i < kAxisCount; ++i) {
 		materialCBs_[i].Write(frameIndex, materials_[i]);
 	}

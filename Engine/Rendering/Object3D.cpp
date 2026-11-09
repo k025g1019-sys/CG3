@@ -79,9 +79,9 @@ void Object3D::Initialize(Mesh* mesh, uint32_t textureHandle, LightingMode light
 }
 
 void Object3D::Update() {
-	// ワールド行列を計算して定数バッファへ書き込む
+	// ワールド行列（と法線用の逆転置行列）を計算して定数バッファへ書き込む
 	Matrix4x4 world = MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
-	TransformationMatrix transformData{ world };
+	TransformationMatrix transformData = MakeTransformationMatrix(world);
 
 	uint32_t frameIndex = DirectXCore::GetInstance()->GetFrameIndex();
 	transformCB_.Write(frameIndex, transformData);

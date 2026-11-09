@@ -9,6 +9,7 @@
 ## 開き方
 
 Sandbox では起動時に開いています。閉じたときは「Display」ウィンドウの **Sprite Editor** チェック、または「2D Objects」→「Sprite Editor Preview」の **Open Sprite Editor** ボタンで開き直せます。
+開いているかどうかは `imgui.ini` に保存され、次に起動したときもそのままになります（閉じて終了すれば、次回は閉じた状態で始まります）。`imgui.ini` を消すと、初回と同じく開いた状態に戻ります。
 ゲーム側のコードから開くときは次の 1 行です。
 
 ```cpp

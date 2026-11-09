@@ -35,7 +35,8 @@ public:
     // ウィンドウが閉じていても、未反映のキャンバス内容はテクスチャへ反映する
     void DrawImGui();
 
-    // ウィンドウを開く／閉じる（既定は閉じている）
+    // ウィンドウを開く／閉じる（既定は閉じている）。
+    // 開閉はimgui.iniに保存され、次回起動時に復元される（保存があれば、起動時のSetOpenより優先される）
     void SetOpen(bool open) { open_ = open; }
     bool IsOpen() const { return open_; }
 
@@ -111,6 +112,7 @@ private:
     int uploadedHeight_ = 0;
 
     bool open_ = false;
+    bool savedOpen_ = false;  // imgui.iniへ最後に反映を予約した開閉状態（変化の検出用）
 
     // --- レイアウト ---
     float toolPanelWidth_ = 280.0f;  // 左側のツールパネルの幅（画面ピクセル。仕切りのドラッグで変わる。起動時は既定に戻る）

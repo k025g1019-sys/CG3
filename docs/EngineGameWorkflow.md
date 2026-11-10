@@ -45,9 +45,11 @@
 |---|---|
 | `main` | 主軸。動作確認の済んだエンジン（Engine / Shaders / Sandbox など）。ここでは直接作業せず、`feature/〇〇` をマージして更新する |
 | `feature/〇〇` | エンジンの機能を作るブランチ（例: `feature/Input`）。`main` から分岐し、Sandbox で動作確認できたら `main` へマージする |
-| `AL4_develop` | ゲーム制作（`project/Game/` だけを編集する）。エンジンは `main` から取り込む |
+| `AL4_02_develop` | 今作っているゲームの制作（`project/Game/` だけを編集する）。エンジンは `main` から取り込む |
+| `AL4_01_develop` ・ `AL4_01_release` | 前作「グルまげストライカー」の制作用と提出用。完成済みなので、もう更新しない |
 
-`main` と `feature/〇〇` がエンジン制作ブランチ（`project/Sandbox/` がある）、`AL4_develop` がゲーム制作ブランチ（`project/Game/` がある）です。
+`main` と `feature/〇〇` がエンジン制作ブランチ（`project/Sandbox/` がある）、`AL4_02_develop` などの `AL4_〇〇_develop` がゲーム制作ブランチ（`project/Game/` がある）です。
+新しいゲームを作るときは、前のゲーム制作ブランチから `AL4_〇〇_develop` を作り、`tools/MergeEngine.ps1` で `main` の最新のエンジンを取り込んでから始めます。
 変更の取り込みは **エンジン（`main`）→ ゲーム の一方通行** です。ゲームのブランチを `main` や `feature/〇〇` へマージしないでください。
 
 ## 最初に1回だけ
@@ -71,7 +73,7 @@ git config core.hooksPath .githooks
 
 ## エンジンの変更をゲームに取り込む
 
-ゲーム制作ブランチ（`AL4_develop`）で次を実行します。
+ゲーム制作ブランチ（`AL4_02_develop`）で次を実行します。
 
 ```bash
 powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1
@@ -91,12 +93,12 @@ powershell -ExecutionPolicy Bypass -File tools/MergeEngine.ps1
 1. ゲーム側の作業をコミット（または `git stash`）する
 2. `main` から `feature/〇〇` を作ってエンジンを修正し、Sandbox で動作確認してコミットする
 3. `feature/〇〇` を `main` へマージする
-4. `AL4_develop` に戻り、`tools/MergeEngine.ps1` で取り込む
+4. `AL4_02_develop` に戻り、`tools/MergeEngine.ps1` で取り込む
 
 2つのブランチを別々のフォルダに同時に出しておくと、切り替えのたびの再ビルドが要らなくなります。
 
 ```bash
-git worktree add ../DirectXGame-game AL4_develop
+git worktree add ../DirectXGame-game AL4_02_develop
 ```
 
 ## ゲーム側の書き方（よく使うもの）

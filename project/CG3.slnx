@@ -18,5 +18,5 @@
       <Build Solution="Release|*" Project="false" />
     </Project>
   </Folder>
-  <Project Path="Game/Game.vcxproj" Id="915fa14e-4f3e-4237-adfe-9cdaad5d7722" />
+  <Project Path="Game/Game.vcxproj" Id="915fa14e-4f3e-4237-adfe-9cdaad5d7722" DefaultStartup="true" />
 </Solution>

@@ -259,14 +259,14 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
   <p class="eyebrow">CG3.slnx · Engine.lib · namespace Engine</p>
   <h1>CG3 Engine <span class="ns">API</span> リファレンス</h1>
   <p class="intro">
-    エンジン（<code>Engine/</code>）の公開ヘッダーを、クラスと関数ごとにまとめたものです。
-    ゲーム（<code>Game/</code>）から使う機能を先に、エンジン内部の仕組みを最後に並べています。
+    エンジン（<code>project/Engine/</code>）の公開ヘッダーを、クラスと関数ごとにまとめたものです。
+    ゲーム（<code>project/Game/</code>）から使う機能を先に、エンジン内部の仕組みを最後に並べています。
     左上の検索欄に関数名や「当たり判定」「音」などを入れると絞り込めます。
   </p>
   <div class="meta">
     <span>作成元 <b>CG3_develop</b> <code>16bb434</code>（2026-09-30）</span>
-    <span>最終更新 <b>main</b> <code>d37ff3a</code>（2026-10-19）</span>
-    <span>インクルード <code>#include "Engine/…"</code>（ルートはリポジトリ直下）</span>
+    <span>最終更新 <b>main</b> <code>c16d954</code>（2026-11-10）</span>
+    <span>インクルード <code>#include "Engine/…"</code>（ゲームからは <code>project/</code> がルート）</span>
     <span>名前空間 <code>Engine</code>（<code>using namespace Engine;</code> で省略可）</span>
   </div>
   <div class="legend">
@@ -398,7 +398,7 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 24px 40px; font-
   <p class="group-lead">ゲームは「<code>Framework</code> を継承したアプリクラス」と「<code>BaseScene</code> を継承したシーン」で書きます。Game ブランチの最小構成は次のとおりです。</p>
 
   <div class="ex">
-    <p class="ex-label">Game/main.cpp ・ Game/MyGame.cpp</p>
+    <p class="ex-label">project/Game/main.cpp ・ project/Game/MyGame.cpp</p>
 <pre class="code">int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     MyGame game;
     game.Run();   // 初期化 → メインループ → 終了処理
@@ -414,7 +414,7 @@ void MyGame::Initialize() {
   </div>
 
   <div class="ex">
-    <p class="ex-label">Game/Scene/TitleScene.h ・ .cpp</p>
+    <p class="ex-label">project/Game/Scene/TitleScene.h ・ .cpp</p>
 <pre class="code">#include "Engine/Rendering/Object3D.h"
 #include "Engine/Scene/BaseScene.h"
 
@@ -429,7 +429,7 @@ private:
 
 // ---- TitleScene.cpp ----
 #include "Engine/Input/Input.h"
-#include "Game/Scene/GameScene.h"
+#include "Scene/GameScene.h"
 using namespace Engine;
 
 void TitleScene::OnInitialize() {
@@ -455,11 +455,14 @@ void TitleScene::OnDraw() {
   <div class="tbl"><table>
     <thead><tr><th>場所</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td class="m">Engine/</td><td>エンジン本体（静的ライブラリ）。変更は main から分岐した <code>feature/〇〇</code> で行って main へマージし、<code>tools/MergeEngine.ps1</code> でゲームのブランチへ取り込む。</td></tr>
-      <tr><td class="m">Game/</td><td>ゲーム本体（AL4_develop）。実行時のカレントディレクトリもここになる。</td></tr>
-      <tr><td class="m">Game/resources/</td><td>モデル・画像・音。コードでは <code>"resources/player.obj"</code> のように Game/ からの相対パスで書く。</td></tr>
-      <tr><td class="m">Shaders/</td><td>エンジンのシェーダー。実行時に <code>Shaders/</code> → <code>../Shaders/</code> の順で探される。</td></tr>
-      <tr><td class="m">Game/logs/ ・ Game/Dumps/</td><td>実行ごとのログファイルと、クラッシュ時のダンプファイルの出力先。</td></tr>
+      <tr><td class="m">project/CG3.slnx</td><td>ソリューション。ビルドはこれを開いて行う（プロジェクト単体ではビルドしない）。</td></tr>
+      <tr><td class="m">project/Engine/</td><td>エンジン本体（静的ライブラリ）。変更は main から分岐した <code>feature/〇〇</code> で行って main へマージし、<code>tools/MergeEngine.ps1</code> でゲームのブランチへ取り込む。</td></tr>
+      <tr><td class="m">project/Game/</td><td>ゲーム本体（ゲーム制作ブランチ。今は <code>AL4_02_develop</code>）。VS から実行したときのカレントディレクトリもここになる。ゲームのファイルは <code>#include "Scene/GameScene.h"</code> のように project/Game/ からのパスでインクルードする。</td></tr>
+      <tr><td class="m">project/Game/resources/</td><td>モデル・画像・音。コードでは <code>"resources/player.obj"</code> のように project/Game/ からの相対パスで書く。</td></tr>
+      <tr><td class="m">project/Engine/Shaders/</td><td>エンジンのシェーダー。実行時に <code>Shaders/</code> → <code>../Engine/Shaders/</code> の順で探される（exe だけを配るときは、exe と同じ場所に <code>Shaders/</code> と <code>resources/</code> を置く）。</td></tr>
+      <tr><td class="m">project/externals/</td><td>外部ライブラリ（DirectXTex・imgui）。ゲームからは <code>#include "externals/imgui/imgui.h"</code> のように書く。</td></tr>
+      <tr><td class="m">project/Game/logs/ ・ project/Game/Dumps/</td><td>実行ごとのログファイルと、クラッシュ時のダンプファイルの出力先。</td></tr>
+      <tr><td class="m">generated/outputs/&lt;構成&gt;/</td><td>ビルドの出力（exe・lib）。中間ファイルは <code>generated/obj/&lt;プロジェクト名&gt;/&lt;構成&gt;/</code>。どちらも git 管理外。</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -543,7 +546,7 @@ void TitleScene::OnDraw() {
     </tbody>
   </table></div>
   <ul>
-    <li>Development はゲームのコード（<code>Game/</code>）を最適化せずにビルドするので、ブレークポイントで止めて変数を見たり、ステップ実行したりできる（ImGui も使える）。エンジン（<code>Engine.lib</code>）は最適化されるので、エンジンの中を追いたいときは Debug に切り替える。</li>
+    <li>Development はゲームのコード（<code>project/Game/</code>）を最適化せずにビルドするので、ブレークポイントで止めて変数を見たり、ステップ実行したりできる（ImGui も使える）。エンジン（<code>Engine.lib</code>）は最適化されるので、エンジンの中を追いたいときは Debug に切り替える。</li>
     <li>CRT は静的リンク。Debug・Development はデバッグ用（<code>/MTd</code>）、Release は通常のもの（<code>/MT</code>）なので、exe だけで動き、VC++ ランタイムのインストールはいらない。D3D12 デバッグレイヤーとリソースリークチェックは Debug・Development だけで有効。</li>
     <li><code>_DEBUG</code> は Debug と Development で定義される（<code>/MTd</code> による）が、分岐には使わない。ImGui のコードは <code>#ifdef USE_IMGUI</code>、開発中だけのコードは <code>#ifndef NDEBUG</code> で囲む。</li>
     <li>全構成で警告レベル4・警告はエラー扱い。使っていない変数や引数があるとビルドが止まる（引数名を消す、<code>[[maybe_unused]]</code> を付ける、など）。</li>
@@ -606,7 +609,7 @@ void TitleScene::OnDraw() {
   </ul>
   <h3>リソース</h3>
   <ul>
-    <li><b>ファイルが見つからないと assert で止まる。</b>パスは Game/ からの相対パスです（<code>"resources/..."</code>）。止まったら綴りと、ファイルが <code>Game/resources/</code> にあるかを確認します。</li>
+    <li><b>ファイルが見つからないと assert で止まる。</b>パスは project/Game/ からの相対パスです（<code>"resources/..."</code>）。止まったら綴りと、ファイルが <code>project/Game/resources/</code> にあるかを確認します。</li>
     <li><b>OBJ は三角面にして書き出す。</b>四角形以上の面は読み込めません（Blender の OBJ 書き出しでは三角形化（Triangulate）の設定を ON）。mtl はOBJと同じフォルダに置き、map_Kd の画像パスもそのフォルダからの相対パスにします。</li>
     <li><b>サウンドはシーンを切り替えても解放されない。</b><code>LoadWave</code> にはキャッシュが無く、呼ぶたびに新しく読み込みます。シーンの <code>OnInitialize</code> で毎回読むと、シーンを行き来するたびに増えていきます。アプリ全体で1回だけ読むようにします。</li>
     <li><b>音はループ・停止ができない。</b>今ある関数は <code>LoadWave</code>・<code>Play</code>・<code>SetVolume</code> だけです。BGM のループが必要ならエンジン側に機能を足します。</li>
@@ -891,7 +894,7 @@ void GameScene::OnDraw() {
         <code class="sig">void Initialize(const std::string&amp; objFilePath, LightingMode lightingMode = LightingMode::kHalfLambert);</code>
         <div class="d">OBJ ファイルで初期化します。同じパスは1回だけ読み込まれ、メッシュは共有されます。mtl の <code>map_Kd</code> のテクスチャは、サブメッシュ（OBJ の <code>o</code> / <code>g</code> / <code>usemtl</code> の単位）ごとに自動で読み込まれ、<code>map_Kd</code> の無いマテリアルは白になります。</div>
         <dl class="pr">
-          <dt>objFilePath</dt><dd>実行ディレクトリ（Game/）からの相対パス。例 <code>"resources/player.obj"</code></dd>
+          <dt>objFilePath</dt><dd>実行ディレクトリ（project/Game/）からの相対パス。例 <code>"resources/player.obj"</code></dd>
           <dt>lightingMode</dt><dd>陰影の付け方（全サブメッシュ共通の初期値）</dd>
         </dl>
       </div>
@@ -1180,7 +1183,7 @@ void DrawImGui();<span class="tag t-engine">エンジンが呼ぶ</span></code>
       </div>
     </div>
     <div class="note info"><span class="note-label">保存したファイルの使い方</span>
-      保存先は実行ディレクトリ（Game/）からの相対パスで、既定は <code>resources/sprite.png</code> です。保存した画像は普通どおり <code>sprite.Initialize("resources/sprite.png", {64, 64});</code> で読めます（Release でも使えます）。そのファイルを既に読み込んでいる <code>Sprite</code> があれば、保存した瞬間にその場で差し替わります。
+      保存先は実行ディレクトリ（project/Game/）からの相対パスで、既定は <code>resources/sprite.png</code> です。保存した画像は普通どおり <code>sprite.Initialize("resources/sprite.png", {64, 64});</code> で読めます（Release でも使えます）。そのファイルを既に読み込んでいる <code>Sprite</code> があれば、保存した瞬間にその場で差し替わります。
     </div>
   </section>
 
@@ -1265,14 +1268,14 @@ void GameScene::OnDraw() {
     particles_.Draw();
 }</pre>
     </div>
-    <div class="note"><span class="note-label">モデルと画像</span>板ポリの OBJ（Sandbox の <code>resources/plane.obj</code> など。表が −Z 向き＝カメラ側）と画像は、ゲーム側の <code>Game/resources/</code> にも用意します。Sandbox の素材はゲームのブランチには入りません。</div>
+    <div class="note"><span class="note-label">モデルと画像</span>板ポリの OBJ（Sandbox の <code>resources/plane.obj</code> など。表が −Z 向き＝カメラ側）と画像は、ゲーム側の <code>project/Game/resources/</code> にも用意します。Sandbox の素材はゲームのブランチには入りません。</div>
     <p class="sub">初期化</p>
     <div class="fns">
       <div class="fn">
         <code class="sig">void Initialize(const std::string&amp; objFilePath, uint32_t maxParticleCount);</code>
         <div class="d">メッシュを読み込み、最大数ぶんの GPU のバッファを作ります。メッシュは <code>MeshManager</code> が読み込んで共有し、テクスチャは最初のサブメッシュの mtl の <code>map_Kd</code>（無ければ白）になります。この時点ではパーティクルは 1 個も出ていません。乱数の種は起動のたびに変わります。</div>
         <dl class="pr">
-          <dt>objFilePath</dt><dd>Game/ からの相対パス。例 <code>"resources/plane.obj"</code></dd>
+          <dt>objFilePath</dt><dd>project/Game/ からの相対パス。例 <code>"resources/plane.obj"</code></dd>
           <dt>maxParticleCount</dt><dd>同時に出せる数の上限（1 以上）。これを超えては発生も描画もしない</dd>
         </dl>
       </div>
@@ -1645,7 +1648,7 @@ private:
       <div class="fn">
         <code class="sig">uint32_t Load(const std::string&amp; filepath);</code>
         <div class="d">画像を読み込んで、ハンドルを返します。PNG・JPEG・BMP など WIC で読める形式に対応します（DDS は不可）。sRGB として読み込み、ミップマップを自動で作ります。ファイルが無いと assert で止まります。キャッシュはパスの文字列が完全に同じときだけ効きます（<code>"resources/a.png"</code> と <code>"./resources/a.png"</code> は別物扱い）。</div>
-        <dl class="pr"><dt>filepath</dt><dd>Game/ からの相対パス</dd></dl>
+        <dl class="pr"><dt>filepath</dt><dd>project/Game/ からの相対パス</dd></dl>
         <p class="ret"><b>戻り値</b> テクスチャハンドル（<code>SetTextureHandle</code> などに渡す）</p>
       </div>
       <div class="fn">
@@ -1703,7 +1706,7 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code>
       <div class="fn">
         <code class="sig">Mesh* Load(const std::string&amp; objFilePath);</code>
         <div class="d">OBJ を読み込みます（2回目以降はキャッシュを返す）。重いモデルを先に読んでおきたいときにも使えます。</div>
-        <dl class="pr"><dt>objFilePath</dt><dd>Game/ からの相対パス。例 <code>"resources/player.obj"</code></dd></dl>
+        <dl class="pr"><dt>objFilePath</dt><dd>project/Game/ からの相対パス。例 <code>"resources/player.obj"</code></dd></dl>
       </div>
       <div class="fn">
         <code class="sig">Mesh* GetPrimitive(Primitive primitive);</code>
@@ -1953,7 +1956,7 @@ Audio::GetInstance()-&gt;Play(jumpSe);</pre>
       <div class="fn">
         <code class="sig">size_t LoadWave(const std::string&amp; filename);</code>
         <div class="d">PCM の .wav（RIFF の <code>fmt </code> と <code>data</code> チャンク）を読み込み、ハンドルを返します。mp3 などは読めません。ファイルが無い・形式が違うと assert で止まります。キャッシュは無く、同じファイルでも呼ぶたびに別のサウンドとして読み込みます。</div>
-        <dl class="pr"><dt>filename</dt><dd>Game/ からの相対パス。例 <code>"resources/jump.wav"</code></dd></dl>
+        <dl class="pr"><dt>filename</dt><dd>project/Game/ からの相対パス。例 <code>"resources/jump.wav"</code></dd></dl>
         <p class="ret"><b>戻り値</b> サウンドハンドル（<code>Play</code> / <code>SetVolume</code> に渡す）</p>
       </div>
       <div class="fn">
@@ -2414,7 +2417,7 @@ FrustumVisibility ClassifyFrustum(const Frustum2D&amp; frustum, const Triangle2D
   <!-- ---------------------------------------------------------- Log -->
   <section class="cls" id="Log">
     <div class="cls-head"><h3>Log</h3><span class="path">Engine/Diagnostics/Log.h</span><span class="tags"><span class="tag">関数</span></span></div>
-    <p class="lead">Visual Studio の出力ウィンドウと、ログファイル（<code>Game/logs/日時.log</code>）の両方に文字列を出します。ログファイルは起動のたびに新しく作られます。</p>
+    <p class="lead">Visual Studio の出力ウィンドウと、ログファイル（<code>project/Game/logs/日時.log</code>）の両方に文字列を出します。ログファイルは起動のたびに新しく作られます。</p>
     <div class="fns">
       <div class="fn">
         <code class="sig">void Log(const std::string&amp; message);</code>
@@ -2452,7 +2455,7 @@ Log(std::format("score = {}, pos = ({:.2f}, {:.2f})", score_, pos.x, pos.y));</p
   <!-- ---------------------------------------------------------- CrashHandler -->
   <section class="cls" id="CrashHandler">
     <div class="cls-head"><h3>CrashHandler</h3><span class="path">Engine/Diagnostics/CrashHandler.h</span><span class="tags"><span class="tag t-engine">エンジンが呼ぶ</span></span></div>
-    <p class="lead">アプリが例外で落ちたとき、ダンプファイルを <code>Game/Dumps/</code> に書き出します。Framework が起動時に登録します。ダンプファイルを Visual Studio で開くと、落ちた場所のコールスタックが見られます。</p>
+    <p class="lead">アプリが例外で落ちたとき、ダンプファイルを <code>project/Game/Dumps/</code> に書き出します。Framework が起動時に登録します。ダンプファイルを Visual Studio で開くと、落ちた場所のコールスタックが見られます。</p>
     <div class="fns">
       <div class="fn">
         <code class="sig">LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);</code>
@@ -2767,7 +2770,7 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><d
       </div>
       <div class="fn"><code class="sig">const std::wstring&amp; GetShaderDirectory() const;</code><div class="d">見つかった Shaders フォルダ（末尾に <code>/</code> 付き）。</div></div>
       <div class="fn"><code class="sig">void Initialize();
-void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">DXC を準備し、<code>Shaders/</code> → <code>../Shaders/</code> の順にフォルダを探します（見つからなければ assert）。</div></div>
+void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><div class="d">DXC を準備し、<code>Shaders/</code> → <code>../Engine/Shaders/</code> の順にフォルダを探します（見つからなければ assert）。</div></div>
     </div>
   </section>
 
@@ -2956,7 +2959,7 @@ void Finalize();<span class="tag t-engine">エンジンが呼ぶ</span></code><d
 </section>
 
 <footer class="foot">
-  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作り、2026-10-01 に色の指定（<code>SetColor</code> / <code>ColorFromHex</code>）、2026-10-07 にスプライトエディタ（<code>SpriteEditor</code> / <code>SpriteCanvas</code>・動的テクスチャ・点サンプリング描画）、2026-10-19 にパーティクル（<code>ParticleSystem</code> / <code>ParticleEmitter</code> / <code>AccelerationField</code>・<code>StructuredBuffer</code>・インスタンシング・パーティクル用 PSO）と、<code>WinApp</code> のポインタを渡す初期化・<code>DescriptorHeapManager</code> の枠の返却と <code>ComPtr</code> 化を追記しました。ファイルは <code>Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたときは、main からゲームのブランチへ取り込むタイミングでまとめてこのファイルを直します。</p>
+  <p>このページは CG3_develop の <code>Engine/</code> の公開ヘッダーと実装（2026-09-30、<code>16bb434</code> 時点）から作り、2026-10-01 に色の指定（<code>SetColor</code> / <code>ColorFromHex</code>）、2026-10-07 にスプライトエディタ（<code>SpriteEditor</code> / <code>SpriteCanvas</code>・動的テクスチャ・点サンプリング描画）、2026-10-19 にパーティクル（<code>ParticleSystem</code> / <code>ParticleEmitter</code> / <code>AccelerationField</code>・<code>StructuredBuffer</code>・インスタンシング・パーティクル用 PSO）と、<code>WinApp</code> のポインタを渡す初期化・<code>DescriptorHeapManager</code> の枠の返却と <code>ComPtr</code> 化を追記し、2026-11-10 にフォルダ構成の変更（ソース一式を <code>project/</code>、ビルドの出力を <code>generated/</code> へ移動）に合わせてパスとインクルードの書き方を直しました。ファイルは <code>project/Engine/Docs/EngineReference.html</code> で、エンジンと一緒にゲームのブランチへ取り込まれます。エンジンの関数を足したり変えたりしたときは、main からゲームのブランチへ取り込むタイミングでまとめてこのファイルを直します。</p>
 </footer>
 
 </main>

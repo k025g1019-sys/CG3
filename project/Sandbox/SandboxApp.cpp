@@ -16,7 +16,7 @@ using namespace Engine;
 
 void SandboxApp::Initialize() {
 	// ウィンドウのタイトル（エンジン初期化より前に設定すると、最初からこのタイトルで開く）
-	SetWindowTitle(L"Window");
+	SetWindowTitle(L"LE2B_11_スズキ_ダイスケ");
 
 	// エンジン各サブシステムの初期化
 	Framework::Initialize();
@@ -30,8 +30,8 @@ void SandboxApp::Initialize() {
 		  "Point Lights", "Sound", "Frustum Culling", "Debug Draw" },
 		{ "Webcam" });
 
-	// スプライトエディタのウィンドウを最初から開いておく（"Display"ウィンドウのチェックで開閉できる）
-	SpriteEditor::GetInstance()->SetOpen(true);
+	// スプライトエディタのウィンドウは最初は閉じておく（"Display"ウィンドウのチェックで開閉できる）
+	SpriteEditor::GetInstance()->SetOpen(false);
 #endif
 
 	// 最初のシーンを予約する（生成・初期化はメインループの最初に行われる）。
